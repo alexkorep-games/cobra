@@ -18,6 +18,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@babylonjs/inspector": "^8.2.0",
     "@types/three": "^0.162.0",
     "three": "^0.162.0",
     "typescript": "^5.0.2",
