@@ -194,8 +194,6 @@
         margin-top: 20px; /* Space between loading and continue text */
         font-size: 0.8em; /* Smaller prompt */
         color: #ffff00; /* Yellow prompt */
-        /* Add a subtle blink effect (optional) */
-        animation: blink-animation 1s step-end infinite;
       }
 
       @keyframes blink-animation {
@@ -253,6 +251,7 @@
         <div id="loader-screen" class="center-text hidden">
           <p id="loader-progress-text">LOADING...</p>
           <p id="loader-continue-text" class="hidden">
+            GAME LOADED<br/>
             PRESS ANY KEY TO CONTINUE
           </p>
         </div>
@@ -503,7 +502,7 @@
           this.titleShips = game.assets.titleShips;
           this.planet = game.assets.planet;
           this.stars = game.assets.stars;
-          // this.pressKeyText = game.domElements.pressKeyText; // No longer needed here
+          this.pressKeyText = game.domElements.pressKeyText;
           this.introMusic = game.audio.introMusic;
           // this.keyProcessed = false; // Use base class inputProcessed
 
@@ -513,7 +512,7 @@
 
         enter() {
           super.enter(); // Calls inputProcessed = false;
-          // this.pressKeyText.classList.remove("hidden"); // No longer needed
+          this.pressKeyText.classList.remove("hidden");
 
           // Ensure assets are ready (though loader scene handles this)
           if (!this.titleShips || this.titleShips.length === 0) {
@@ -560,7 +559,7 @@
 
         exit() {
           super.exit();
-          // this.pressKeyText.classList.add("hidden"); // No longer needed
+          this.pressKeyText.classList.add("hidden");
 
           // Hide the currently shown ship if it exists
           if (
