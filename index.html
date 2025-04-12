@@ -183,6 +183,27 @@
       }
       /* --- End HUD Styles --- */
 
+      /* Style for the new loader screen */
+      #loader-screen {
+        /* Uses center-text positioning */
+        color: #00ff00; /* Green like other messages */
+        font-size: 1.5em; /* Match other center text */
+      }
+
+      #loader-continue-text {
+         margin-top: 20px; /* Space between loading and continue text */
+         font-size: 0.8em; /* Smaller prompt */
+         color: #ffff00; /* Yellow prompt */
+         /* Add a subtle blink effect (optional) */
+         animation: blink-animation 1s step-end infinite;
+      }
+
+      @keyframes blink-animation {
+        50% {
+          opacity: 0;
+        }
+      }
+
       .hidden {
         display: none;
       }
@@ -226,6 +247,12 @@
           <span id="title-text">--- PROJECT COBRA ---</span>
           <span id="bounty-text" class="hidden">BOUNTY: 5.0 Cr</span>
           <span id="view-text" class="hidden">Front View</span>
+        </div>
+
+        <!-- Loader Screen -->
+        <div id="loader-screen" class="center-text hidden">
+            <p id="loader-progress-text">LOADING...</p>
+            <p id="loader-continue-text" class="hidden">PRESS ANY KEY TO CONTINUE</p>
         </div>
 
         <!-- Central Text Area -->
@@ -379,84 +406,165 @@
       // --- Constants ---
       const SHIP_DISPLAY_DURATION = 4.0; // Seconds
 
-      // --- Base Scene Class (Optional but good practice) ---
+      // --- Base Scene Class ---
       class SceneBase {
         constructor(game) {
-          this.game = game; // Reference to the main game manager
+          this.game = game;
           this.scene = game.scene;
           this.camera = game.camera;
           this.renderer = game.renderer;
+          this.inputProcessed = false; // Flag to prevent multiple inputs per scene transition
         }
         enter() {
           console.log(`Entering ${this.constructor.name}`);
-        } // Called when scene becomes active
+          this.inputProcessed = false; // Reset input flag on entering
+        }
         exit() {
           console.log(`Exiting ${this.constructor.name}`);
-        } // Called when scene is left
-        update(deltaTime) {} // Called every frame
-        handleInput(event) {} // Optional input handling for the scene
+        }
+        update(deltaTime) {}
+        handleInput(event) {}
       }
+
+      // --- Loader Scene --- NEW SCENE
+      class LoaderScene extends SceneBase {
+        constructor(game) {
+          super(game);
+          this.loaderScreen = game.domElements.loaderScreen;
+          this.loaderProgressText = game.domElements.loaderProgressText;
+          this.loaderContinueText = game.domElements.loaderContinueText;
+          this.stars = game.assets.stars; // Access stars
+          this.readyToContinue = false;
+        }
+
+        enter() {
+          super.enter();
+          this.loaderScreen.classList.remove("hidden");
+          this.loaderProgressText.classList.remove("hidden");
+          this.loaderContinueText.classList.add("hidden"); // Hide continue prompt initially
+          this.readyToContinue = false;
+
+          // Show stars during loading
+          if (this.stars) {
+            this.stars.visible = true;
+          }
+
+          // Hide other central text elements that might be visible
+          this.game.domElements.pressKeyText.classList.add("hidden");
+          this.game.domElements.creditsText.classList.add("hidden");
+          this.game.domElements.statsScreen.classList.add("hidden");
+          this.game.domElements.leavingText.classList.add("hidden");
+
+          // Hide specific UI elements not needed yet
+          this.game.domElements.titleText.classList.remove("hidden"); // Keep title visible
+          this.game.domElements.viewText.classList.add("hidden");
+          this.game.domElements.bottomBar.classList.add("hidden"); // Hide HUD during loading
+        }
+
+        exit() {
+          super.exit();
+          this.loaderScreen.classList.add("hidden");
+          this.game.domElements.bottomBar.classList.remove("hidden"); // Show HUD for next scenes
+        }
+
+        update(deltaTime) {
+          // Rotate stars
+          if (this.stars) {
+            this.stars.rotation.y += 0.01 * deltaTime;
+          }
+
+          // Check if loading is complete (managed by Game class)
+          if (!this.readyToContinue && this.game.loadingComplete) {
+             this.readyToContinue = true;
+             this.loaderProgressText.classList.add("hidden"); // Hide "LOADING..."
+             this.loaderContinueText.classList.remove("hidden"); // Show "CLICK..."
+             console.log("Assets loaded. Ready for user input.");
+          }
+        }
+
+        handleInput(event) {
+            // Only proceed if loading is done AND input hasn't been processed yet
+            if (this.readyToContinue && !this.inputProcessed) {
+                if (event.type === 'keydown' || event.type === 'mousedown') {
+                    this.inputProcessed = true; // Mark as processed
+                    console.log("Loader input detected, switching to title scene.");
+                    this.game.switchScene("title");
+                }
+            }
+        }
+      }
+
 
       // --- Title Scene ---
       class TitleScene extends SceneBase {
         constructor(game) {
           super(game);
-          this.titleShips = game.assets.titleShips; // Array of ships
+          this.titleShips = game.assets.titleShips;
           this.planet = game.assets.planet;
           this.stars = game.assets.stars;
-          this.pressKeyText = game.domElements.pressKeyText;
+          // this.pressKeyText = game.domElements.pressKeyText; // No longer needed here
           this.introMusic = game.audio.introMusic;
-          this.keyProcessed = false;
+          // this.keyProcessed = false; // Use base class inputProcessed
 
           this.currentShipIndex = 0;
           this.shipDisplayTimer = 0;
         }
 
         enter() {
-          super.enter();
-          this.keyProcessed = false;
-          this.pressKeyText.classList.remove("hidden");
+          super.enter(); // Calls inputProcessed = false;
+          // this.pressKeyText.classList.remove("hidden"); // No longer needed
+
+          // Ensure assets are ready (though loader scene handles this)
+          if (!this.titleShips || this.titleShips.length === 0) {
+              console.warn("TitleScene entered but titleShips not ready!");
+              // Potentially switch back to loader or show an error
+              // For now, proceed cautiously
+          }
 
           // Hide all title ships initially
-          this.titleShips.forEach((ship) => (ship.visible = false));
+          this.titleShips.forEach((ship) => ship && (ship.visible = false)); // Add check for ship existence
 
-          // Show the first ship
+          // Show the first ship if available
           this.currentShipIndex = 0;
           this.shipDisplayTimer = 0;
-          if (this.titleShips.length > 0) {
+          if (this.titleShips.length > 0 && this.titleShips[0]) {
             const firstShip = this.titleShips[this.currentShipIndex];
             firstShip.visible = true;
-            firstShip.position.set(-3, 0, 0); // Reset position
-            firstShip.rotation.set(0, Math.PI, 0); // Reset rotation (start facing camera maybe?)
+            firstShip.position.set(-3, 0, 0);
+            firstShip.rotation.set(0, Math.PI, 0);
           }
 
           // Setup planet and stars
           this.planet.visible = true;
-          this.stars.visible = true;
+          this.stars.visible = true; // Should already be visible from Loader
           this.planet.position.set(7, 0, -5);
           this.planet.scale.set(1, 1, 1);
 
           this.game.domElements.titleText.classList.remove("hidden");
           this.game.domElements.viewText.classList.add("hidden");
+          this.game.domElements.bottomBar.classList.remove("hidden"); // Ensure HUD is visible
 
+          // --- Play Intro Music ---
           this.introMusic.currentTime = 0; // Rewind
           this.introMusic
             .play()
-            .catch((e) => console.warn("Title audio play failed:", e));
+            .then(() => console.log("Intro music started."))
+            .catch((e) => console.warn("Intro music play failed (likely needs interaction, which loader provided):", e));
         }
 
         exit() {
           super.exit();
-          this.pressKeyText.classList.add("hidden");
+          // this.pressKeyText.classList.add("hidden"); // No longer needed
 
-          // Hide the currently shown ship
-          if (this.titleShips.length > 0) {
+          // Hide the currently shown ship if it exists
+          if (this.titleShips.length > this.currentShipIndex && this.titleShips[this.currentShipIndex]) {
             this.titleShips[this.currentShipIndex].visible = false;
           }
 
-          this.planet.visible = false; // Hide other title assets
-          // Keep stars visible if next scene uses them
-          this.introMusic.pause();
+          this.planet.visible = false;
+          // Keep stars visible
+          this.introMusic.pause(); // Stop music when leaving title screen
+          console.log("Intro music paused.");
         }
 
         update(deltaTime) {
@@ -469,204 +577,221 @@
           if (this.titleShips.length > 0) {
             const currentShip = this.titleShips[this.currentShipIndex];
 
-            // Rotate current ship
-            currentShip.rotation.y += 0.5 * deltaTime;
-            currentShip.rotation.x += 0.25 * deltaTime;
+            if (!currentShip) { // Check if the current ship model loaded properly
+                console.warn(`Ship at index ${this.currentShipIndex} is missing.`);
+                this.shipDisplayTimer = SHIP_DISPLAY_DURATION; // Force cycle
+            } else {
+                // Rotate current ship
+                currentShip.rotation.y += 0.5 * deltaTime;
+                currentShip.rotation.x += 0.25 * deltaTime;
+            }
+
 
             // Update timer
             this.shipDisplayTimer += deltaTime;
 
             // Check if it's time to switch
             if (this.shipDisplayTimer >= SHIP_DISPLAY_DURATION) {
-              // Hide current ship
-              currentShip.visible = false;
+              // Hide current ship if it exists
+              if (currentShip) {
+                  currentShip.visible = false;
+              }
 
               // Move to next ship index (and wrap around)
-              this.currentShipIndex =
-                (this.currentShipIndex + 1) % this.titleShips.length;
+              this.currentShipIndex = (this.currentShipIndex + 1) % this.titleShips.length;
 
               // Get the new ship
               const nextShip = this.titleShips[this.currentShipIndex];
 
-              // Show the new ship and reset its state
-              nextShip.visible = true;
-              nextShip.position.set(-3, 0, 0); // Reset position
-              nextShip.rotation.set(0, Math.PI, 0); // Reset rotation
+              // Show the new ship and reset its state if it exists
+              if (nextShip) {
+                  nextShip.visible = true;
+                  nextShip.position.set(-3, 0, 0);
+                  nextShip.rotation.set(0, Math.PI, 0);
+              } else {
+                  console.warn(`Next ship at index ${this.currentShipIndex} is missing. Skipping.`);
+                  // Immediately try to advance again in the next frame
+                  this.shipDisplayTimer = SHIP_DISPLAY_DURATION;
+              }
 
-              // Reset timer
-              this.shipDisplayTimer = 0;
+              // Reset timer only if we successfully showed a ship or decided to skip
+              if (nextShip || !currentShip) { // Reset timer if ship exists or we skipped a missing one
+                 this.shipDisplayTimer = 0;
+              }
             }
           }
         }
 
         handleInput(event) {
-          if (!this.keyProcessed && event.type === "keydown") {
-            this.keyProcessed = true;
+          // Transition on key press (like original)
+          if (!this.inputProcessed && (event.type === 'keydown' || event.type === 'mousedown')) {
+            this.inputProcessed = true;
             this.game.switchScene("credits");
           }
         }
       }
 
-      // --- Credits Scene (Unchanged) ---
+      // --- Credits Scene (Unchanged logic, but uses base class) ---
       class CreditsScene extends SceneBase {
-        constructor(game) {
-          super(game);
-          this.creditsText = game.domElements.creditsText;
-          this.timeoutId = null;
-        }
-
-        enter() {
-          super.enter();
-          this.creditsText.classList.remove("hidden");
-          this.game.assets.stars.visible = true; // Keep stars visible
-
-          this.timeoutId = setTimeout(() => {
-            this.game.switchScene("stats");
-          }, 3000); // Duration of Credits screen
-        }
-
-        exit() {
-          super.exit();
-          this.creditsText.classList.add("hidden");
-          clearTimeout(this.timeoutId); // Clear timer if exiting early
-        }
-
-        update(deltaTime) {
-          if (this.game.assets.stars) {
-            this.game.assets.stars.rotation.y += 0.01 * deltaTime; // Keep stars rotating
+          constructor(game) {
+              super(game);
+              this.creditsText = game.domElements.creditsText;
+              this.timeoutId = null;
           }
-        }
+
+          enter() {
+              super.enter();
+              this.creditsText.classList.remove("hidden");
+              this.game.assets.stars.visible = true;
+
+              this.timeoutId = setTimeout(() => {
+                  // Check if we are still in this scene before switching
+                  if (this.game.currentScene === this) {
+                     this.game.switchScene("stats");
+                  }
+              }, 3000);
+          }
+
+          exit() {
+              super.exit();
+              this.creditsText.classList.add("hidden");
+              clearTimeout(this.timeoutId);
+          }
+
+          update(deltaTime) {
+              if (this.game.assets.stars) {
+                  this.game.assets.stars.rotation.y += 0.01 * deltaTime;
+              }
+          }
+          // No handleInput needed for automatic transition
       }
 
       // --- Stats Scene ---
       class StatsScene extends SceneBase {
-        constructor(game) {
-          super(game);
-          this.statsScreen = game.domElements.statsScreen;
-          this.timeoutId = null;
-        }
-
-        enter() {
-          super.enter();
-          this.statsScreen.classList.remove("hidden");
-          this.game.assets.stars.visible = true; // Keep stars visible
-
-          // Automatically transition after a delay
-          this.timeoutId = setTimeout(() => {
-            this.game.switchScene("undocking");
-          }, 5000); // Duration of Stats screen
-        }
-
-        exit() {
-          super.exit();
-          this.statsScreen.classList.add("hidden");
-          clearTimeout(this.timeoutId);
-        }
-
-        update(deltaTime) {
-          if (this.game.assets.stars) {
-            this.game.assets.stars.rotation.y += 0.01 * deltaTime; // Keep stars rotating
+          constructor(game) {
+              super(game);
+              this.statsScreen = game.domElements.statsScreen;
+              this.timeoutId = null;
           }
-        }
+
+          enter() {
+              super.enter();
+              this.statsScreen.classList.remove("hidden");
+              this.game.assets.stars.visible = true;
+
+              this.timeoutId = setTimeout(() => {
+                 if (this.game.currentScene === this) {
+                    this.game.switchScene("undocking");
+                 }
+              }, 5000);
+          }
+
+          exit() {
+              super.exit();
+              this.statsScreen.classList.add("hidden");
+              clearTimeout(this.timeoutId);
+          }
+
+          update(deltaTime) {
+              if (this.game.assets.stars) {
+                  this.game.assets.stars.rotation.y += 0.01 * deltaTime;
+              }
+          }
+          // No handleInput needed for automatic transition
       }
 
       // --- Undocking Scene ---
-      class UndockingScene extends SceneBase {
-        constructor(game) {
-          super(game);
-          this.leavingText = game.domElements.leavingText;
-          this.undockSound = game.audio.undockSound;
-          this.undockingSquares = game.assets.undockingSquares;
-          this.timeoutId = null;
-        }
-
-        enter() {
-          super.enter();
-          this.leavingText.classList.remove("hidden");
-          this.game.domElements.titleText.classList.add("hidden"); // Hide ELITE title
-          this.game.domElements.viewText.classList.remove("hidden"); // Show Front View
-
-          this.game.assets.stars.visible = true; // Keep stars visible
-
-          // Make squares visible and reset positions
-          this.undockingSquares.forEach((square, i) => {
-            square.position.z = -i * 5; // Reset initial spread
-            square.visible = true;
-          });
-
-          this.undockSound.currentTime = 0;
-          this.undockSound
-            .play()
-            .catch((e) => console.warn("Undock audio play failed:", e));
-
-          // Automatically transition after a delay
-          this.timeoutId = setTimeout(() => {
-            this.game.switchScene("space_flight");
-          }, 3500); // Duration slightly longer than sound
-        }
-
-        exit() {
-          super.exit();
-          this.leavingText.classList.add("hidden");
-          this.undockingSquares.forEach((s) => (s.visible = false)); // Hide squares
-          clearTimeout(this.timeoutId);
-          // Don't stop undock sound immediately, let it finish
-        }
-
-        update(deltaTime) {
-          // Undocking animation
-          const speed = 20.0; // Adjust speed as needed
-          this.undockingSquares.forEach((s, i) => {
-            s.position.z += speed * deltaTime; // Move squares towards camera
-            // Reset position when past camera (adjust threshold and reset distance)
-            if (s.position.z > this.camera.position.z + 5) {
-              s.position.z =
-                -this.undockingSquares.length * 5 +
-                (5 - (s.position.z - (this.camera.position.z + 5))); // Reset behind the farthest square
-            }
-          });
-
-          if (this.game.assets.stars) {
-            this.game.assets.stars.rotation.y += 0.01 * deltaTime; // Keep stars rotating
+       class UndockingScene extends SceneBase {
+          constructor(game) {
+              super(game);
+              this.leavingText = game.domElements.leavingText;
+              this.undockSound = game.audio.undockSound;
+              this.undockingSquares = game.assets.undockingSquares;
+              this.timeoutId = null;
           }
-        }
+
+          enter() {
+              super.enter();
+              this.leavingText.classList.remove("hidden");
+              this.game.domElements.titleText.classList.add("hidden");
+              this.game.domElements.viewText.classList.remove("hidden");
+              this.game.assets.stars.visible = true;
+
+              this.undockingSquares.forEach((square, i) => {
+                  square.position.z = -i * 5;
+                  square.visible = true;
+              });
+
+              this.undockSound.currentTime = 0;
+              this.undockSound
+                  .play()
+                  .catch((e) => console.warn("Undock audio play failed:", e));
+
+              this.timeoutId = setTimeout(() => {
+                  if (this.game.currentScene === this) {
+                     this.game.switchScene("space_flight");
+                  }
+              }, 3500);
+          }
+
+          exit() {
+              super.exit();
+              this.leavingText.classList.add("hidden");
+              this.undockingSquares.forEach((s) => (s.visible = false));
+              clearTimeout(this.timeoutId);
+          }
+
+          update(deltaTime) {
+              const speed = 20.0;
+              this.undockingSquares.forEach((s, i) => {
+                  s.position.z += speed * deltaTime;
+                  if (s.position.z > this.camera.position.z + 5) {
+                      s.position.z = -this.undockingSquares.length * 5 + (5 - (s.position.z - (this.camera.position.z + 5)));
+                  }
+              });
+
+              if (this.game.assets.stars) {
+                  this.game.assets.stars.rotation.y += 0.01 * deltaTime;
+              }
+          }
+          // No handleInput needed for automatic transition
       }
 
       // --- Space Flight Scene ---
       class SpaceFlightScene extends SceneBase {
-        constructor(game) {
-          super(game);
-          this.planet = game.assets.planet;
-          this.stars = game.assets.stars;
-        }
+          constructor(game) {
+              super(game);
+              this.planet = game.assets.planet;
+              this.stars = game.assets.stars;
+          }
 
-        enter() {
-          super.enter();
-          this.game.domElements.titleText.classList.add("hidden");
-          this.game.domElements.viewText.classList.remove("hidden");
+          enter() {
+              super.enter();
+              this.game.domElements.titleText.classList.add("hidden");
+              this.game.domElements.viewText.classList.remove("hidden");
 
           // Position planet as a distant object
           this.planet.position.set(0, 15, -60); // Further away, slightly up
           this.planet.scale.set(5, 5, 5); // Make it look larger/closer than a star
-          this.planet.visible = true;
-          this.stars.visible = true;
+              this.planet.visible = true;
+              this.stars.visible = true;
 
-          console.log("Entered Space Flight Scene. Intro sequence complete.");
+              console.log("Entered Space Flight Scene. Intro sequence complete.");
           // Future: Enable player controls, AI, etc.
-        }
-
-        exit() {
-          super.exit();
-          this.planet.visible = false; // Hide if transitioning elsewhere
-        }
-
-        update(deltaTime) {
-          // Keep stars rotating slowly
-          if (this.stars) {
-            this.stars.rotation.y += 0.01 * deltaTime;
           }
+
+          exit() {
+              super.exit();
+              this.planet.visible = false; // Hide if transitioning elsewhere
+          }
+
+          update(deltaTime) {
+          // Keep stars rotating slowly
+              if (this.stars) {
+                  this.stars.rotation.y += 0.01 * deltaTime;
+              }
           // Maybe add slow drift to planet or other background elements
-        }
+          }
       }
 
       // --- Game Manager Class ---
@@ -678,11 +803,16 @@
           this.clock = new THREE.Clock();
 
           this.assets = {
-            titleShips: [],
+            titleShips: [], // Will be populated by loader
             planet: null,
             stars: null,
             undockingSquares: [],
           };
+
+          // --- Asset Loading Tracking ---
+          this.assetsToLoad = 0;
+          this.assetsLoaded = 0;
+          this.loadingComplete = false; // Flag for LoaderScene
 
           this.audio = {
             introMusic: null,
@@ -690,13 +820,16 @@
           };
 
           this.domElements = {
+            loaderScreen: document.getElementById("loader-screen"), // New
+            loaderProgressText: document.getElementById("loader-progress-text"), // New
+            loaderContinueText: document.getElementById("loader-continue-text"), // New
             pressKeyText: document.getElementById("press-key-text"),
             creditsText: document.getElementById("credits-text"),
             statsScreen: document.getElementById("stats-screen"),
             leavingText: document.getElementById("leaving-text"),
             titleText: document.getElementById("title-text"),
             viewText: document.getElementById("view-text"),
-            // Add other HUD elements if they need direct manipulation
+            bottomBar: document.querySelector(".bottom-bar"), // Reference to hide/show HUD
           };
 
           this.scenes = {};
@@ -709,148 +842,94 @@
         }
 
         init() {
-          // --- Core Three.js Setup ---
+          // Core Three.js Setup
           this.scene = new THREE.Scene();
-          this.camera = new THREE.PerspectiveCamera(
-            75,
-            window.innerWidth / window.innerHeight,
-            0.1,
-            1000
-          );
-          this.camera.position.z = 15; // Default camera position
+          this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+          this.camera.position.z = 15;
 
           const canvas = document.getElementById("eliteCanvas");
-          this.renderer = new THREE.WebGLRenderer({
-            canvas: canvas,
-            antialias: false,
-          });
+          this.renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false });
           this.renderer.setSize(window.innerWidth, window.innerHeight);
           this.renderer.setClearColor(0x000000);
 
-          // --- Lighting ---
+          // Lighting
           const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
           this.scene.add(ambientLight);
           const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
           directionalLight.position.set(1, 1, 1);
           this.scene.add(directionalLight);
 
-          this.createAssets(); // Create all assets including the ships
+          // --- Load Assets (including tracking) ---
+          this.createAssets(); // This now starts the loading process
 
           // --- Audio ---
           this.audio.introMusic = document.getElementById("introMusic");
           this.audio.undockSound = document.getElementById("undockSound");
 
-          // --- Instantiate Scenes ---
+          // Instantiate Scenes (including Loader)
+          this.scenes.loader = new LoaderScene(this); // Instantiate Loader first
           this.scenes.title = new TitleScene(this);
           this.scenes.credits = new CreditsScene(this);
           this.scenes.stats = new StatsScene(this);
           this.scenes.undocking = new UndockingScene(this);
           this.scenes.space_flight = new SpaceFlightScene(this);
 
-          // --- Event Listeners ---
+          // Event Listeners
           window.addEventListener("resize", this.onWindowResize, false);
           window.addEventListener("keydown", this.handleGlobalInput, false);
+          window.addEventListener("mousedown", this.handleGlobalInput, false); // Add mouse click listener
 
-          this.switchScene("title");
+          // --- Start with the Loader Scene ---
+          this.switchScene("loader");
           this.animate();
         }
 
         createAssets() {
-          const loader = new GLTFLoader(); // Instantiate the loader
+          const loader = new GLTFLoader();
           const shipFilePaths = [
-            "assets/ships/ship01.gltf",
-            "assets/ships/ship01.gltf",
-            "assets/ships/ship01.gltf",
-            "assets/ships/ship01.gltf",
+            "assets/ships/ship01.gltf", // Replace with your actual ship paths
+            "assets/ships/ship01.gltf", // Example
+            "assets/ships/ship01.gltf",     // Example
+            "assets/ships/ship01.gltf" // Example
           ];
-          const shipScale = 0.8; // Keep the original scale factor or adjust as needed
+          const shipScale = 0.8;
 
-          // --- Load Ship Models ---
-          this.assets.titleShips = []; // Ensure the array is empty initially
+          // --- Setup Loading Tracking ---
+          this.assetsToLoad = shipFilePaths.length; // Expect this many ships
+          this.assetsLoaded = 0;
+          this.loadingComplete = false;
+          this.assets.titleShips = new Array(this.assetsToLoad); // Pre-allocate array to maintain order
 
-          shipFilePaths.forEach((path, index) => {
-            loader.load(
-              path,
-              // onLoad callback: executes when the model is loaded successfully
-              (gltf) => {
-                const loadedShip = gltf.scene; // The loaded model is usually in gltf.scene
+          console.log(`Expecting ${this.assetsToLoad} ship assets.`);
 
-                console.log(`Successfully loaded ${path}`);
-
-                // Apply transformations and settings similar to the original ships
-                loadedShip.scale.set(shipScale, shipScale, shipScale);
-                loadedShip.visible = false; // Start hidden
-
-                // Apply a basic material if the GLTF doesn't have one
-                loadedShip.traverse((child) => {
-                  if (child.isMesh) {
-                    child.material = new THREE.MeshBasicMaterial({
-                       color: 0xffff00, // Make it yellow
-                       wireframe: false // Or true if you want wireframe
-                    });
-                  }
-                });
-
-                this.scene.add(loadedShip); // Add the loaded model to the scene
-                this.assets.titleShips[index] = loadedShip; // Add it to the array (use index for order)
-
-                // --- Important Check: Start the Title Scene only after first ship loads? ---
-                // Depending on timing, you might need a loading manager
-                // or ensure the TitleScene gracefully handles the array filling up.
-                // For this setup, TitleScene checks `titleShips.length`, which works.
-              },
-              // onProgress callback (optional): logs loading progress
-              (xhr) => {
-                // console.log(`${path}: ${(xhr.loaded / xhr.total * 100)}% loaded`);
-              },
-              // onError callback: logs errors if loading fails
-              (error) => {
-                console.error(`Error loading ${path}:`, error);
-              }
-            );
-          });
-
-          // --- Planet (Unchanged) ---
+          // --- Load Static Assets (Planet, Stars, Squares) ---
+          // These are created synchronously, so don't need tracking for the *loader* specifically
+          // Planet
           const planetGeometry = new THREE.SphereGeometry(4, 16, 12);
-          // Consider MeshStandardMaterial if you want lighting effects
-          const planetMaterial = new THREE.MeshBasicMaterial({
-            color: 0xff0000,
-          });
+          const planetMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
           this.assets.planet = new THREE.Mesh(planetGeometry, planetMaterial);
           this.assets.planet.visible = false;
           this.scene.add(this.assets.planet);
 
-          // --- Starfield ---
+          // Starfield
           const starVertices = [];
           for (let i = 0; i < 2000; i++) {
             const x = THREE.MathUtils.randFloatSpread(1000);
             const y = THREE.MathUtils.randFloatSpread(1000);
             const z = THREE.MathUtils.randFloatSpread(1000);
-            if (Math.sqrt(x * x + y * y + z * z) > 100)
-              starVertices.push(x, y, z);
+            if (Math.sqrt(x * x + y * y + z * z) > 100) starVertices.push(x, y, z);
           }
           const starGeometry = new THREE.BufferGeometry();
-          starGeometry.setAttribute(
-            "position",
-            new THREE.Float32BufferAttribute(starVertices, 3)
-          );
-          const starMaterial = new THREE.PointsMaterial({
-            color: 0xffffff,
-            size: 0.5,
-            sizeAttenuation: false,
-          });
+          starGeometry.setAttribute( "position", new THREE.Float32BufferAttribute(starVertices, 3) );
+          const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, sizeAttenuation: false });
           this.assets.stars = new THREE.Points(starGeometry, starMaterial);
           this.assets.stars.visible = false;
           this.scene.add(this.assets.stars);
 
-          // --- Undocking Squares ---
+          // Undocking Squares
           const squareGeom = new THREE.PlaneGeometry(1, 1);
-          const squareMat = new THREE.MeshBasicMaterial({
-            color: 0x00ff00,
-            side: THREE.DoubleSide,
-            wireframe: true,
-          });
-          this.assets.undockingSquares = []; // Clear previous if any
+          const squareMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide, wireframe: true });
+          this.assets.undockingSquares = [];
           for (let i = 0; i < 10; i++) {
             const square = new THREE.Mesh(squareGeom, squareMat);
             square.scale.set((i + 1) * 2, (i + 1) * 2, 1);
@@ -859,7 +938,68 @@
             this.scene.add(square);
             this.assets.undockingSquares.push(square);
           }
+
+          // --- Load Ship Models Asynchronously ---
+          shipFilePaths.forEach((path, index) => {
+            loader.load(
+              path,
+              // onLoad
+              (gltf) => {
+                console.log(`Successfully loaded ${path}`);
+                const loadedShip = gltf.scene;
+                loadedShip.scale.set(shipScale, shipScale, shipScale);
+                loadedShip.visible = false; // Start hidden
+
+                // Optional: Ensure material (can customize per ship later)
+                 loadedShip.traverse((child) => {
+                  if (child.isMesh) {
+                      // Example: Give basic wireframe material if none exists
+                      if (!child.material || child.material.type === 'MeshStandardMaterial') { // Check if it needs a basic material
+                           child.material = new THREE.MeshBasicMaterial({
+                              color: 0xffff00, // Yellow
+                              wireframe: true // Classic Elite look
+                           });
+                      } else if (child.material.wireframe !== undefined) {
+                          child.material.wireframe = true; // Force wireframe on existing materials if possible
+                      }
+                  }
+                });
+
+
+                this.scene.add(loadedShip);
+                this.assets.titleShips[index] = loadedShip; // Store in pre-allocated array slot
+
+                this.checkLoadingComplete(); // Check if all assets are loaded
+              },
+              // onProgress (optional)
+              undefined, //(xhr) => { console.log(`${path}: ${(xhr.loaded / xhr.total * 100)}% loaded`); },
+              // onError
+              (error) => {
+                console.error(`Error loading ${path}:`, error);
+                this.assets.titleShips[index] = null; // Mark slot as failed/empty
+                this.checkLoadingComplete(); // Still need to count this attempt
+              }
+            );
+          });
+
+          // Check completion immediately in case there were 0 ships to load
+          if (this.assetsToLoad === 0) {
+              this.checkLoadingComplete();
+          }
         }
+
+        // --- Helper to check loading status ---
+        checkLoadingComplete() {
+            this.assetsLoaded++;
+            console.log(`Assets loaded: ${this.assetsLoaded}/${this.assetsToLoad}`);
+            if (this.assetsLoaded >= this.assetsToLoad && !this.loadingComplete) {
+                this.loadingComplete = true;
+                console.log("All ship assets processed (loaded or failed). Loader can proceed.");
+                // The LoaderScene will detect this change in its update loop
+            }
+        }
+
+
         switchScene(sceneName) {
           if (this.currentScene) {
             this.currentScene.exit();
@@ -867,7 +1007,7 @@
           if (this.scenes[sceneName]) {
             this.currentSceneName = sceneName;
             this.currentScene = this.scenes[sceneName];
-            this.currentScene.enter();
+            this.currentScene.enter(); // Enter the new scene
           } else {
             console.error(`Scene "${sceneName}" not found!`);
           }
@@ -889,19 +1029,24 @@
         }
 
         handleGlobalInput(event) {
-          // Delegate input to the current scene if it implements handleInput
-          if (
-            this.currentScene &&
-            typeof this.currentScene.handleInput === "function"
-          ) {
-            this.currentScene.handleInput(event);
-          }
+            // Prevent default browser action for spacebar, arrows etc. if needed in game
+            // if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) {
+            //     event.preventDefault();
+            // }
+
+            // Delegate input to the current scene
+            if ( this.currentScene && typeof this.currentScene.handleInput === "function" ) {
+                 this.currentScene.handleInput(event);
+            }
         }
       }
 
       // --- Start the game ---
       const game = new Game();
+      // Ensure assets folder and ship files (or placeholders) exist
+      // Ensure elite_intro_music.mp3 and undocking_sound.mp3 are in assets/
       game.init();
+
     </script>
   </body>
 </html>
