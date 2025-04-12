@@ -576,7 +576,7 @@
                 shipGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
                 shipGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
                 shipGeometry.computeVertexNormals();
-                const shipMaterial = new THREE.MeshBasicMaterial({ vertexColors: true });
+                const shipMaterial = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide });
                 this.assets.ship = new THREE.Mesh(shipGeometry, shipMaterial);
                 this.assets.ship.scale.set(0.8, 0.8, 0.8);
                 this.assets.ship.visible = false; // Start hidden
