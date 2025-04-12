@@ -1,0 +1,21 @@
+{
+  "name": "cobra",
+  "version": "1.0.0",
+  "description": "Elite-style game in TypeScript",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["game", "threejs", "typescript"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/three": "^0.162.0",
+    "typescript": "^5.0.2",
+    "vite": "^5.0.0",
+    "three": "^0.162.0"
+  }
+}
