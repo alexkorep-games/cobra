@@ -24,6 +24,7 @@
     "vite": "^5.0.0"
   },
   "dependencies": {
+    "@babylonjs/core": "^8.2.0",
     "@babylonjs/loaders": "^8.2.0",
     "babylonjs": "^8.2.0",
     "babylonjs-gui": "^8.2.0",
