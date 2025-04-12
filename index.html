@@ -353,12 +353,12 @@
 
     <!-- Audio Elements -->
     <audio id="introMusic" loop>
-      <source src="elite_intro_music.mp3" type="audio/mpeg" />
+      <source src="assets/elite_intro_music.mp3" type="audio/mpeg" />
       Your browser does not support the audio element. (Needs
       elite_intro_music.mp3)
     </audio>
     <audio id="undockSound">
-      <source src="undocking_sound.mp3" type="audio/mpeg" />
+      <source src="assets/undocking_sound.mp3" type="audio/mpeg" />
       Your browser does not support the audio element. (Needs
       undocking_sound.mp3)
     </audio>
@@ -366,13 +366,15 @@
     <script type="importmap">
       {
         "imports": {
-          "three": "https://unpkg.com/three@0.164.1/build/three.module.js"
+          "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.164.1/examples/jsm/"
         }
       }
     </script>
 
     <script type="module">
       import * as THREE from "three";
+      import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
       // --- Constants ---
       const SHIP_DISPLAY_DURATION = 4.0; // Seconds
@@ -753,181 +755,64 @@
           this.animate();
         }
 
-        // --- Helper for creating ships with vertex colors ---
-        createColoredShip(vertices, indices) {
-          const geometry = new THREE.BufferGeometry();
-          const colors = [];
-          const yellowColor = [1, 1, 0];
-          for (let i = 0; i < indices.length / 3; i++) {
-            // Use yellowColor for all 3 vertices of the face
-            colors.push(...yellowColor, ...yellowColor, ...yellowColor);
-          }
-          geometry.setIndex(indices);
-          geometry.setAttribute(
-            "position",
-            new THREE.BufferAttribute(new Float32Array(vertices), 3)
-          );
-          geometry.setAttribute(
-            "color",
-            new THREE.Float32BufferAttribute(colors, 3)
-          );
-          geometry.computeVertexNormals(); // Good practice
-
-          const material = new THREE.MeshBasicMaterial({
-            vertexColors: true,
-            side: THREE.DoubleSide, // Ensure solid appearance
-          });
-          const mesh = new THREE.Mesh(geometry, material);
-          mesh.scale.set(0.8, 0.8, 0.8); // Apply consistent scaling
-          mesh.visible = false; // Start hidden
-          return mesh;
-        }
-
         createAssets() {
-          const shipScale = 0.8; // Common scale factor
+          const loader = new GLTFLoader(); // Instantiate the loader
+          const shipFilePaths = [
+            "assets/ships/ship01.gltf",
+            "assets/ships/ship01.gltf",
+            "assets/ships/ship01.gltf",
+            "assets/ships/ship01.gltf",
+          ];
+          const shipScale = 0.8; // Keep the original scale factor or adjust as needed
 
-          // --- Ship 1: Original Cobra-like ---
-          const cobraVertices = [
-            0, 1, 3, -4, 0, 0, 4, 0, 0, -3, -1, 0, 3, -1, 0, 0, 0.5, -4, 0,
-            -0.5, -4, -4, -0.5, -3.5, 4, -0.5, -3.5,
-          ];
-          const cobraIndices = [
-            0, 1, 2, 0, 3, 1, 0, 2, 4, 3, 1, 7, 3, 7, 6, 1, 5, 7, 4, 2, 8, 4, 8,
-            6, 2, 5, 8, 3, 6, 4, 5, 7, 6, 5, 8, 7, 5, 6, 8,
-          ];
-          const ship1 = this.createColoredShip(cobraVertices, cobraIndices);
-          this.assets.titleShips.push(ship1);
-          this.scene.add(ship1);
+          // --- Load Ship Models ---
+          this.assets.titleShips = []; // Ensure the array is empty initially
 
-          // --- Ship 2: Simple Wedge/Fighter ---
-          const wedgeVertices = [0, 1, 0, -3, -1, 1, 3, -1, 1, 0, -0.5, -3];
-          const wedgeIndices = [0, 1, 2, 0, 2, 3, 0, 3, 1, 1, 3, 2]; // Basic tetrahedron + base
-          const ship2 = this.createColoredShip(wedgeVertices, wedgeIndices);
-          this.assets.titleShips.push(ship2);
-          this.scene.add(ship2);
+          shipFilePaths.forEach((path, index) => {
+            loader.load(
+              path,
+              // onLoad callback: executes when the model is loaded successfully
+              (gltf) => {
+                const loadedShip = gltf.scene; // The loaded model is usually in gltf.scene
 
-          // --- Ship 3: Boxy Freighter ---
-          const boxVertices = [
-            -2,
-            1,
-            2,
-            2,
-            1,
-            2,
-            2,
-            -1,
-            2,
-            -2,
-            -1,
-            2, // Front face
-            -2.5,
-            1,
-            -3,
-            2.5,
-            1,
-            -3,
-            2.5,
-            -1,
-            -3,
-            -2.5,
-            -1,
-            -3, // Back face
-          ];
-          const boxIndices = [
-            0,
-            1,
-            2,
-            0,
-            2,
-            3, // Front
-            4,
-            5,
-            6,
-            4,
-            6,
-            7, // Back
-            0,
-            4,
-            7,
-            0,
-            7,
-            3, // Left
-            1,
-            5,
-            6,
-            1,
-            6,
-            2, // Right
-            0,
-            1,
-            5,
-            0,
-            5,
-            4, // Top
-            3,
-            2,
-            6,
-            3,
-            6,
-            7, // Bottom
-          ];
-          const ship3 = this.createColoredShip(boxVertices, boxIndices);
-          this.assets.titleShips.push(ship3);
-          this.scene.add(ship3);
+                console.log(`Successfully loaded ${path}`);
 
-          // --- Ship 4: Long Thin Scout ---
-          const scoutVertices = [
-            0,
-            0.5,
-            3,
-            -0.5,
-            -0.5,
-            2,
-            0.5,
-            -0.5,
-            2, // Front point
-            0,
-            0.5,
-            -3,
-            -0.5,
-            -0.5,
-            -3,
-            0.5,
-            -0.5,
-            -3, // Back ends
-          ];
-          const scoutIndices = [
-            0,
-            1,
-            2, // Front tri
-            3,
-            4,
-            5, // Back tri
-            0,
-            3,
-            4,
-            0,
-            4,
-            1, // Top Left side
-            0,
-            2,
-            5,
-            0,
-            5,
-            3, // Top Right side
-            1,
-            4,
-            5,
-            1,
-            5,
-            2, // Bottom
-          ];
-          const ship4 = this.createColoredShip(scoutVertices, scoutIndices);
-          this.assets.titleShips.push(ship4);
-          this.scene.add(ship4);
+                // Apply transformations and settings similar to the original ships
+                loadedShip.scale.set(shipScale, shipScale, shipScale);
+                loadedShip.visible = false; // Start hidden
+
+                // Apply a basic material if the GLTF doesn't have one
+                loadedShip.traverse((child) => {
+                  if (child.isMesh) {
+                    child.material = new THREE.MeshBasicMaterial({
+                       color: 0xffff00, // Make it yellow
+                       wireframe: false // Or true if you want wireframe
+                    });
+                  }
+                });
+
+                this.scene.add(loadedShip); // Add the loaded model to the scene
+                this.assets.titleShips[index] = loadedShip; // Add it to the array (use index for order)
+
+                // --- Important Check: Start the Title Scene only after first ship loads? ---
+                // Depending on timing, you might need a loading manager
+                // or ensure the TitleScene gracefully handles the array filling up.
+                // For this setup, TitleScene checks `titleShips.length`, which works.
+              },
+              // onProgress callback (optional): logs loading progress
+              (xhr) => {
+                // console.log(`${path}: ${(xhr.loaded / xhr.total * 100)}% loaded`);
+              },
+              // onError callback: logs errors if loading fails
+              (error) => {
+                console.error(`Error loading ${path}:`, error);
+              }
+            );
+          });
 
           // --- Planet (Unchanged) ---
           const planetGeometry = new THREE.SphereGeometry(4, 16, 12);
+          // Consider MeshStandardMaterial if you want lighting effects
           const planetMaterial = new THREE.MeshBasicMaterial({
             color: 0xff0000,
           });
@@ -935,14 +820,14 @@
           this.assets.planet.visible = false;
           this.scene.add(this.assets.planet);
 
-          // Starfield
+          // --- Starfield ---
           const starVertices = [];
           for (let i = 0; i < 2000; i++) {
             const x = THREE.MathUtils.randFloatSpread(1000);
             const y = THREE.MathUtils.randFloatSpread(1000);
             const z = THREE.MathUtils.randFloatSpread(1000);
             if (Math.sqrt(x * x + y * y + z * z) > 100)
-              starVertices.push(x, y, z); // Ensure somewhat distant
+              starVertices.push(x, y, z);
           }
           const starGeometry = new THREE.BufferGeometry();
           starGeometry.setAttribute(
@@ -955,26 +840,26 @@
             sizeAttenuation: false,
           });
           this.assets.stars = new THREE.Points(starGeometry, starMaterial);
-          this.assets.stars.visible = false; // Start hidden
+          this.assets.stars.visible = false;
           this.scene.add(this.assets.stars);
 
-          // Undocking Squares
+          // --- Undocking Squares ---
           const squareGeom = new THREE.PlaneGeometry(1, 1);
           const squareMat = new THREE.MeshBasicMaterial({
             color: 0x00ff00,
             side: THREE.DoubleSide,
             wireframe: true,
           });
+          this.assets.undockingSquares = []; // Clear previous if any
           for (let i = 0; i < 10; i++) {
             const square = new THREE.Mesh(squareGeom, squareMat);
             square.scale.set((i + 1) * 2, (i + 1) * 2, 1);
             square.position.z = -i * 5;
-            square.visible = false; // Start hidden
+            square.visible = false;
             this.scene.add(square);
             this.assets.undockingSquares.push(square);
           }
         }
-
         switchScene(sceneName) {
           if (this.currentScene) {
             this.currentScene.exit();
