@@ -2,7 +2,7 @@ import { Scene } from "@babylonjs/core/scene";
 import { Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector"; // Import Vector3
 import { FreeCamera } from "@babylonjs/core/Cameras/freeCamera"; // Import FreeCamera
-import { AdvancedDynamicTexture, TextBlock } from "@babylonjs/gui";
+import { AdvancedDynamicTexture, TextBlock } from "@babylonjs/gui"; // Ensure correct import path
 import AbstractScene from "./AbstractScene";
 import SceneManager from "../core/SceneManager";
 import InputManager from "../systems/InputManager";
@@ -19,7 +19,7 @@ export default class LoadingScene extends AbstractScene {
   async initialize(): Promise<void> {
     // Create the scene first
     this.scene = new Scene(this.engine);
-    this.scene.clearColor = new Color4(0, 0, 0, 1);
+    this.scene.clearColor = new Color4(0, 0, 0, 1); // Black background - Matches Elite
 
     // Create a basic camera. Position doesn't matter much for a UI-only scene,
     // but it needs to exist and be active.
@@ -42,16 +42,12 @@ export default class LoadingScene extends AbstractScene {
       this.scene
     );
     const loadingText = new TextBlock();
-    loadingText.text = "Press any key or click to continue...";
-    loadingText.color = "white";
+    loadingText.text = "Press any key to start game";
+    loadingText.color = "yellow";
     loadingText.fontSize = 24;
-    loadingText.shadowColor = "black";
-    loadingText.shadowBlur = 5;
-    loadingText.shadowOffsetX = 2;
-    loadingText.shadowOffsetY = 2;
-    loadingText.outlineWidth = 2;
-    loadingText.outlineColor = "black";
+    loadingText.fontFamily = "monospace"; 
 
+    
     advancedTexture.addControl(loadingText);
 
     // Initialize input manager
@@ -60,7 +56,8 @@ export default class LoadingScene extends AbstractScene {
     // Setup input handling for any key
     this.scene.onKeyboardObservable.add((kbInfo) => {
       // Only trigger on key down event
-      if (kbInfo.type === 1) { // KEYDOWN event type
+      // Babylon.js KeyboardEventTypes.KEYDOWN = 1
+      if (kbInfo.type === 1) { 
         this.transitionToTitle();
       }
     });
@@ -68,14 +65,13 @@ export default class LoadingScene extends AbstractScene {
     // Setup input handling for mouse click
     this.scene.onPointerObservable.add((pointerInfo) => {
       // Only trigger on pointer down event
-      if (pointerInfo.type === 1) { // POINTERDOWN event type
+      // Babylon.js PointerEventTypes.POINTERDOWN = 1
+      if (pointerInfo.type === 1) { 
         this.transitionToTitle();
       }
     });
 
     // Ensure the scene is fully ready
-    // Note: 'whenReadyAsync' might not be strictly necessary if you're only loading GUI text,
-    // but it doesn't hurt. If you were loading external assets (models, textures), it would be essential.
     await this.scene.whenReadyAsync();
   }
 
@@ -104,6 +100,9 @@ export default class LoadingScene extends AbstractScene {
     if (this.inputManager) {
       this.inputManager.clearActions();
     }
+
+    this.scene?.onKeyboardObservable.clear();
+    this.scene?.onPointerObservable.clear();
 
     // Then dispose the scene
     if (this.scene) {
