@@ -169,6 +169,16 @@ export class Game {
         this.animate();
     }
 
+    public dispose(): void {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+        }
+        window.removeEventListener('resize', () => this.onWindowResize());
+        window.removeEventListener('keydown', (e) => this.handleKeyPress(e));
+        this.renderer.dispose();
+        this.audioManager.stopIntroMusic();
+    }
+
     private animate(): void {
         this.animationFrameId = requestAnimationFrame(() => this.animate());
         this.update();
