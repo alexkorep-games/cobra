@@ -251,7 +251,7 @@
         <div id="loader-screen" class="center-text hidden">
           <p id="loader-progress-text">LOADING...</p>
           <p id="loader-continue-text" class="hidden">
-            GAME LOADED<br/>
+            GAME LOADED<br />
             PRESS ANY KEY TO CONTINUE
           </p>
         </div>
@@ -504,54 +504,56 @@
           this.stars = game.assets.stars;
           this.pressKeyText = game.domElements.pressKeyText;
           this.introMusic = game.audio.introMusic;
-          // this.keyProcessed = false; // Use base class inputProcessed
+
+          // --- Animation Constants ---
+          this.FLY_IN_DURATION = 0.5; // seconds
+          this.FLY_OUT_DURATION = 0.5; // seconds
+          // Original total duration was SHIP_DISPLAY_DURATION (e.g., 10.0)
+          // Calculate hold time based on the total and fly times
+          this.HOLD_DURATION = Math.max(
+            0,
+            SHIP_DISPLAY_DURATION - this.FLY_IN_DURATION - this.FLY_OUT_DURATION
+          );
+          this.TOTAL_CYCLE_DURATION =
+            this.FLY_IN_DURATION + this.HOLD_DURATION + this.FLY_OUT_DURATION;
+
+          this.START_Z = -150;
+          this.TARGET_POS = new THREE.Vector3(-3, 0, 0); // Final position during hold
 
           this.currentShipIndex = 0;
           this.shipDisplayTimer = 0;
         }
 
         enter() {
-          super.enter(); // Calls inputProcessed = false;
+          super.enter();
           this.pressKeyText.classList.remove("hidden");
 
-          // Ensure assets are ready (though loader scene handles this)
-          if (!this.titleShips || this.titleShips.length === 0) {
-            console.warn("TitleScene entered but titleShips not ready!");
-            // Potentially switch back to loader or show an error
-            // For now, proceed cautiously
-          }
-
           // Hide all title ships initially
-          this.titleShips.forEach((ship) => ship && (ship.visible = false)); // Add check for ship existence
+          this.titleShips.forEach((ship) => ship && (ship.visible = false));
 
-          // Show the first ship if available
+          // Setup the first ship if available
           this.currentShipIndex = 0;
-          this.shipDisplayTimer = 0;
-          if (this.titleShips.length > 0 && this.titleShips[0]) {
-            const firstShip = this.titleShips[this.currentShipIndex];
-            firstShip.visible = true;
-            firstShip.position.set(-3, 0, 0);
-            firstShip.rotation.set(0, Math.PI, 0);
-          }
+          this.shipDisplayTimer = 0; // Start timer for the first ship's fly-in
+          this.prepareShip(this.currentShipIndex); // Prepare the first ship
 
           // Setup planet and stars
           this.planet.visible = true;
-          this.stars.visible = true; // Should already be visible from Loader
-          this.planet.position.set(7, 0, -5);
+          this.stars.visible = true;
+          this.planet.position.set(200, 0, -500);
           this.planet.scale.set(1, 1, 1);
 
           this.game.domElements.titleText.classList.remove("hidden");
           this.game.domElements.viewText.classList.add("hidden");
-          this.game.domElements.bottomBar.classList.remove("hidden"); // Ensure HUD is visible
+          this.game.domElements.bottomBar.classList.remove("hidden");
 
-          // --- Play Intro Music ---
-          this.introMusic.currentTime = 0; // Rewind
+          // Play Intro Music
+          this.introMusic.currentTime = 0;
           this.introMusic
             .play()
             .then(() => console.log("Intro music started."))
             .catch((e) =>
               console.warn(
-                "Intro music play failed (likely needs interaction, which loader provided):",
+                "Intro music play failed (likely needs interaction):",
                 e
               )
             );
@@ -562,17 +564,30 @@
           this.pressKeyText.classList.add("hidden");
 
           // Hide the currently shown ship if it exists
-          if (
-            this.titleShips.length > this.currentShipIndex &&
-            this.titleShips[this.currentShipIndex]
-          ) {
-            this.titleShips[this.currentShipIndex].visible = false;
+          const currentShip = this.titleShips[this.currentShipIndex];
+          if (currentShip) {
+            currentShip.visible = false;
           }
 
           this.planet.visible = false;
-          // Keep stars visible
-          this.introMusic.pause(); // Stop music when leaving title screen
+          this.introMusic.pause();
           console.log("Intro music paused.");
+        }
+
+        // Helper to set up a ship for its animation cycle
+        prepareShip(index) {
+          const ship = this.titleShips[index];
+          if (ship) {
+            ship.position.set(
+              this.TARGET_POS.x,
+              this.TARGET_POS.y,
+              this.START_Z
+            ); // Start far away
+            ship.rotation.set(0, Math.PI, 0); // Reset rotation
+            ship.visible = true;
+          } else {
+            console.warn(`Attempted to prepare missing ship at index ${index}`);
+          }
         }
 
         update(deltaTime) {
@@ -583,61 +598,73 @@
 
           // Animate and cycle ships
           if (this.titleShips.length > 0) {
+            this.shipDisplayTimer += deltaTime;
             const currentShip = this.titleShips[this.currentShipIndex];
 
             if (!currentShip) {
-              // Check if the current ship model loaded properly
+              // Skip missing ship immediately
               console.warn(
-                `Ship at index ${this.currentShipIndex} is missing.`
+                `Ship at index ${this.currentShipIndex} is missing. Skipping.`
               );
-              this.shipDisplayTimer = SHIP_DISPLAY_DURATION; // Force cycle
+              this.shipDisplayTimer = this.TOTAL_CYCLE_DURATION; // Force cycle
             } else {
-              // Rotate current ship
-              currentShip.rotation.y += 0.5 * deltaTime;
-              currentShip.rotation.x += 0.25 * deltaTime;
+              // --- Animation Logic ---
+              const timer = this.shipDisplayTimer;
+
+              if (timer < this.FLY_IN_DURATION) {
+                // Phase 1: Flying In
+                const t = Math.min(1, timer / this.FLY_IN_DURATION); // Progress 0 to 1
+                currentShip.position.z = THREE.MathUtils.lerp(
+                  this.START_Z,
+                  this.TARGET_POS.z,
+                  t
+                );
+                // Optional: subtle rotation during fly-in
+                currentShip.rotation.y += 0.1 * deltaTime;
+              } else if (timer < this.FLY_IN_DURATION + this.HOLD_DURATION) {
+                // Phase 2: Holding
+                // Ensure position is exact after fly-in lerp
+                currentShip.position.z = this.TARGET_POS.z;
+                // Apply regular rotation
+                currentShip.rotation.y += 0.5 * deltaTime;
+                currentShip.rotation.x += 0.25 * deltaTime;
+              } else if (timer < this.TOTAL_CYCLE_DURATION) {
+                // Phase 3: Flying Out
+                const flyOutTimer =
+                  timer - (this.FLY_IN_DURATION + this.HOLD_DURATION);
+                const t = Math.min(1, flyOutTimer / this.FLY_OUT_DURATION); // Progress 0 to 1
+                currentShip.position.z = THREE.MathUtils.lerp(
+                  this.TARGET_POS.z,
+                  this.START_Z,
+                  t
+                );
+                // Optional: subtle rotation during fly-out
+                currentShip.rotation.y += 0.1 * deltaTime;
+              }
             }
 
-            // Update timer
-            this.shipDisplayTimer += deltaTime;
-
-            // Check if it's time to switch
-            if (this.shipDisplayTimer >= SHIP_DISPLAY_DURATION) {
-              // Hide current ship if it exists
+            // --- Check for Cycle End ---
+            if (this.shipDisplayTimer >= this.TOTAL_CYCLE_DURATION) {
+              // Hide current ship (even if it was null)
               if (currentShip) {
                 currentShip.visible = false;
               }
 
-              // Move to next ship index (and wrap around)
+              // Move to next ship index
               this.currentShipIndex =
                 (this.currentShipIndex + 1) % this.titleShips.length;
 
-              // Get the new ship
-              const nextShip = this.titleShips[this.currentShipIndex];
+              // Prepare the next ship for its fly-in
+              this.prepareShip(this.currentShipIndex);
 
-              // Show the new ship and reset its state if it exists
-              if (nextShip) {
-                nextShip.visible = true;
-                nextShip.position.set(-3, 0, 0);
-                nextShip.rotation.set(0, Math.PI, 0);
-              } else {
-                console.warn(
-                  `Next ship at index ${this.currentShipIndex} is missing. Skipping.`
-                );
-                // Immediately try to advance again in the next frame
-                this.shipDisplayTimer = SHIP_DISPLAY_DURATION;
-              }
-
-              // Reset timer only if we successfully showed a ship or decided to skip
-              if (nextShip || !currentShip) {
-                // Reset timer if ship exists or we skipped a missing one
-                this.shipDisplayTimer = 0;
-              }
+              // Reset timer
+              this.shipDisplayTimer = 0;
             }
           }
         }
 
         handleInput(event) {
-          // Transition on key press (like original)
+          // Transition on key press
           if (
             !this.inputProcessed &&
             (event.type === "keydown" || event.type === "mousedown")
@@ -919,7 +946,7 @@
             "assets/ships/ship01.gltf", // Example
             "assets/ships/ship01.gltf", // Example
           ];
-          const shipScale = 3;
+          const shipScale = 6;
 
           // --- Setup Loading Tracking ---
           this.assetsToLoad = shipFilePaths.length; // Expect this many ships
@@ -932,7 +959,7 @@
           // --- Load Static Assets (Planet, Stars, Squares) ---
           // These are created synchronously, so don't need tracking for the *loader* specifically
           // Planet
-          const planetGeometry = new THREE.SphereGeometry(4, 16, 12);
+          const planetGeometry = new THREE.SphereGeometry(160, 16, 12);
           const planetMaterial = new THREE.MeshBasicMaterial({
             color: 0xff0000,
           });
@@ -943,9 +970,9 @@
           // Starfield
           const starVertices = [];
           for (let i = 0; i < 2000; i++) {
-            const x = THREE.MathUtils.randFloatSpread(1000);
-            const y = THREE.MathUtils.randFloatSpread(1000);
-            const z = THREE.MathUtils.randFloatSpread(1000);
+            const x = THREE.MathUtils.randFloatSpread(4000);
+            const y = THREE.MathUtils.randFloatSpread(4000);
+            const z = THREE.MathUtils.randFloatSpread(4000);
             if (Math.sqrt(x * x + y * y + z * z) > 100)
               starVertices.push(x, y, z);
           }
