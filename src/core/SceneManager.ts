@@ -1,38 +1,44 @@
+import { Scene } from "@babylonjs/core/scene";
+
 class SceneManager {
-  constructor(engine) {
-    this.engine = engine;
-    this.scenes = {};
-    this.currentScene = null;
+  engine: any;
+  scenes: { [key: string]: any };
+  currentScene: any;
+
+  constructor(engine: any) {
+    this.engine = engine; 
+    this.scenes = {}; 
+    this.currentScene = null; 
   }
 
-  addScene(name, scene) {
+  addScene(name: string, scene: any): void {
     this.scenes[name] = scene;
   }
 
-  getScene(name) {
+  getScene(name: string): any {
     return this.scenes[name];
   }
 
-  async switchScene(name, sceneData = null) {
+  async switchScene(name: string, sceneData: any = null): Promise<Scene | void> {
     if (this.currentScene) {
       this.unloadScene();
     }
 
-    const scene = this.scenes[name];
+    const scene = this.scenes[name]; 
     if (!scene) {
       console.error(`Scene "${name}" not found.`);
       return;
     }
 
-    this.currentScene = scene;
+    this.currentScene = scene; 
     if (scene.scene) {
-      scene.scene.render(); // Render if the scene is already created
-      if (scene.onEnter) {
+      scene.scene.render(); 
+      if (scene.onEnter) { 
         await scene.onEnter(sceneData);
       }
     } else {
       scene.scene = await scene.createScene(this.engine, sceneData);
-      if (scene.onEnter) {
+      if (scene.onEnter) { 
         await scene.onEnter(sceneData);
       }
     }
@@ -40,17 +46,17 @@ class SceneManager {
   }
 
 
-  unloadScene() {
+  unloadScene(): void {
     if (this.currentScene && this.currentScene.scene) {
       if (this.currentScene.onExit) {
         this.currentScene.onExit();
       }
       this.currentScene.scene.dispose();
-      this.currentScene = null;
+      this.currentScene = null; 
     }
   }
 
-  getCurrentScene() {
+  getCurrentScene(): Scene | null {
     return this.currentScene ? this.currentScene.scene : null;
   }
 }

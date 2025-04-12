@@ -1,13 +1,13 @@
 import * as BABYLON from "@babylonjs/core";
 
 export class ShipFactory {
-  static createWireframeShip(name) {
+  static createWireframeShip(name: string, scene: BABYLON.Scene): BABYLON.Mesh {
     // Create a simple box for the ship's body
     const body = BABYLON.MeshBuilder.CreateBox(
       `${name}-body`,
       { width: 1, height: 0.5, depth: 2 },
       scene
-    );
+    ) as BABYLON.Mesh;
 
     // Create wireframe material
     const wireframeMaterial = new BABYLON.StandardMaterial(
@@ -26,7 +26,7 @@ export class ShipFactory {
       `${name}-wingLeft`,
       { width: 1, height: 0.3 },
       scene
-    );
+    ) as BABYLON.Mesh;
     wingLeft.position.x = -0.7;
     wingLeft.rotation.y = Math.PI / 4;
     wingLeft.parent = body;
@@ -37,7 +37,7 @@ export class ShipFactory {
       `${name}-wingRight`,
       { width: 1, height: 0.3 },
       scene
-    );
+    ) as BABYLON.Mesh;
     wingRight.position.x = 0.7;
     wingRight.rotation.y = -Math.PI / 4;
     wingRight.parent = body;

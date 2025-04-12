@@ -1,34 +1,41 @@
 import * as BABYLON from 'babylonjs';
 import * as GUI from 'babylonjs-gui';
-import AbstractScene from './AbstractScene';
-import ShipFactory from '../graphics/ShipFactory';
-import InputManager from '../systems/InputManager';
-import { constants } from '../utils/constants'; // Assuming constants.js exists
-
+import AbstractScene from './AbstractScene.ts';
+import { ShipFactory } from '../graphics/ShipFactory.ts';
+import InputManager from '../systems/InputManager.ts'; 
+import * as constants from '../utils/constants'; // Assuming constants.js exists
+import { SceneManager } from '../core/SceneManager.ts';
 export default class SpaceFlightScene extends AbstractScene {
-    constructor(sceneManager) {
-        super(sceneManager);
-        this.playerShip = null;
-        this.camera = null;
-        this.hud = null;
-        this.player = { // Placeholder for player data, replace with StateManager
-            credits: 1000,
-        };
+    playerShip: BABYLON.Mesh | null;
+    camera: BABYLON.FreeCamera | null;
+    hud: GUI.AdvancedDynamicTexture | null;
+    creditsLabel: GUI.TextBlock | null;
+    player: { credits: number }; // Placeholder, will be replaced with StateManager
+    inputManager: InputManager;
+    engine: BABYLON.Engine;
+    constructor(sceneManager: SceneManager) { // Assuming sceneManager type
+        super(sceneManager); 
+        this.playerShip = null; 
+        this.camera = null; 
+        this.hud = null; 
+        this.creditsLabel = null;
+        this.player = { credits: 1000 };
     }
-
-    async initialize() {
+    
+    async initialize(): Promise<void> {
+        this.engine = this.sceneManager.engine;
         this.scene = new BABYLON.Scene(this.engine);
         this.scene.clearColor = new BABYLON.Color4(0, 0, 0, 1); // Black background
 
         // Camera
-        this.camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), this.scene);
+        this.camera = new BABYLON.FreeCamera("camera1", new BABYLON.Vector3(0, 5, -10), this.scene) as BABYLON.FreeCamera;
         this.camera.setTarget(BABYLON.Vector3.Zero());
 
         // Player Ship
         const shipFactory = new ShipFactory(this.scene);
-        this.playerShip = shipFactory.createShip("CobraMk3"); // Assuming CobraMk3 is a ship type
+        this.playerShip = shipFactory.createWireframeShip("CobraMk3"); // Assuming CobraMk3 is a ship type
         this.playerShip.position = new BABYLON.Vector3(0, 0, 0);
-        this.camera.parent = this.playerShip;
+        this.camera.parent = this.playerShip; 
 
         // Starfield
         const starfieldMaterial = new BABYLON.StandardMaterial("starfieldMaterial", this.scene);
@@ -40,11 +47,11 @@ export default class SpaceFlightScene extends AbstractScene {
         starfield.infiniteDistance = true;
 
         // Lighting (Optional, for subtle effects if needed)
-        const light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), this.scene);
+        const light = new BABYLON.HemisphericLight("light1", new BABYLON.Vector3(0, 1, 0), this.scene) as BABYLON.HemisphericLight;
         light.intensity = 0.7;
 
         // Input
-        this.inputManager = new InputManager(this.scene);
+        this.inputManager = new InputManager(this.scene as BABYLON.Scene);
         this.setupControls();
 
         // HUD
@@ -52,7 +59,7 @@ export default class SpaceFlightScene extends AbstractScene {
     }
 
     setupControls() {
-        this.inputManager.registerAction("forward", ["w", "W"], () => {
+        this.inputManager.registerAction("forward", ["w", "W"], () => { 
             this.playerShip.moveWithCollisions(this.playerShip.forward.scale(0.1));
         });
 
@@ -81,7 +88,7 @@ export default class SpaceFlightScene extends AbstractScene {
     setupHUD() {
         this.hud = GUI.AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
-        const creditsLabel = new GUI.TextBlock();
+        const creditsLabel = new GUI.TextBlock() as GUI.TextBlock;
         creditsLabel.text = `Credits: ${this.player.credits}`;
         creditsLabel.color = "white";
         creditsLabel.fontSize = 24;
@@ -104,7 +111,7 @@ export default class SpaceFlightScene extends AbstractScene {
     }
 
     dispose() {
-        this.scene.dispose();
+        this.scene?.dispose();
         // Dispose of any specific resources here if needed, like materials, textures, etc.
     }
 

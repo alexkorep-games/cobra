@@ -7,10 +7,10 @@ import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 import { Vector3 } from "@babylonjs/core/Maths/math";
 import { Color3 } from "@babylonjs/core/Maths/math";
 import AbstractScene from "./AbstractScene";
+import { SceneManager } from "../core/SceneManager";
 
 export default class TitleScene extends AbstractScene {
-  constructor(sceneManager) {
-    super(sceneManager);
+  constructor(sceneManager: SceneManager) {
     this.scene = null;
   }
 
@@ -20,7 +20,7 @@ export default class TitleScene extends AbstractScene {
 
     // Create a simple rotating box
     const box = MeshBuilder.CreateBox("box", { size: 2 }, this.scene);
-    const material = new StandardMaterial("boxMaterial", this.scene);
+    const material: StandardMaterial = new StandardMaterial("boxMaterial", this.scene);
     material.wireframe = true;
     material.emissiveColor = Color3.White();
     box.material = material;
@@ -33,7 +33,7 @@ export default class TitleScene extends AbstractScene {
     });
 
     // Create GUI
-    const guiTexture = AdvancedDynamicTexture.CreateFullscreenUI("UI");
+    const guiTexture: AdvancedDynamicTexture = AdvancedDynamicTexture.CreateFullscreenUI("UI");
 
     const newGameButton = Button.CreateSimpleButton("newGame", "New Game");
     newGameButton.width = "150px";

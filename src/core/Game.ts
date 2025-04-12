@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { AudioManager } from './Audio';
+import { AudioManager } from './Audio.ts';
 import { GameState, PlayerState, ViewState } from '../types/game';
 import { DEFAULT_GAME_CONFIG, COMBAT_RATINGS } from '../utils/constants';
 

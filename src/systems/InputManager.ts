@@ -1,13 +1,18 @@
+import * as BABYLON from "@babylonjs/core";
+
 class InputManager {
-  constructor(scene) {
+  scene: any;
+  actions: { [keyCode: string]: string };
+  actionListeners: { [actionName: string]: ((isDown: boolean) => void)[] };
+
+  constructor(scene: any) {
     this.scene = scene;
-    this.actions = {}; // Map key codes to action names
-    this.actionListeners = {}; // Store listeners for each action
+    this.actions = {};
+    this.actionListeners = {};
     this.setupKeyboardControls();
   }
-
   setupKeyboardControls() {
-    this.scene.onKeyboardObservable.add((kbInfo) => {
+    this.scene.onKeyboardObservable.add((kbInfo: BABYLON.KeyboardInfo) => {
       switch (kbInfo.type) {
         case BABYLON.KeyboardEventTypes.KEYDOWN:
           this.handleKeyDown(kbInfo.event);
@@ -18,46 +23,36 @@ class InputManager {
       }
     });
   }
-
-  handleKeyDown(event) {
+  handleKeyDown(event: KeyboardEvent) {
     const action = this.actions[event.code];
     if (action && this.actionListeners[action]) {
-      this.actionListeners[action].forEach(listener => listener(true)); // true for key down
+      this.actionListeners[action].forEach(listener => listener(true));
     }
   }
-
-  handleKeyUp(event) {
+  handleKeyUp(event: KeyboardEvent) {
     const action = this.actions[event.code];
     if (action && this.actionListeners[action]) {
-      this.actionListeners[action].forEach(listener => listener(false)); // false for key up
+      this.actionListeners[action].forEach(listener => listener(false));
     }
   }
-
-  // Add a new action mapping
-  mapAction(keyCode, actionName) {
+  mapAction(keyCode: string, actionName: string) {
     this.actions[keyCode] = actionName;
     if (!this.actionListeners[actionName]) {
       this.actionListeners[actionName] = [];
     }
   }
-
-  // Subscribe a listener to an action
-  subscribeToAction(actionName, listener) {
+  subscribeToAction(actionName: string, listener: (isDown: boolean) => void) {
     if (this.actionListeners[actionName]) {
       this.actionListeners[actionName].push(listener);
     } else {
       console.warn(`Action "${actionName}" not mapped.`);
     }
   }
-
-  //Unsubscribe a listener from an action - allows for cleanup
-  unsubscribeFromAction(actionName, listenerToRemove) {
+  unsubscribeFromAction(actionName: string, listenerToRemove: (isDown: boolean) => void) {
     if (this.actionListeners[actionName]) {
       this.actionListeners[actionName] = this.actionListeners[actionName].filter(listener => listener !== listenerToRemove);
     }
   }
-
-  // Clear all actions and listeners - useful when switching scenes
   clearActions() {
     this.actions = {};
     this.actionListeners = {};
