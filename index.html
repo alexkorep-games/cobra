@@ -288,14 +288,271 @@
 
     <!-- Audio Elements -->
     <audio id="introMusic" loop>
-        <source src="/src/assets/elite_intro_music.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
+        <source src="elite_intro_music.mp3" type="audio/mpeg">
+        Your browser does not support the audio element. (Needs elite_intro_music.mp3)
     </audio>
      <audio id="undockSound">
-        <source src="/src/assets/undocking_sound.mp3" type="audio/mpeg">
-         Your browser does not support the audio element.
+        <source src="undocking_sound.mp3" type="audio/mpeg">
+         Your browser does not support the audio element. (Needs undocking_sound.mp3)
     </audio>
 
-    <script type="module" src="/src/main.ts"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.164.1/build/three.module.js"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        let scene, camera, renderer;
+        let ship, planet, stars;
+        let undockingSquares = [];
+        let introMusic, undockSound;
+
+        let state = 'title'; // title, credits, stats, undocking, game
+        let keyProcessed = false;
+
+        const pressKeyText = document.getElementById('press-key-text');
+        const creditsText = document.getElementById('credits-text');
+        const statsScreen = document.getElementById('stats-screen');
+        const leavingText = document.getElementById('leaving-text');
+        const titleText = document.getElementById('title-text');
+        const viewText = document.getElementById('view-text');
+
+        function init() {
+            // Scene
+            scene = new THREE.Scene();
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 15;
+
+            // Renderer
+            const canvas = document.getElementById('eliteCanvas');
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: false }); // Turn off antialias for sharper edges
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setClearColor(0x000000); // Black background
+
+            // Lighting (Basic)
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            // --- Create Objects ---
+
+            // Simplified Cobra Mk III - Approximation
+            const shipGeometry = new THREE.BufferGeometry();
+            const vertices = new Float32Array([
+                 // Front peak
+                 0,  1,  3,
+                 // Top wing corners
+                -4,  0,  0,
+                 4,  0,  0,
+                 // Bottom wing corners
+                -3, -1,  0,
+                 3, -1,  0,
+                 // Rear top center
+                 0,  0.5, -4,
+                 // Rear bottom center
+                 0, -0.5, -4,
+                 // Rear wingtips (approx)
+                -4, -0.5, -3.5,
+                 4, -0.5, -3.5,
+
+            ]);
+             // Define faces (indices) - Creates a basic prism/wedge shape
+             const indices = [
+                0, 1, 2,  // Top front face
+                0, 3, 1,  // Left slope face
+                0, 2, 4,  // Right slope face
+                1, 3, 6, 1, 6, 5, 1, 5, 7, // Left side (complex) -> simplified
+                3, 4, 6, // Bottom face
+                2, 8, 4, 2, 5, 8, 5, 6, 8, // Right side (complex) -> simplified
+                // Rear faces
+                5, 7, 6, // Rear Left wing
+                5, 8, 7, // Rear Right wing
+                5, 6, 8 // Rear Center (simplified)
+            ];
+             // Define colors for faces (simplistic: yellow body, green tips/details, orange mid)
+            const colors = [];
+            const colorYellow = new THREE.Color(0xffff00);
+            const colorGreen = new THREE.Color(0x00ff00);
+            const colorOrange = new THREE.Color(0xffa500); // Approximation
+
+            // Simple coloring: Assign color per vertex based on face
+             const faceColors = [
+                 colorYellow, colorOrange, colorOrange, // Front top, slopes
+                 colorYellow, colorYellow, // Left side (placeholder)
+                 colorYellow, // Bottom
+                 colorYellow, colorYellow, // Right side (placeholder)
+                 colorGreen, colorGreen, colorYellow // Rear wings (green), center (yellow)
+             ];
+
+             for (let i = 0; i < indices.length / 3; i++) {
+                 const c = faceColors[i % faceColors.length]; // Cycle through colors if needed
+                 colors.push(c.r, c.g, c.b); // Vertex 1
+                 colors.push(c.r, c.g, c.b); // Vertex 2
+                 colors.push(c.r, c.g, c.b); // Vertex 3
+             }
+
+
+            shipGeometry.setIndex(indices);
+            shipGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+            shipGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            shipGeometry.computeVertexNormals(); // Important for lighting if using non-basic material
+
+            const shipMaterial = new THREE.MeshBasicMaterial({
+                 vertexColors: true, // Use per-vertex colors
+                 // side: THREE.DoubleSide // Render both sides if needed
+             });
+
+            ship = new THREE.Mesh(shipGeometry, shipMaterial);
+            ship.scale.set(0.8, 0.8, 0.8);
+            ship.position.x = -3;
+            scene.add(ship);
+
+            // Planet (Red Sphere)
+            const planetGeometry = new THREE.SphereGeometry(4, 16, 12); // Lower segments for retro feel
+            const planetMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red
+            planet = new THREE.Mesh(planetGeometry, planetMaterial);
+            planet.position.x = 7;
+            planet.position.z = -5;
+            scene.add(planet);
+
+            // Starfield
+            const starVertices = [];
+            for (let i = 0; i < 2000; i++) {
+                const x = THREE.MathUtils.randFloatSpread(1000);
+                const y = THREE.MathUtils.randFloatSpread(1000);
+                const z = THREE.MathUtils.randFloatSpread(1000);
+                // Ensure stars are reasonably far away
+                if (Math.abs(x) > 50 || Math.abs(y) > 50 || Math.abs(z) > 50) {
+                   starVertices.push(x, y, z);
+                }
+            }
+            const starGeometry = new THREE.BufferGeometry();
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const starMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.5, // Small stars
+                sizeAttenuation: false // Stars don't shrink with distance
+            });
+            stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+
+
+            // Undocking Squares (Geometry reused)
+            const squareGeom = new THREE.PlaneGeometry(1, 1);
+            const squareMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide, wireframe: true });
+            for(let i = 0; i < 10; i++) {
+                const square = new THREE.Mesh(squareGeom, squareMat);
+                square.scale.set( (i+1)*2, (i+1)*2, 1);
+                square.position.z = -i * 5; // Spread them out
+                square.visible = false;
+                scene.add(square);
+                undockingSquares.push(square);
+            }
+
+
+            // Audio
+            introMusic = document.getElementById('introMusic');
+            undockSound = document.getElementById('undockSound');
+            introMusic.play().catch(e => console.error("Audio play failed:", e)); // Autoplay might be blocked
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            window.addEventListener('keydown', onKeyPress, false);
+
+            animate();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function onKeyPress(event) {
+            if (keyProcessed) return; // Prevent multiple triggers
+
+            if (state === 'title') {
+                keyProcessed = true;
+                introMusic.pause();
+                pressKeyText.classList.add('hidden');
+                ship.visible = false;
+                planet.visible = false;
+
+                creditsText.classList.remove('hidden');
+                state = 'credits';
+
+                setTimeout(() => {
+                    creditsText.classList.add('hidden');
+                    statsScreen.classList.remove('hidden');
+                    state = 'stats';
+
+                    setTimeout(() => {
+                        statsScreen.classList.add('hidden');
+                        leavingText.classList.remove('hidden');
+                        titleText.classList.add('hidden'); // Hide ELITE
+                        viewText.classList.remove('hidden'); // Show Front View
+                        state = 'undocking';
+                        undockSound.play().catch(e => console.error("Audio play failed:", e));
+
+                        // Make squares visible for undocking
+                        undockingSquares.forEach(s => s.visible = true);
+
+                        setTimeout(() => {
+                            leavingText.classList.add('hidden');
+                             // End of intro sequence as requested
+                             // Could reset here or just stop
+                             state = 'game'; // Or 'intro_end'
+                             undockingSquares.forEach(s => s.visible = false); // Hide squares
+                             planet.position.set(0, 10, -50); // Move planet far away for front view
+                             planet.scale.set(5,5,5); // Make it look like a distant sun/planet
+                             planet.visible = true;
+
+                        }, 3000); // Duration of Leaving text + undock sound
+
+                    }, 5000); // Duration of Stats screen
+
+                }, 3000); // Duration of Credits screen
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Title screen animation
+            if (state === 'title' && ship) {
+                ship.rotation.y += 0.01;
+                ship.rotation.x += 0.005;
+            }
+
+             // Undocking animation (simple movement)
+            if (state === 'undocking') {
+                undockingSquares.forEach((s, i) => {
+                    s.position.z += 0.5; // Move squares towards camera
+                    if (s.position.z > camera.position.z) {
+                        s.position.z = -undockingSquares.length * 5 + 5; // Reset position when past camera
+                    }
+                });
+            }
+
+             // Keep stars rotating slowly
+            if (stars) {
+                 stars.rotation.y += 0.0001;
+            }
+
+
+            renderer.render(scene, camera);
+        }
+
+        init();
+    </script>
 </body>
 </html>
