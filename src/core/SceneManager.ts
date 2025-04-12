@@ -1,11 +1,12 @@
 import { Scene } from "@babylonjs/core/scene";
+import { Engine } from "@babylonjs/core/Engines/engine";
 
 class SceneManager {
-  engine: any;
+  engine: Engine;
   scenes: { [key: string]: any };
   currentScene: any;
 
-  constructor(engine: any) {
+  constructor(engine: Engine) {
     this.engine = engine; 
     this.scenes = {}; 
     this.currentScene = null; 
@@ -30,28 +31,28 @@ class SceneManager {
       return;
     }
 
-    this.currentScene = scene; 
-    if (scene.scene) {
-      scene.scene.render(); 
-      if (scene.onEnter) { 
-        await scene.onEnter(sceneData);
-      }
-    } else {
-      scene.scene = await scene.createScene(this.engine, sceneData);
-      if (scene.onEnter) { 
+    this.currentScene = scene;
+    await scene.initialize();
+    
+    const babylonScene = scene.scene;
+    if (babylonScene) {
+      // Ensure the scene is ready before rendering
+      await babylonScene.whenReadyAsync();
+      
+      if (scene.onEnter) {
         await scene.onEnter(sceneData);
       }
     }
-    return scene.scene;
+    
+    return babylonScene;
   }
-
 
   unloadScene(): void {
     if (this.currentScene && this.currentScene.scene) {
       if (this.currentScene.onExit) {
         this.currentScene.onExit();
       }
-      this.currentScene.scene.dispose();
+      this.currentScene.dispose();
       this.currentScene = null; 
     }
   }
