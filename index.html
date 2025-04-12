@@ -1003,7 +1003,7 @@
                       // Check if it needs a basic material
                       child.material = new THREE.MeshBasicMaterial({
                         color: 0xffff00, // Yellow
-                        wireframe: false,
+                        wireframe: true,
                       });
                     } else if (child.material.wireframe !== undefined) {
                       child.material.wireframe = false;
