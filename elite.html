@@ -307,14 +307,116 @@
     <script type="module">
         import * as THREE from 'three';
 
+        // Game Configuration
+        const CONFIG = {
+            // Flight mechanics
+            maxSpeed: 30,
+            acceleration: 0.3,
+            deceleration: 0.15,
+            rotationSpeed: 0.03,
+            maxRollRate: 0.05,
+            shieldRechargeRate: 0.1,
+            hyperspaceFuelConsumption: 1.0, // Fuel units per light year
+            laserCooldownRate: 0.5,
+            laserHeatRate: 10,
+            
+            // Game balance
+            startingCredits: 100,
+            startingFuel: 7.0,
+            startingMissiles: 3,
+            
+            // NPC spawning
+            maxNpcs: 5,
+            spawnDistance: 300,
+            spawnProbability: 0.01,
+            
+            // Trading
+            maxCargo: 20, // Cargo capacity of Cobra Mk III
+            
+            // Ship and systems
+            scanner_range: 100,
+        };
+        
+        // Player state
+        const playerState = {
+            commander: "JAMESON",
+            credits: CONFIG.startingCredits,
+            fuel: CONFIG.startingFuel,
+            currentSystem: null,
+            targetSystem: null,
+            legalStatus: "Clean",
+            combatRating: "Harmless",
+            ship: {
+                position: new THREE.Vector3(0, 0, 0),
+                rotation: new THREE.Euler(0, 0, 0),
+                velocity: new THREE.Vector3(0, 0, 0),
+                speed: 0,
+                rollRate: 0,
+                pitchRate: 0,
+                yawRate: 0,
+                shields: {
+                    fore: 100,
+                    aft: 100
+                },
+                energy: 100,
+                laserTemp: 0,
+                cabinTemp: 10,
+                altitude: 0,
+                cargo: [],
+                equipment: [
+                    { type: "laser", name: "Pulse Laser", mount: "Fore" },
+                    { type: "missile", count: CONFIG.startingMissiles }
+                ]
+            },
+            kills: 0,
+            bounty: 0
+        };
+        
+        // Combat tracking
+        let currentTarget = null;
+        let missiles = [];
+        let lasers = [];
+        
+        // Galaxy data structure - simplified from the original Elite algorithm
+        const starSystems = [
+            { name: "LAVE", x: 0, y: 0, z: 0, economy: "Agricultural", government: "Dictatorship", techLevel: 5, population: 7.5, description: "Home system" },
+            { name: "ZAONCE", x: 4.5, y: -2.1, z: 8.2, economy: "Industrial", government: "Corporate", techLevel: 9, population: 6.8, description: "Rich industrial world" },
+            { name: "LEESTI", x: -8.1, y: 5.5, z: 3.7, economy: "Industrial", government: "Democracy", techLevel: 10, population: 7.2, description: "Tech hub" },
+            { name: "DISO", x: 3.6, y: 8.2, z: -5.5, economy: "Agricultural", government: "Democracy", techLevel: 6, population: 8.0, description: "Food producer" },
+            { name: "RIEDQUAT", x: 7.8, y: -10.2, z: -3.1, economy: "Poor", government: "Anarchy", techLevel: 2, population: 4.5, description: "Dangerous pirate haven" }
+        ];
+        
+        // Commodity prices - base values that will vary by economy
+        const commodities = [
+            { name: "Food", basePrice: 2.7, variance: 1.5, illegal: false },
+            { name: "Textiles", basePrice: 5.5, variance: 2.0, illegal: false },
+            { name: "Radioactives", basePrice: 19.2, variance: 8.0, illegal: false },
+            { name: "Slaves", basePrice: 7.8, variance: 5.0, illegal: true },
+            { name: "Liquor", basePrice: 8.1, variance: 2.5, illegal: false },
+            { name: "Luxuries", basePrice: 21.3, variance: 9.5, illegal: false },
+            { name: "Narcotics", basePrice: 13.2, variance: 7.0, illegal: true },
+            { name: "Computers", basePrice: 15.6, variance: 4.5, illegal: false },
+            { name: "Machinery", basePrice: 10.4, variance: 3.0, illegal: false },
+            { name: "Alloys", basePrice: 12.3, variance: 2.8, illegal: false },
+            { name: "Firearms", basePrice: 18.6, variance: 7.5, illegal: true },
+            { name: "Furs", basePrice: 6.4, variance: 3.8, illegal: false },
+            { name: "Minerals", basePrice: 4.8, variance: 2.2, illegal: false }
+        ];
+
         let scene, camera, renderer;
         let ship, planet, stars;
         let undockingSquares = [];
-        let introMusic, undockSound;
+        let introMusic, undockSound, laserSound, explosionSound, hyperspaceSound;
+        let npcs = [];
+        let spaceStations = [];
+        let asteroids = [];
 
-        let state = 'title'; // title, credits, stats, undocking, game
+        let state = 'title'; // title, credits, stats, undocking, game, hyperspace, trading, map, inventory
         let keyProcessed = false;
-
+        let keys = {}; // Tracks which keys are currently pressed
+        let currentView = 'front'; // front, rear, left, right
+        
+        // UI Elements
         const pressKeyText = document.getElementById('press-key-text');
         const creditsText = document.getElementById('credits-text');
         const statsScreen = document.getElementById('stats-screen');
@@ -344,29 +446,47 @@
             scene.add(directionalLight);
 
             // --- Create Objects ---
+            createPlayerShip();
+            createPlanets();
+            createStarfield();
+            createSpaceStation();
+            createUndockingEffect();
+            loadAudio();
 
+            // Set initial system
+            playerState.currentSystem = starSystems.find(system => system.name === "LAVE");
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize, false);
+            window.addEventListener('keydown', onKeyDown, false);
+            window.addEventListener('keyup', onKeyUp, false);
+
+            animate();
+        }
+        
+        function createPlayerShip() {
             // Simplified Cobra Mk III - Approximation
             const shipGeometry = new THREE.BufferGeometry();
             const vertices = new Float32Array([
-                 // Front peak
-                 0,  1,  3,
-                 // Top wing corners
+                // Front peak
+                0,  1,  3,
+                // Top wing corners
                 -4,  0,  0,
-                 4,  0,  0,
-                 // Bottom wing corners
+                4,  0,  0,
+                // Bottom wing corners
                 -3, -1,  0,
-                 3, -1,  0,
-                 // Rear top center
-                 0,  0.5, -4,
-                 // Rear bottom center
-                 0, -0.5, -4,
-                 // Rear wingtips (approx)
+                3, -1,  0,
+                // Rear top center
+                0,  0.5, -4,
+                // Rear bottom center
+                0, -0.5, -4,
+                // Rear wingtips (approx)
                 -4, -0.5, -3.5,
-                 4, -0.5, -3.5,
-
+                4, -0.5, -3.5,
             ]);
-             // Define faces (indices) - Creates a basic prism/wedge shape
-             const indices = [
+            
+            // Define faces (indices) - Creates a basic prism/wedge shape
+            const indices = [
                 0, 1, 2,  // Top front face
                 0, 3, 1,  // Left slope face
                 0, 2, 4,  // Right slope face
@@ -378,52 +498,63 @@
                 5, 8, 7, // Rear Right wing
                 5, 6, 8 // Rear Center (simplified)
             ];
-             // Define colors for faces (simplistic: yellow body, green tips/details, orange mid)
+            
+            // Define colors for faces
             const colors = [];
             const colorYellow = new THREE.Color(0xffff00);
             const colorGreen = new THREE.Color(0x00ff00);
-            const colorOrange = new THREE.Color(0xffa500); // Approximation
+            const colorOrange = new THREE.Color(0xffa500);
 
             // Simple coloring: Assign color per vertex based on face
-             const faceColors = [
-                 colorYellow, colorOrange, colorOrange, // Front top, slopes
-                 colorYellow, colorYellow, // Left side (placeholder)
-                 colorYellow, // Bottom
-                 colorYellow, colorYellow, // Right side (placeholder)
-                 colorGreen, colorGreen, colorYellow // Rear wings (green), center (yellow)
-             ];
+            const faceColors = [
+                colorYellow, colorOrange, colorOrange, // Front top, slopes
+                colorYellow, colorYellow, // Left side
+                colorYellow, // Bottom
+                colorYellow, colorYellow, // Right side
+                colorGreen, colorGreen, colorYellow // Rear wings (green), center (yellow)
+            ];
 
-             for (let i = 0; i < indices.length / 3; i++) {
-                 const c = faceColors[i % faceColors.length]; // Cycle through colors if needed
-                 colors.push(c.r, c.g, c.b); // Vertex 1
-                 colors.push(c.r, c.g, c.b); // Vertex 2
-                 colors.push(c.r, c.g, c.b); // Vertex 3
-             }
-
+            for (let i = 0; i < indices.length / 3; i++) {
+                const c = faceColors[i % faceColors.length];
+                colors.push(c.r, c.g, c.b); // Vertex 1
+                colors.push(c.r, c.g, c.b); // Vertex 2
+                colors.push(c.r, c.g, c.b); // Vertex 3
+            }
 
             shipGeometry.setIndex(indices);
             shipGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
             shipGeometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-            shipGeometry.computeVertexNormals(); // Important for lighting if using non-basic material
+            shipGeometry.computeVertexNormals();
 
             const shipMaterial = new THREE.MeshBasicMaterial({
-                 vertexColors: true, // Use per-vertex colors
-                 // side: THREE.DoubleSide // Render both sides if needed
-             });
+                vertexColors: true,
+                wireframe: true  // Wireframe mode for retro look
+            });
 
             ship = new THREE.Mesh(shipGeometry, shipMaterial);
             ship.scale.set(0.8, 0.8, 0.8);
-            ship.position.x = -3;
+            ship.position.x = -3; // Initial position for intro
             scene.add(ship);
-
+            
+            // Create a collision box for the ship
+            const shipBoundingBox = new THREE.Box3().setFromObject(ship);
+            playerState.ship.boundingBox = shipBoundingBox;
+        }
+        
+        function createPlanets() {
             // Planet (Red Sphere)
             const planetGeometry = new THREE.SphereGeometry(4, 16, 12); // Lower segments for retro feel
-            const planetMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red
+            const planetMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xff0000,
+                wireframe: true // Wireframe mode for retro look
+            });
             planet = new THREE.Mesh(planetGeometry, planetMaterial);
             planet.position.x = 7;
             planet.position.z = -5;
             scene.add(planet);
-
+        }
+        
+        function createStarfield() {
             // Starfield
             const starVertices = [];
             for (let i = 0; i < 2000; i++) {
@@ -444,31 +575,83 @@
             });
             stars = new THREE.Points(starGeometry, starMaterial);
             scene.add(stars);
-
-
+        }
+        
+        function createSpaceStation() {
+            // Coriolis space station geometry (simplified octahedron with some modifications)
+            const stationGeometry = new THREE.OctahedronGeometry(20, 0);
+            const stationMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x00ffff, 
+                wireframe: true
+            });
+            
+            const station = new THREE.Mesh(stationGeometry, stationMaterial);
+            station.position.set(0, 0, -200); // Position it far away
+            station.rotation.z = Math.PI / 4; // Rotate it to orient the docking bay
+            scene.add(station);
+            
+            // Add a docking bay (simplified as a bright rectangle at the center of one face)
+            const dockingBayGeometry = new THREE.PlaneGeometry(8, 8);
+            const dockingBayMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00,
+                side: THREE.DoubleSide
+            });
+            const dockingBay = new THREE.Mesh(dockingBayGeometry, dockingBayMaterial);
+            dockingBay.position.z = 20; // Position it on the station face
+            station.add(dockingBay); // Make it a child of the station
+            
+            // Add rotation
+            station.userData = {
+                type: "station",
+                rotationSpeed: 0.001,
+                dockingBay: dockingBay
+            };
+            
+            spaceStations.push(station);
+        }
+        
+        function createUndockingEffect() {
             // Undocking Squares (Geometry reused)
+            undockingSquares = [];
             const squareGeom = new THREE.PlaneGeometry(1, 1);
-            const squareMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide, wireframe: true });
+            const squareMat = new THREE.MeshBasicMaterial({ 
+                color: 0x00ff00, 
+                side: THREE.DoubleSide, 
+                wireframe: true 
+            });
+            
             for(let i = 0; i < 10; i++) {
                 const square = new THREE.Mesh(squareGeom, squareMat);
-                square.scale.set( (i+1)*2, (i+1)*2, 1);
+                square.scale.set((i+1)*2, (i+1)*2, 1);
                 square.position.z = -i * 5; // Spread them out
                 square.visible = false;
                 scene.add(square);
                 undockingSquares.push(square);
             }
-
-
+        }
+        
+        function loadAudio() {
             // Audio
             introMusic = document.getElementById('introMusic');
             undockSound = document.getElementById('undockSound');
-            introMusic.play().catch(e => console.error("Audio play failed:", e)); // Autoplay might be blocked
-
-            // Event Listeners
-            window.addEventListener('resize', onWindowResize, false);
-            window.addEventListener('keydown', onKeyPress, false);
-
-            animate();
+            
+            // Create new audio elements for game sounds
+            laserSound = new Audio();
+            laserSound.src = "data:audio/mpeg;base64,SUQzAwAAAAABMFRDT04AAAAFAAAAKDIwMjMpVFBFMQAAAAUAAAAoMjAyMylUQUxCAAAABQAAACgyMDIzKVRZRVIAAAAFAAAAKDIwMjMpVENPTQAAAAUAAAAoMjAyMylUUkNLAAAABQAAACgyMDIzKVRQT1MAAAAFAAAAKDIwMjMpVElUMgAAAAUAAAAoMjAyMylUSVQzAAAABQAAACgyMDIzKVRJVDEAAAAFAAAAKDIwMjMpVEVOQwAAAAEAAABXVFhYAAAADQAAAExhdmY1OC4yOS4xMDAAAAAAAAAAAAAAAP/7kGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEluZm8AAAAPAAAAEQAAVZkADAwMExMTGRkZICAgJiYmLS0tMzMzOjo6QUFBSCgoKCgoKCgoVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7kGQAD/AAAGkAAAAIAAA0gAAABAAABpAAAACAAADSAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7kGQJj/AAAGkAAAAIAAA0gAAABAAABpAAAACAAADSAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7kGQVD/AAAGkAAAAIAAA0gAAABAAABpAAAACAAADSAAAAVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+            laserSound.volume = 0.4;
+            
+            explosionSound = new Audio();
+            explosionSound.src = "data:audio/mpeg;base64,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AgcIxgQcCjAGaEDAseAQMUQCxMYGAUxEEMeFwoUCRUWBggrNLxlkOEJ+YKjwyHiUgOChogQDAaKRQChxoqBhcAg41OmWhcNCQOFgiZHjaiDB0sdpolPiYgJHisWmhhAvCNNBihWCHCz7MCOPPZDkMyNcb8f2KbdMmFLBdK3uO5FF0mkMzS5CdK0w9nzl734nHDBGgYKlRl9ZmlLPl89rkunvquV0A4OSAHBjRjwAdzgwiNCwsAC/HHPNces//7IMQFgVP1s3+xmGsKhTZu9nDqoL73X4YB0BcliYvL/1HlnYhEqoOxpAUFjK0P/8GOlFRbf/9GcX3aSTP/5MmzuY05JUsLCYUAAwSgJTXEQAMeDot9jNXK5ZDQ2lqPuQxy//4YUIsLPP/8t9kgIyCE+Ur//1vZ8J1xNE6//uOvOxbZEo06TIESM8zuEi4sNnagONrhYWFAkVGQ8IGfcHQMMSL7R+YFiEN3f//OsVE5UXKjQAsLDXo1//tAxAUCFAG1f7D4dQqCNm72cO6jf9R5Z2jbf/1HlnVZrb/9+GDGKqpY5OR3/6AUEsFRFplO/+lpllv//a3mrUpYgDsT//+WtdkdOv//rbcnlAGBIoIODJaIGrRAgLCgR/6OjoYVqGmUb90eLAoD8/y2wt3mSNQswZS71/69Q+CQf//zhSZP//wmgAU//7YMQDARPds3+ziFQKgDZvNjDqo1b//RxB4NbX/9T5gjZun1+GiswVUzlQCwsPLj//l3mBIoFDVok2//Yzcrkz//2gDDWIg+P//zsnu0yxLf/1Ux80ESC///ThQmph//q33NIi4v5Z92YL4Sprp1sW3/9R5sJIlUX/9gZ2JqYXLw0UAh/f51DaT/+o8s7Xm//qPLGz//qPLO1aic1Unf/oCwUEuEdOv/n55kNlf/+45ZroSEQrWczjjpp0vkBcXEodM040JJIaiJHm2+tqEkkSTQRDAQRGhg//tgxAEAE5Wxf7OHWQswNm72MOqjKcHjQOGAkImgLQRkyHgYMhZ0TFXGYpnml/qYqKPB3NuaHmJyJihwxJmODDxAYsZgx3yAJFMyOZYEEgoLCgFEYsLCYiIiESAQKBEwAgMPBcXDwMLBcXExMREREBAQcHCZTVTGEYRjGMYxjGVGjRoICAgICAsLi4uLi4iIiA+Pj4qKioiIiICAgICAgICAgICAQEBAQEBAICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg//tAxAKCEtGxd7OHOwphtm72cQdhCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg";
+            explosionSound.volume = 0.6;
+            
+            hyperspaceSound = new Audio();
+            hyperspaceSound.src = "data:audio/mpeg;base64,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@ChgQDQIAoqDqHDKIEzCECzAMCTCACTAUAwOAowIAYwJAcehwwLAMwJA8wMAYwSBEWASJBMwIA4wDBkwWAoQAGw3BYQDGMAwKAgCBQYDgMYBgAYDgCYDgKYIgYe5QwHAYwPBEwIA4wNAkIAgYCgMYFAGYEgGYGgIYGAEYCgCYDAAYFAGXf/zBU//ugxA2AFiFZb/Y7nCpYqq32wYcAQGGA4AGA4AEgEMAQEMBwD/////8DDJJGRgKGJg6E5iOChhyA5g8AJgSAZg0Fxi+C5iqJRlYCJhOAxgwDphIF5goAxgUA5gQA5gcA5g8A5g4AxgYAZgaBRgWAZgCARgSAhgKARABGAQCGBQEuvMBAGMAQAMAQFMAQCMBgDMAQB3x6///////////////lpVYBLgEBAvMDAKMDgMFwVMAAdMBgNMaALMrAPMEQLMFQLMAQDMDgPMFQFMVAK//ugxBeAFVlVb/YxlCqoKq3+w3OA2YHAYYGgeYHAmYIAcEgcYDAKLgQYBgCIggYCAKYLAMYGgiYIgOYHgWYNgkYUgcYSg6YlhKYShKYMA6YHgKYCgMYDgGYDgGYAAGYBAOYFgOU9/////////////////2fNnNgiAhgcBpiWBDw8UAYwHAUwJAQwNAk7HAQwLAgwBAgwMAEwJAIwNAYwIAIwHAQwMAswOAwoApVAAAALzCILBMJjBYHzBUDDA0CDCwSDBgGTCAEzCUGjDAGTCMDzBk//uQxBkAFeFXb/Y6lCrMqu3+w3KBDBABjA0AzAgBzAkAzA0CDBEBDCQPTCwNDBABjBUOzD4DzBoCFQiMCAEMCQHMAQGMAQGMBQBMBACMCwFWf/////////////////aVaAJdAAAATMBQFMBQAMAQDMAQFMCQAMAwAHoEMCADMBQCKQJByAQMAQGMAQAMBABMAQAMAQCVAAwEAAwCAPRJQAAACAERhMBpgME6nKywwSAUwJAQwCAAjEgFAUwEAMwSAgwNAkwLAg";
+            hyperspaceSound.volume = 0.5;
+            
+            // Additional sound effects can be added here
+            
+            // Start the intro
+            introMusic.play().catch(e => console.error("Audio play failed:", e)); 
         }
 
         function onWindowResize() {
@@ -524,6 +707,397 @@
             }
         }
 
+        function onKeyDown(event) {
+            keys[event.code] = true;
+            
+            // For intro screen, handle any key press
+            if (state === 'title' && !keyProcessed) {
+                onKeyPress(event);
+                return;
+            }
+            
+            // Game state specific controls
+            if (state === 'game') {
+                // View controls (F1-F4)
+                if (event.code === "F1") { setView('front'); }
+                if (event.code === "F2") { setView('rear'); }
+                if (event.code === "F3") { setView('left'); }
+                if (event.code === "F4") { setView('right'); }
+                
+                // Target cycling (T)
+                if (event.code === "KeyT") { cycleTargets(); }
+                
+                // Firing controls
+                if (event.code === "Space") { fireLaser(); }
+                if (event.code === "KeyM") { fireMissile(); }
+                
+                // Game screens
+                if (event.code === "KeyG") { showGalacticChart(); }
+                if (event.code === "KeyI") { showInventoryScreen(); }
+                if (event.code === "KeyS") { showStatusScreen(); }
+                
+                // Hyperspace
+                if (event.code === "KeyH" && playerState.targetSystem) { initiateHyperspace(); }
+            }
+            
+            // Prevent default behavior for certain keys
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(event.code)) {
+                event.preventDefault();
+            }
+        }
+        
+        function onKeyUp(event) {
+            keys[event.code] = false;
+        }
+        
+        function setView(view) {
+            // Update the current view variable
+            currentView = view;
+            
+            // Update the view text in the HUD
+            viewText.textContent = view.charAt(0).toUpperCase() + view.slice(1) + ' View';
+            
+            // Adjust camera position/rotation based on view
+            switch(view) {
+                case 'front':
+                    camera.position.set(0, 0, 5);
+                    camera.rotation.set(0, 0, 0);
+                    break;
+                case 'rear':
+                    camera.position.set(0, 0, -5);
+                    camera.rotation.set(0, Math.PI, 0);
+                    break;
+                case 'left':
+                    camera.position.set(-5, 0, 0);
+                    camera.rotation.set(0, -Math.PI/2, 0);
+                    break;
+                case 'right':
+                    camera.position.set(5, 0, 0);
+                    camera.rotation.set(0, Math.PI/2, 0);
+                    break;
+            }
+        }
+        
+        function updateFlightControls() {
+            if (state !== 'game') return;
+            
+            // Speed controls (W/S)
+            if (keys['KeyW']) {
+                playerState.ship.speed = Math.min(playerState.ship.speed + CONFIG.acceleration, CONFIG.maxSpeed);
+            }
+            if (keys['KeyS']) {
+                playerState.ship.speed = Math.max(playerState.ship.speed - CONFIG.deceleration, 0);
+            }
+            
+            // Roll controls (Q/E)
+            if (keys['KeyQ']) {
+                playerState.ship.rollRate = Math.min(playerState.ship.rollRate + 0.001, CONFIG.maxRollRate);
+            } else if (keys['KeyE']) {
+                playerState.ship.rollRate = Math.max(playerState.ship.rollRate - 0.001, -CONFIG.maxRollRate);
+            } else {
+                // Gradually reduce roll rate
+                playerState.ship.rollRate *= 0.95;
+            }
+            
+            // Pitch controls (Arrow Up/Down)
+            if (keys['ArrowUp']) {
+                playerState.ship.pitchRate = Math.min(playerState.ship.pitchRate + 0.001, CONFIG.rotationSpeed);
+            } else if (keys['ArrowDown']) {
+                playerState.ship.pitchRate = Math.max(playerState.ship.pitchRate - 0.001, -CONFIG.rotationSpeed);
+            } else {
+                // Gradually reduce pitch rate
+                playerState.ship.pitchRate *= 0.95;
+            }
+            
+            // Yaw controls (Arrow Left/Right)
+            if (keys['ArrowLeft']) {
+                playerState.ship.yawRate = Math.min(playerState.ship.yawRate + 0.001, CONFIG.rotationSpeed);
+            } else if (keys['ArrowRight']) {
+                playerState.ship.yawRate = Math.max(playerState.ship.yawRate - 0.001, -CONFIG.rotationSpeed);
+            } else {
+                // Gradually reduce yaw rate
+                playerState.ship.yawRate *= 0.95;
+            }
+            
+            // Apply flight physics
+            ship.rotation.z += playerState.ship.rollRate;
+            ship.rotation.x += playerState.ship.pitchRate;
+            ship.rotation.y += playerState.ship.yawRate;
+            
+            // Update ship position based on speed and direction
+            const direction = new THREE.Vector3(0, 0, -1);
+            direction.applyQuaternion(ship.quaternion);
+            direction.normalize();
+            
+            ship.position.addScaledVector(direction, playerState.ship.speed * 0.1);
+            
+            // Update ship boundingBox
+            playerState.ship.boundingBox.setFromObject(ship);
+            
+            // Update HUD indicators
+            updateHUD();
+        }
+        
+        function updateHUD() {
+            // Update speed indicator
+            const speedPercent = (playerState.ship.speed / CONFIG.maxSpeed) * 100;
+            document.querySelector('.hud-right .hud-item:nth-child(1) .hud-bar-fill').style.width = speedPercent + '%';
+            
+            // Update roll indicator
+            const rollPercent = 50 + ((playerState.ship.rollRate / CONFIG.maxRollRate) * 50);
+            document.querySelector('.hud-right .hud-item:nth-child(2) .hud-bar-fill').style.width = rollPercent + '%';
+            
+            // Update dive/climb indicator
+            const pitchPercent = 50 + ((playerState.ship.pitchRate / CONFIG.rotationSpeed) * 50);
+            document.querySelector('.hud-right .hud-item:nth-child(3) .hud-bar-fill').style.width = pitchPercent + '%';
+            
+            // Update shield levels
+            document.getElementById('fore-shield-fill').style.width = playerState.ship.shields.fore + '%';
+            document.getElementById('aft-shield-fill').style.width = playerState.ship.shields.aft + '%';
+            
+            // Update fuel level
+            const fuelPercent = (playerState.fuel / CONFIG.startingFuel) * 100;
+            document.getElementById('fuel-fill').style.width = fuelPercent + '%';
+            
+            // Update laser temperature
+            document.getElementById('laser-temp-fill').style.width = playerState.ship.laserTemp + '%';
+            
+            // Update cabin temperature
+            document.getElementById('cabin-temp-fill').style.width = playerState.ship.cabinTemp + '%';
+            
+            // Update missile display
+            const missileEquipment = playerState.ship.equipment.find(item => item.type === 'missile');
+            const missileCount = missileEquipment ? missileEquipment.count : 0;
+            document.querySelector('.hud-left .hud-item:last-child .hud-value').textContent = 
+                ' ' + 'M '.repeat(missileCount) + (missileCount < 4 ? '-'.repeat(4 - missileCount) : '');
+        }
+        
+        function fireLaser() {
+            if (playerState.ship.laserTemp >= 100) return; // Overheated!
+            
+            // Create laser beam effect
+            const laserGeometry = new THREE.BufferGeometry();
+            const laserVertices = new Float32Array([
+                0, 0.1, 0,  // start of beam
+                0, 0.1, -100 // end of beam (far ahead)
+            ]);
+            laserGeometry.setAttribute('position', new THREE.BufferAttribute(laserVertices, 3));
+            const laserMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+            const laserBeam = new THREE.Line(laserGeometry, laserMaterial);
+            
+            // Position the beam at the front of the ship
+            ship.add(laserBeam);
+            
+            // Play sound
+            laserSound.currentTime = 0;
+            laserSound.play().catch(e => console.error("Laser sound failed:", e));
+            
+            // Increase laser temperature
+            playerState.ship.laserTemp += CONFIG.laserHeatRate;
+            
+            // Remove laser after a short time
+            setTimeout(() => {
+                ship.remove(laserBeam);
+            }, 100);
+            
+            // Check for hits on targets
+            checkLaserHits();
+        }
+        
+        function fireMissile() {
+            const missileEquipment = playerState.ship.equipment.find(item => item.type === 'missile');
+            if (!missileEquipment || missileEquipment.count <= 0 || !currentTarget) return;
+            
+            // Create missile object
+            const missileGeometry = new THREE.ConeGeometry(0.3, 1.5, 8);
+            const missileMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+            const missile = new THREE.Mesh(missileGeometry, missileMaterial);
+            
+            // Position at the front of the ship
+            missile.position.set(0, 0, -2);
+            missile.rotation.x = Math.PI / 2; // Point forward
+            
+            // Add to scene
+            ship.add(missile);
+            scene.attach(missile); // Detach from ship but keep world position
+            
+            // Set missile properties
+            const missileObj = {
+                mesh: missile,
+                target: currentTarget,
+                speed: playerState.ship.speed + 5,
+                life: 100, // Time to live
+                damage: 50
+            };
+            
+            // Add to missiles array
+            missiles.push(missileObj);
+            
+            // Decrease missile count
+            missileEquipment.count--;
+            
+            // Update HUD
+            updateHUD();
+        }
+        
+        function cycleTargets() {
+            // If there are no NPCs, there's nothing to target
+            if (npcs.length === 0) {
+                currentTarget = null;
+                return;
+            }
+            
+            // Get current target index
+            let currentIndex = -1;
+            if (currentTarget) {
+                currentIndex = npcs.findIndex(npc => npc === currentTarget);
+            }
+            
+            // Move to next target in the list
+            currentIndex = (currentIndex + 1) % npcs.length;
+            currentTarget = npcs[currentIndex];
+            
+            // Show target indicator
+            // TODO: Add a 3D indicator on the target or HUD notification
+        }
+        
+        function checkLaserHits() {
+            // If no target or target is too far, no hit
+            if (!currentTarget) return;
+            
+            // Simple hit detection - if target is in front and close enough
+            const targetPos = new THREE.Vector3().setFromMatrixPosition(currentTarget.mesh.matrixWorld);
+            const shipPos = new THREE.Vector3().setFromMatrixPosition(ship.matrixWorld);
+            const distance = targetPos.distanceTo(shipPos);
+            
+            if (distance > 50) return; // Too far
+            
+            // Check if target is in front of the ship
+            const shipForward = new THREE.Vector3(0, 0, -1).applyQuaternion(ship.quaternion);
+            const toTarget = targetPos.clone().sub(shipPos).normalize();
+            const dotProduct = shipForward.dot(toTarget);
+            
+            if (dotProduct > 0.9) { // Target is roughly in front (within about 25 degrees)
+                // Hit! Apply damage to target
+                currentTarget.shields -= 5;
+                
+                if (currentTarget.shields <= 0) {
+                    // Target destroyed!
+                    destroyTarget(currentTarget);
+                }
+            }
+        }
+        
+        function destroyTarget(target) {
+            // Play explosion sound
+            explosionSound.currentTime = 0;
+            explosionSound.play().catch(e => console.error("Explosion sound failed:", e));
+            
+            // Create explosion effect
+            createExplosion(target.mesh.position);
+            
+            // Remove from scene
+            scene.remove(target.mesh);
+            
+            // Remove from npcs array
+            const index = npcs.indexOf(target);
+            if (index !== -1) {
+                npcs.splice(index, 1);
+            }
+            
+            // Update target if this was the current target
+            if (target === currentTarget) {
+                currentTarget = null;
+            }
+            
+            // Award kills and credits
+            playerState.kills++;
+            playerState.credits += target.bounty || 10;
+            
+            // Update combat rating if needed
+            updateCombatRating();
+        }
+        
+        function createExplosion(position) {
+            // Create particle explosion effect
+            const particleCount = 30;
+            const particleGeometry = new THREE.BufferGeometry();
+            const particleMaterial = new THREE.PointsMaterial({
+                color: 0xff5500,
+                size: 0.5
+            });
+            
+            const positions = [];
+            for (let i = 0; i < particleCount; i++) {
+                positions.push(
+                    THREE.MathUtils.randFloatSpread(2), // x
+                    THREE.MathUtils.randFloatSpread(2), // y
+                    THREE.MathUtils.randFloatSpread(2)  // z
+                );
+            }
+            
+            particleGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            const particles = new THREE.Points(particleGeometry, particleMaterial);
+            
+            // Position the explosion at the target's position
+            particles.position.copy(position);
+            scene.add(particles);
+            
+            // Animate the explosion
+            const velocities = Array(particleCount).fill().map(() => ({
+                x: THREE.MathUtils.randFloatSpread(1),
+                y: THREE.MathUtils.randFloatSpread(1),
+                z: THREE.MathUtils.randFloatSpread(1)
+            }));
+            
+            // Store the start time
+            const startTime = Date.now();
+            
+            // Create an animation function
+            function animateExplosion() {
+                const positions = particles.geometry.attributes.position.array;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    positions[i * 3] += velocities[i].x;
+                    positions[i * 3 + 1] += velocities[i].y;
+                    positions[i * 3 + 2] += velocities[i].z;
+                }
+                
+                particles.geometry.attributes.position.needsUpdate = true;
+                
+                // Keep animating for a short time
+                if (Date.now() - startTime < 1500) {
+                    requestAnimationFrame(animateExplosion);
+                } else {
+                    scene.remove(particles);
+                }
+            }
+            
+            animateExplosion();
+        }
+        
+        function updateCombatRating() {
+            // Update the player's combat rating based on kills
+            const ratings = [
+                { name: "Harmless", kills: 0 },
+                { name: "Mostly Harmless", kills: 4 },
+                { name: "Poor", kills: 8 },
+                { name: "Average", kills: 16 },
+                { name: "Above Average", kills: 32 },
+                { name: "Competent", kills: 64 },
+                { name: "Dangerous", kills: 128 },
+                { name: "Deadly", kills: 512 },
+                { name: "Elite", kills: 1024 }
+            ];
+            
+            for (let i = ratings.length - 1; i >= 0; i--) {
+                if (playerState.kills >= ratings[i].kills) {
+                    playerState.combatRating = ratings[i].name;
+                    break;
+                }
+            }
+        }
+
         function animate() {
             requestAnimationFrame(animate);
 
@@ -548,6 +1122,7 @@
                  stars.rotation.y += 0.0001;
             }
 
+            updateFlightControls();
 
             renderer.render(scene, camera);
         }
