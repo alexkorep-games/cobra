@@ -42,7 +42,7 @@ export class SceneLogic {
             (ship: THREE.Object3D | null) => ship && (ship.visible = false)
         );
         this.game.assets.undockingSquares?.forEach( // Added optional chaining
-            (square: THREE.Mesh) => (square.visible = false)
+            (square: THREE.LineLoop) => (square.visible = false)
         );
     }
 }

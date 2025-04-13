@@ -20,7 +20,7 @@ interface GameAssets {
     titleShips: (THREE.Object3D | null)[];
     planet: THREE.Mesh | null;
     stars: THREE.Points | null;
-    undockingSquares: THREE.Mesh[];
+    undockingSquares: THREE.LineLoop[]; // <-- CHANGED TYPE HERE
 }
 
 export class GameManager implements IGameManager { // Implement the interface
@@ -28,7 +28,7 @@ export class GameManager implements IGameManager { // Implement the interface
     camera: THREE.PerspectiveCamera | null = null;
     renderer: THREE.WebGLRenderer | null = null;
     clock: THREE.Clock = new THREE.Clock();
-    assets: GameAssets = {
+    assets: GameAssets = { // <-- TYPE IS CORRECT HERE
         titleShips: [],
         planet: null,
         stars: null,
@@ -168,18 +168,32 @@ export class GameManager implements IGameManager { // Implement the interface
         this.assets.stars.visible = false; // Initially hidden
         this.scene.add(this.assets.stars);
 
-        // Undocking Squares
-        const squareGeom = new THREE.PlaneGeometry(1, 1);
-        const squareMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide, wireframe: true });
+        // --- Undocking Squares (Outline only) --- START CHANGE ---
+        const squareOutlineGeom = new THREE.BufferGeometry();
+        const vertices = new Float32Array([
+            -0.5, -0.5, 0, // bottom left
+             0.5, -0.5, 0, // bottom right
+             0.5,  0.5, 0, // top right
+            -0.5,  0.5, 0, // top left
+             // -0.5, -0.5, 0, // No need to repeat for LineLoop
+        ]);
+        squareOutlineGeom.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+
+        const squareLineMat = new THREE.LineBasicMaterial({ color: 0x00ff00 }); // Green lines
+
+        // Ensure the array is cleared before pushing LineLoop objects
         this.assets.undockingSquares = [];
+
         for (let i = 0; i < 10; i++) { // Number of squares
-            const square = new THREE.Mesh(squareGeom, squareMat);
-            square.scale.set((i + 1) * 2, (i + 1) * 2, 1); // Increasingly larger scale
-            square.position.z = -i * 5; // Spaced out along Z
-            square.visible = false;
-            this.scene.add(square);
-            this.assets.undockingSquares.push(square);
+            // Use LineLoop instead of Mesh
+            const squareLine = new THREE.LineLoop(squareOutlineGeom, squareLineMat);
+            squareLine.scale.set((i + 1) * 2, (i + 1) * 2, 1); // Increasingly larger scale
+            squareLine.position.z = -i * 5; // Spaced out along Z
+            squareLine.visible = false;
+            this.scene.add(squareLine);
+            this.assets.undockingSquares.push(squareLine); // Store the LineLoop object
         }
+        // --- Undocking Squares (Outline only) --- END CHANGE ---
 
 
         // Load Ships
@@ -389,7 +403,7 @@ export class GameManager implements IGameManager { // Implement the interface
         // Dispose Three.js resources
         this.renderer?.dispose();
         this.scene?.traverse((object) => {
-            if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
+            if (object instanceof THREE.Mesh || object instanceof THREE.Points || object instanceof THREE.Line) { // Include Line
                 object.geometry?.dispose();
                 if (Array.isArray(object.material)) {
                     object.material.forEach((material) => material.dispose());
