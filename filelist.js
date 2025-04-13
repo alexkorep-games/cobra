@@ -50,15 +50,17 @@ function readAndPrintFilesRecursive(currentAbsolutePath) {
         const stats = fs.statSync(fullAbsolutePath);
 
         if (stats.isFile()) {
-          // It's a file - read its content using the absolute path
-          const content = fs.readFileSync(fullAbsolutePath, "utf8");
+          const ext = path.extname(fullAbsolutePath).toLowerCase();
+          const allowedExtensions = [".ts", ".tsx", ".html", ".css"];
+          if (allowedExtensions.includes(ext)) {
+            const content = fs.readFileSync(fullAbsolutePath, "utf8");
 
-          // Print using the calculated *relative* path
-          console.log(`${normalizedRelativePath}:`);
-          console.log("```");
-          console.log(content);
-          console.log("```");
-          console.log(""); // Add a blank line for separation
+            console.log(`${normalizedRelativePath}:`);
+            console.log("```");
+            console.log(content);
+            console.log("```");
+            console.log(""); // Add a blank line for separation
+          }
         } else if (stats.isDirectory()) {
           // It's a directory - make the recursive call using the absolute path
           readAndPrintFilesRecursive(fullAbsolutePath);
