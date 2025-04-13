@@ -22,7 +22,8 @@ export class LoadingSceneLogic extends SceneLogicBase {
       if (event.type === "keydown" || event.type === "mousedown") {
         this.inputProcessed = true;
         console.log("Loader input detected, switching state...");
-        this.game.switchState("space_flight");
+        this.game.switchState("title"); // Switch to title state
+        //this.game.switchState("space_flight");
       }
     }
   }

@@ -16,7 +16,6 @@ const App: React.FC = () => {
   // --- State ---
   const [gameState, setGameState] = useState<GameState>("loading");
   const [isLoadingComplete, setIsLoadingComplete] = useState(false);
-  // Removed isReadyToContinue state, now managed within LoadingScreen
   const [coordinates, setCoordinates] = useState<[number, number, number]>([0, 0, 0]);
   const [speed, setSpeed] = useState<number>(0); // 0-100%
   const [roll, setRoll] = useState<number>(0); // -1 to 1

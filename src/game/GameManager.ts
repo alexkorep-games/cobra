@@ -2,15 +2,15 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { GameState, IGameManager } from "../types";
-import { SceneLogic } from "./SceneLogic";
+import { SceneLogicBase } from "../features/common/SceneLogicBase";
 
 // Import Scene Logics
-import { LoadingScene } from "../scenes/LoadingScene";
-import { TitleScene } from "../scenes/TitleScene";
-import { CreditsScene } from "../scenes/CreditsScene";
-import { StatsScene } from "../scenes/StatsScene";
-import { UndockingScene } from "../scenes/UndockingScene";
-import { SpaceFlightScene } from "../scenes/SpaceFlightScene";
+import { LoadingSceneLogic } from "../features/loading/LoadingSceneLogic";
+import { TitleSceneLogic } from "../features/title/TitleSceneLogic";
+import { CreditsSceneLogic } from "../features/credits/CreditsSceneLogic";
+import { StatsSceneLogic } from "../features/stats/StatsSceneLogic";
+import { UndockingSceneLogic } from "../features/undocking/UndockingSceneLogic";
+import { SpaceFlightSceneLogic } from "../features/space_flight/SpaceFlightSceneLogic";
 
 // Import Constants
 import * as Constants from "../constants";
@@ -22,6 +22,9 @@ interface GameAssets {
   stars: THREE.Points | null;
   undockingSquares: THREE.LineLoop[];
 }
+
+// Keep ship scale as needed based on model source size
+const shipScale = 6;
 
 export class GameManager implements IGameManager {
   scene: THREE.Scene | null = null;
@@ -38,7 +41,7 @@ export class GameManager implements IGameManager {
   assetsLoaded: number = 0;
   loadingCompleteCallback: (() => void) | null = null;
   currentState: GameState = "loading";
-  sceneLogics: Partial<Record<GameState, SceneLogic>> = {};
+  sceneLogics: Partial<Record<GameState, SceneLogicBase>> = {};
   animationFrameId: number | null = null;
 
   // Refs from React
@@ -125,24 +128,23 @@ export class GameManager implements IGameManager {
   }
 
   setupSceneLogics() {
-    this.sceneLogics.loading = new LoadingScene(this);
-    this.sceneLogics.title = new TitleScene(this);
-    this.sceneLogics.credits = new CreditsScene(this);
-    this.sceneLogics.stats = new StatsScene(this);
-    this.sceneLogics.undocking = new UndockingScene(this);
-    this.sceneLogics.space_flight = new SpaceFlightScene(this);
+    this.sceneLogics.loading = new LoadingSceneLogic(this);
+    this.sceneLogics.title = new TitleSceneLogic(this);
+    this.sceneLogics.credits = new CreditsSceneLogic(this);
+    this.sceneLogics.stats = new StatsSceneLogic(this);
+    this.sceneLogics.undocking = new UndockingSceneLogic(this);
+    this.sceneLogics.space_flight = new SpaceFlightSceneLogic(this);
   }
 
   createAssets(cameraFarPlane: number) {
     if (!this.scene || !this.camera) return;
     const loader = new GLTFLoader();
     const shipFilePaths = [
+      "assets/ships/spacestation.gltf",
       "assets/ships/ship-cobra.gltf",
       "assets/ships/ship-pirate.gltf",
       "assets/ships/asteroid.gltf",
     ];
-    // Keep ship scale as needed based on model source size
-    const shipScale = 6;
 
     this.assetsToLoad = shipFilePaths.length;
     this.assetsLoaded = 0;
