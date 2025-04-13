@@ -26,9 +26,7 @@ export class GameManager implements IGameManager {
   assets: GameAssets = {
     titleShips: [],
     planet: null,
-    stars: null,
     undockingSquares: [],
-    hyperStars: null, // Add hyperspace stars
     spaceStation: null,
   };
   assetsToLoad: number = 0;
@@ -112,7 +110,7 @@ export class GameManager implements IGameManager {
     directionalLight.position.set(1, 1, 1);
     this.scene.add(directionalLight);
 
-    this.createAssets(cameraFarPlane); // Pass far plane to asset creation
+    this.createAssets(cameraFarPlane);
     this.setupSceneLogics();
     this.startAnimationLoop();
 
@@ -143,11 +141,11 @@ export class GameManager implements IGameManager {
     ];
     const spaceStationPath = "assets/ships/spacestation.gltf";
 
-    this.assetsToLoad = shipFilePaths.length + 1 + 1; // +1 for space station, +1 for stars/hyperstars setup
+    this.assetsToLoad = shipFilePaths.length + 1; // Ships + Station
     this.assetsLoaded = 0;
     this.assets.titleShips = new Array(shipFilePaths.length).fill(null);
 
-    console.log(`Expecting ${this.assetsToLoad} total assets.`);
+    console.log(`Expecting ${this.assetsToLoad} assets (Ships, Station).`);
 
     const planetRadius = 500000; // 500 km radius (adjust as needed for visual size)
     const planetGeometry = new THREE.SphereGeometry(planetRadius, 128, 64); // Increased segments for smoother large sphere
@@ -155,72 +153,6 @@ export class GameManager implements IGameManager {
     this.assets.planet = new THREE.Mesh(planetGeometry, planetMaterial);
     this.assets.planet.visible = false;
     this.scene.add(this.assets.planet);
-
-    // --- Star Creation (Normal and Hyperspace) ---
-    const starVertices = [];
-    const starfieldRadius = cameraFarPlane * 0.95; // Place stars just inside the far plane
-    const numStars = 2000;
-    for (let i = 0; i < numStars; i++) {
-      const u = Math.random();
-      const v = Math.random();
-      const theta = 2 * Math.PI * u;
-      const phi = Math.acos(2 * v - 1);
-      const x = starfieldRadius * Math.sin(phi) * Math.cos(theta);
-      const y = starfieldRadius * Math.sin(phi) * Math.sin(theta);
-      const z = starfieldRadius * Math.cos(phi);
-      starVertices.push(x, y, z);
-    }
-
-    // Normal Point Stars
-    const starGeometry = new THREE.BufferGeometry();
-    starGeometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(starVertices, 3)
-    );
-    const starMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.5,
-      sizeAttenuation: false, // Stars maintain size regardless of distance
-    });
-    this.assets.stars = new THREE.Points(starGeometry, starMaterial);
-    this.assets.stars.visible = false;
-    this.assets.stars.renderOrder = -1;
-    this.scene.add(this.assets.stars);
-
-    // Hyperspace Line Stars
-    const hyperStarVertices = [];
-    const hyperLineLength = 100000000; // Length of the streaks
-    for (let i = 0; i < starVertices.length; i += 3) {
-      const x = starVertices[i];
-      const y = starVertices[i + 1];
-      const z = starVertices[i + 2];
-      const originVec = new THREE.Vector3(x, y, z);
-      const direction = originVec.clone().normalize(); // Unit vector from center to star
-
-      // Calculate the half-length offset vector *without* modifying the original direction
-      const offset = direction.clone().multiplyScalar(hyperLineLength / 2);
-
-      // Calculate start and end points relative to the original star position
-      const startPoint = originVec.clone().sub(offset);
-      const endPoint = originVec.clone().add(offset); // Use the *original* originVec
-      hyperStarVertices.push(startPoint.x, startPoint.y, startPoint.z);
-      hyperStarVertices.push(endPoint.x, endPoint.y, endPoint.z);
-    }
-    const hyperStarGeometry = new THREE.BufferGeometry();
-    hyperStarGeometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(hyperStarVertices, 3)
-    );
-    const hyperStarMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-    this.assets.hyperStars = new THREE.LineSegments(
-      hyperStarGeometry,
-      hyperStarMaterial
-    );
-    this.assets.hyperStars.visible = false; // Initially hidden
-    this.assets.hyperStars.renderOrder = -1; // Render behind other objects
-    this.scene.add(this.assets.hyperStars);
-    this.checkLoadingComplete(); // Count star generation as one loaded "asset" group
-    // --- End Star Creation ---
 
     // --- Undocking Squares ---
     const squareOutlineGeom = new THREE.BufferGeometry();
@@ -333,26 +265,6 @@ export class GameManager implements IGameManager {
       } else {
         console.warn("loadingCompleteCallback not set!");
       }
-    }
-  }
-
-  // Method to toggle between normal and hyperspace star visuals
-  toggleHyperSpaceVisuals(active: boolean): void {
-    if (this.assets.stars) {
-      this.assets.stars.visible = !active;
-    }
-    if (this.assets.hyperStars) {
-      this.assets.hyperStars.visible = active;
-      // Ensure hyper stars are positioned correctly when activated
-      if (
-        active &&
-        this.camera &&
-        this.assets.hyperStars.position !== this.camera.position
-      ) {
-        this.assets.hyperStars.position.copy(this.camera.position);
-      }
-    } else {
-      console.warn("HyperStars asset not available to toggle visibility.");
     }
   }
 
@@ -536,9 +448,7 @@ export class GameManager implements IGameManager {
     this.assets = {
       titleShips: [],
       planet: null,
-      stars: null,
       undockingSquares: [],
-      hyperStars: null,
       spaceStation: null,
     };
     this.sceneLogics = {};

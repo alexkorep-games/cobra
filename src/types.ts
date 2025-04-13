@@ -12,8 +12,6 @@ export type GameState =
 export interface GameAssets {
   titleShips: (THREE.Object3D | null)[];
   planet: THREE.Mesh | null;
-  stars: THREE.Points | null;
-  hyperStars: THREE.LineSegments | null; // Added for hyperspace effect
   undockingSquares: THREE.LineLoop[];
   spaceStation: THREE.Object3D | null; // Added space station
 }
@@ -32,7 +30,6 @@ export interface IGameManager {
   reactSetRoll: (roll: number) => void;
   reactSetPitch: (pitch: number) => void;
   reactSetStationDirection: (angle: number | null) => void; // Added for station direction
-  toggleHyperSpaceVisuals: (active: boolean) => void;
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   constants: {

@@ -55,14 +55,6 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       (this.game.assets.planet.material as THREE.Material).needsUpdate = true;
     }
 
-    if (this.game.assets.stars) {
-      this.game.assets.stars.visible = true;
-    }
-    // Ensure hyperspace stars are initially hidden
-    if (this.game.assets.hyperStars) {
-      this.game.assets.hyperStars.visible = false;
-    }
-
     if (this.game.assets.spaceStation && this.game.assets.planet) {
       // Position station relative to the planet
       const planetPos = this.game.assets.planet.position;
@@ -95,8 +87,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       this.game.camera.position.set(0, 0, 0);
     }
 
-    this.isHyperspaceActive = false;
-    this.game.toggleHyperSpaceVisuals(false);
+    this.isHyperspaceActive = false; // Start with hyperspace off
 
     window.addEventListener("keydown", this.boundHandleKeyDown);
     window.addEventListener("keyup", this.boundHandleKeyUp);
@@ -109,30 +100,17 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     window.removeEventListener("keyup", this.boundHandleKeyUp);
     this.keysPressed.clear();
     if (this.game.assets.planet) this.game.assets.planet.visible = false;
-    if (this.game.assets.stars) this.game.assets.stars.visible = false;
-    if (this.game.assets.hyperStars)
-      this.game.assets.hyperStars.visible = false; // Hide hyperspace stars on exit
     if (this.game.assets.spaceStation) {
       this.game.assets.spaceStation.visible = false;
     }
-    this.isHyperspaceActive = false; // Ensure reset on exit
+    this.isHyperspaceActive = false; // Reset hyperspace state on exit
   }
 
   update(deltaTime: number): void {
     if (!this.game.camera) return;
 
-    // Update starfield position to follow camera
-    // Needs to happen for both normal and hyper stars
-    if (this.game.assets.stars) {
-      this.game.assets.stars.position.copy(this.game.camera.position);
-    }
     if (this.game.assets.planet) {
       this.game.assets.planet.rotation.y += 0.005 * deltaTime;
-    }
-
-    // Update hyperspace star position as well
-    if (this.game.assets.hyperStars) {
-      this.game.assets.hyperStars.position.copy(this.game.camera.position);
     }
 
     // Rotate station slowly
@@ -256,7 +234,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       this.toggleHyperspace();
       return; // Don't add 'J' to the general keysPressed set
     }
-    if (event.key === ",") keyIdentifier = "Comma";
+    if (event.key === ",") keyIdentifier = "Comma"; // Roll Left (Alternative)
     if (event.code === "KeyA") keyIdentifier = "KeyA"; // Keep handling KeyA for acceleration
     this.keysPressed.add(keyIdentifier);
   }
@@ -266,15 +244,14 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     let keyIdentifier = event.code;
     if (event.key === "/") keyIdentifier = "Slash";
     if (event.key === ".") keyIdentifier = "Period";
-    if (event.key === ",") keyIdentifier = "Comma";
+    if (event.key === ",") keyIdentifier = "Comma"; // Roll Left (Alternative)
     if (event.code === "KeyA") keyIdentifier = "KeyA";
     this.keysPressed.delete(keyIdentifier);
   }
 
   private toggleHyperspace(): void {
     this.isHyperspaceActive = !this.isHyperspaceActive;
-    console.log(`Hyperspace Toggled: ${this.isHyperspaceActive}`);
-    this.game.toggleHyperSpaceVisuals(this.isHyperspaceActive);
+    console.log(`Hyperspace Toggled: ${this.isHyperspaceActive}`); // Log state change
     // Note: Speed limit change is handled in the update loop.
   }
 }
