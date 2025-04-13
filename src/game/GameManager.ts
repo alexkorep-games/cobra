@@ -1,8 +1,8 @@
 // src/game/GameManager.ts
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { GameState, IGameManager } from "../types"; // Import IGameManager if needed by SceneLogic constructor, otherwise just GameState
-import { SceneLogic } from "./SceneLogic"; // Import base class if needed
+import { GameState, IGameManager } from "../types";
+import { SceneLogic } from "./SceneLogic";
 
 // Import Scene Logics
 import { LoadingScene } from "../scenes/LoadingScene";
@@ -15,7 +15,7 @@ import { SpaceFlightScene } from "../scenes/SpaceFlightScene";
 // Import Constants
 import * as Constants from "../constants";
 
-// Asset Interface (Optional but good practice)
+// Asset Interface
 interface GameAssets {
   titleShips: (THREE.Object3D | null)[];
   planet: THREE.Mesh | null;
@@ -38,26 +38,26 @@ export class GameManager implements IGameManager {
   assetsLoaded: number = 0;
   loadingCompleteCallback: (() => void) | null = null;
   currentState: GameState = "loading";
-  sceneLogics: Partial<Record<GameState, SceneLogic>> = {}; // Use Partial as not all might be defined initially
+  sceneLogics: Partial<Record<GameState, SceneLogic>> = {};
   animationFrameId: number | null = null;
 
   // Refs from React
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   reactSetGameState: (state: GameState) => void;
-  reactSetCoordinates: (coords: [number, number, number]) => void; // Add callback for coordinates
-  reactSetSpeed: (speed: number) => void; // Callback for speed HUD
-  reactSetRoll: (roll: number) => void; // Callback for roll HUD (-1 to 1)
-  reactSetPitch: (pitch: number) => void; // Callback for pitch HUD (-1 to 1)
+  reactSetCoordinates: (coords: [number, number, number]) => void;
+  reactSetSpeed: (speed: number) => void;
+  reactSetRoll: (roll: number) => void;
+  reactSetPitch: (pitch: number) => void;
 
-  // Title Scene State (kept here as it uses game assets directly)
+  // Title Scene State
   currentShipIndex: number = 0;
   shipDisplayTimer: number = 0;
 
-  // Store constants for easy access by scenes via `this.game.constants`
+  // Constants
   constants = { ...Constants };
 
-  // --- Bound event handlers ---
+  // Bound event handlers
   boundHandleGlobalInput: (event: KeyboardEvent | MouseEvent) => void;
   boundOnWindowResize: () => void;
   boundAnimate: () => void;
@@ -66,20 +66,19 @@ export class GameManager implements IGameManager {
     reactSetGameState: (state: GameState) => void,
     introMusicRef: React.RefObject<HTMLAudioElement>,
     undockSoundRef: React.RefObject<HTMLAudioElement>,
-    reactSetCoordinates: (coords: [number, number, number]) => void, // Accept coordinate setter
-    reactSetSpeed: (speed: number) => void,           // Accept speed setter
-    reactSetRoll: (roll: number) => void,             // Accept roll setter
-    reactSetPitch: (pitch: number) => void            // Accept pitch setter
+    reactSetCoordinates: (coords: [number, number, number]) => void,
+    reactSetSpeed: (speed: number) => void,
+    reactSetRoll: (roll: number) => void,
+    reactSetPitch: (pitch: number) => void
   ) {
     this.reactSetGameState = reactSetGameState;
     this.introMusicRef = introMusicRef;
-    this.reactSetCoordinates = reactSetCoordinates; // Store coordinate setter
+    this.reactSetCoordinates = reactSetCoordinates;
     this.undockSoundRef = undockSoundRef;
-    this.reactSetSpeed = reactSetSpeed; // Store speed setter
-    this.reactSetRoll = reactSetRoll;   // Store roll setter
-    this.reactSetPitch = reactSetPitch; // Store pitch setter
-    
-    // Pre-bind methods to ensure `this` context is correct
+    this.reactSetSpeed = reactSetSpeed;
+    this.reactSetRoll = reactSetRoll;
+    this.reactSetPitch = reactSetPitch;
+
     this.boundHandleGlobalInput = this.handleGlobalInput.bind(this);
     this.boundOnWindowResize = this.onWindowResize.bind(this);
     this.boundAnimate = this.animate.bind(this);
@@ -88,40 +87,40 @@ export class GameManager implements IGameManager {
   init(canvas: HTMLCanvasElement, loadingCallback: () => void) {
     this.loadingCompleteCallback = loadingCallback;
     this.scene = new THREE.Scene();
+
+    const cameraFarPlane = 10000000; // 10 million units (meters / 10,000 km)
     this.camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
-      0.1,
-      4100 // Increased far plane
+      0.1, // Keep near plane small for close objects
+      cameraFarPlane
     );
     this.camera.position.z = 15;
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: canvas,
-      antialias: false, // Keep antialias setting
+      antialias: false,
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setClearColor(0x000000); // Black background
+    this.renderer.setClearColor(0x000000);
+    this.renderer.logarithmicDepthBuffer = true; // Crucial for large far plane values
 
     // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7); // Ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     this.scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5); // Directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
     directionalLight.position.set(1, 1, 1);
     this.scene.add(directionalLight);
 
-    this.createAssets(); // Load assets
-    this.setupSceneLogics(); // Instantiate scene logic classes
-    this.startAnimationLoop(); // Start rendering
+    this.createAssets(cameraFarPlane); // Pass far plane to asset creation
+    this.setupSceneLogics();
+    this.startAnimationLoop();
 
-    // Add event listeners using the pre-bound methods
     window.addEventListener("resize", this.boundOnWindowResize);
     window.addEventListener("keydown", this.boundHandleGlobalInput);
     window.addEventListener("mousedown", this.boundHandleGlobalInput);
 
     console.log("GameManager initialized and listeners added.");
-
-    // Enter the initial state
     this.sceneLogics[this.currentState]?.enter();
   }
 
@@ -134,40 +133,42 @@ export class GameManager implements IGameManager {
     this.sceneLogics.space_flight = new SpaceFlightScene(this);
   }
 
-  createAssets() {
-    if (!this.scene) return;
+  createAssets(cameraFarPlane: number) {
+    if (!this.scene || !this.camera) return;
     const loader = new GLTFLoader();
     const shipFilePaths = [
       "assets/ships/ship-cobra.gltf",
       "assets/ships/ship-pirate.gltf",
       "assets/ships/asteroid.gltf",
     ];
+    // Keep ship scale as needed based on model source size
     const shipScale = 6;
 
-    this.assetsToLoad = shipFilePaths.length; // Only count ships for the loader progress
+    this.assetsToLoad = shipFilePaths.length;
     this.assetsLoaded = 0;
     this.assets.titleShips = new Array(shipFilePaths.length).fill(null);
 
     console.log(`Expecting ${this.assetsToLoad} ship assets.`);
 
-    // Planet (simplified material)
-    const planetGeometry = new THREE.SphereGeometry(160, 16, 12); // Adjust segments if needed
-    const planetMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red basic material
+    const planetRadius = 500000; // 500 km radius (adjust as needed for visual size)
+    const planetGeometry = new THREE.SphereGeometry(planetRadius, 128, 64); // Increased segments for smoother large sphere
+    const planetMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     this.assets.planet = new THREE.Mesh(planetGeometry, planetMaterial);
     this.assets.planet.visible = false;
     this.scene.add(this.assets.planet);
 
-    // Starfield
     const starVertices = [];
-    for (let i = 0; i < 2000; i++) {
-      // Number of stars
-      const x = THREE.MathUtils.randFloatSpread(4000); // Spread range
-      const y = THREE.MathUtils.randFloatSpread(4000);
-      const z = THREE.MathUtils.randFloatSpread(4000);
-      // Ensure stars are not clumped too close to the center (optional)
-      if (Math.sqrt(x * x + y * y + z * z) > 100) {
-        starVertices.push(x, y, z);
-      }
+    const starfieldRadius = cameraFarPlane * 0.95; // Place stars just inside the far plane
+    const numStars = 2000;
+    for (let i = 0; i < numStars; i++) {
+      const u = Math.random();
+      const v = Math.random();
+      const theta = 2 * Math.PI * u;
+      const phi = Math.acos(2 * v - 1);
+      const x = starfieldRadius * Math.sin(phi) * Math.cos(theta);
+      const y = starfieldRadius * Math.sin(phi) * Math.sin(theta);
+      const z = starfieldRadius * Math.cos(phi);
+      starVertices.push(x, y, z);
     }
     const starGeometry = new THREE.BufferGeometry();
     starGeometry.setAttribute(
@@ -176,51 +177,34 @@ export class GameManager implements IGameManager {
     );
     const starMaterial = new THREE.PointsMaterial({
       color: 0xffffff,
-      size: 0.5, // Adjust size
+      size: 0.5,
       sizeAttenuation: false, // Stars maintain size regardless of distance
     });
     this.assets.stars = new THREE.Points(starGeometry, starMaterial);
-    this.assets.stars.visible = false; // Initially hidden
+    this.assets.stars.visible = false;
+    this.assets.stars.renderOrder = -1;
     this.scene.add(this.assets.stars);
 
-    // --- Undocking Squares (Outline only) --- START CHANGE ---
+    // --- Undocking Squares ---
     const squareOutlineGeom = new THREE.BufferGeometry();
     const vertices = new Float32Array([
-      -0.5,
-      -0.5,
-      0, // bottom left
-      0.5,
-      -0.5,
-      0, // bottom right
-      0.5,
-      0.5,
-      0, // top right
-      -0.5,
-      0.5,
-      0, // top left
-      // -0.5, -0.5, 0, // No need to repeat for LineLoop
+      -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0,
     ]);
     squareOutlineGeom.setAttribute(
       "position",
       new THREE.BufferAttribute(vertices, 3)
     );
-
-    const squareLineMat = new THREE.LineBasicMaterial({ color: 0x00ff00 }); // Green lines
-
-    // Ensure the array is cleared before pushing LineLoop objects
+    const squareLineMat = new THREE.LineBasicMaterial({ color: 0x00ff00 });
     this.assets.undockingSquares = [];
-
     for (let i = 0; i < 20; i++) {
-      // Number of squares
-      // Use LineLoop instead of Mesh
       const squareLine = new THREE.LineLoop(squareOutlineGeom, squareLineMat);
-      squareLine.scale.set((i + 1) * 2, (i + 1) * 2, 1); // Increasingly larger scale
-      squareLine.position.z = -i * 5; // Spaced out along Z
+      squareLine.scale.set((i + 1) * 2, (i + 1) * 2, 1);
+      squareLine.position.z = -i * 5;
       squareLine.visible = false;
       this.scene.add(squareLine);
-      this.assets.undockingSquares.push(squareLine); // Store the LineLoop object
+      this.assets.undockingSquares.push(squareLine);
     }
-    // --- Undocking Squares (Outline only) --- END CHANGE ---
+    // --- End Undocking Squares ---
 
     // Load Ships
     shipFilePaths.forEach((path, index) => {
@@ -230,34 +214,33 @@ export class GameManager implements IGameManager {
           console.log(`Successfully loaded ${path}`);
           const loadedShip = gltf.scene;
           loadedShip.scale.set(shipScale, shipScale, shipScale);
-          loadedShip.visible = false; // Initially hidden
+          loadedShip.visible = false;
 
-          // Apply wireframe material
           loadedShip.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
               const mesh = child as THREE.Mesh;
-              // Replace existing material or create new basic wireframe
               mesh.material = new THREE.MeshBasicMaterial({
-                color: 0xffff00, // Yellow wireframe
+                color: 0xffff00,
                 wireframe: true,
               });
+              // Ensure material compatibility with logarithmic depth buffer
+              mesh.material.needsUpdate = true;
             }
           });
 
           this.scene?.add(loadedShip);
           this.assets.titleShips[index] = loadedShip;
-          this.checkLoadingComplete(); // Check progress
+          this.checkLoadingComplete();
         },
-        undefined, // onProgress callback (optional)
+        undefined,
         (error) => {
           console.error(`Error loading ${path}:`, error);
-          this.assets.titleShips[index] = null; // Mark as failed/null
-          this.checkLoadingComplete(); // Still counts as processed
+          this.assets.titleShips[index] = null;
+          this.checkLoadingComplete();
         }
       );
     });
 
-    // If no ships to load, immediately mark as complete
     if (this.assetsToLoad === 0) {
       this.checkLoadingComplete();
     }
@@ -269,7 +252,7 @@ export class GameManager implements IGameManager {
     if (this.assetsLoaded >= this.assetsToLoad) {
       console.log("All assets processed. Informing React.");
       if (this.loadingCompleteCallback) {
-        this.loadingCompleteCallback(); // Call the callback passed from React
+        this.loadingCompleteCallback();
       } else {
         console.warn("loadingCompleteCallback not set!");
       }
@@ -278,24 +261,17 @@ export class GameManager implements IGameManager {
 
   animate() {
     if (!this.renderer || !this.scene || !this.camera) return;
-
     const deltaTime = this.clock.getDelta();
     const currentLogic = this.sceneLogics[this.currentState];
-
-    // Update current scene logic
     currentLogic?.update(deltaTime);
-
-    // Render the scene
     this.renderer.render(this.scene, this.camera);
-
-    // Request next frame
-    this.animationFrameId = requestAnimationFrame(this.boundAnimate); // Use bound version
+    this.animationFrameId = requestAnimationFrame(this.boundAnimate);
   }
 
   startAnimationLoop() {
     if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
-    this.clock.start(); // Ensure clock is started/reset
-    this.animationFrameId = requestAnimationFrame(this.boundAnimate); // Use bound version
+    this.clock.start();
+    this.animationFrameId = requestAnimationFrame(this.boundAnimate);
   }
 
   stopAnimationLoop() {
@@ -312,20 +288,13 @@ export class GameManager implements IGameManager {
       );
       return;
     }
-
     const oldState = this.currentState;
     const oldLogic = this.sceneLogics[oldState];
     const newLogic = this.sceneLogics[newState];
-
     console.log(`Switching state from ${oldState} to ${newState}`);
-
-    // Exit old state
     oldLogic?.exit(newState);
-
     this.currentState = newState;
-    this.reactSetGameState(newState); // Update React state
-
-    // Enter new state
+    this.reactSetGameState(newState);
     newLogic?.enter(oldState);
   }
 
@@ -338,20 +307,22 @@ export class GameManager implements IGameManager {
 
   handleGlobalInput(event: KeyboardEvent | MouseEvent) {
     const currentLogic = this.sceneLogics[this.currentState];
-    // Delegate input handling to the current scene's logic
     currentLogic?.handleInput(event);
   }
 
-  // --- Title Scene Animation Helpers (kept in GameManager as they modify game assets/state) ---
+  // --- Title Scene Animation Helpers ---
+  // No changes needed here unless TARGET_POS or START_Z constants are changed
   prepareShip(index: number) {
     const ship = this.assets.titleShips[index];
     if (ship) {
+      // Keep existing logic assuming constants are okay for now
+      const startZ = this.constants.START_Z * (shipScale > 1 ? 2 : 1);
       ship.position.set(
         this.constants.TARGET_POS.x,
         this.constants.TARGET_POS.y,
-        this.constants.START_Z
+        startZ
       );
-      ship.rotation.set(0, Math.PI, 0); // Pointing towards camera initially
+      ship.rotation.set(0, Math.PI, 0);
       ship.visible = true;
     } else {
       console.warn(`Attempted to prepare missing ship at index ${index}`);
@@ -359,10 +330,7 @@ export class GameManager implements IGameManager {
   }
 
   updateTitleShipAnimation(deltaTime: number) {
-    // This logic remains complex and tied to game state/assets, so kept here.
-    // Could be further encapsulated if needed.
-    if (this.assets.titleShips.length === 0) return; // No ships loaded
-
+    if (this.assets.titleShips.length === 0) return;
     this.shipDisplayTimer += deltaTime;
     const currentShip = this.assets.titleShips[this.currentShipIndex];
 
@@ -370,86 +338,62 @@ export class GameManager implements IGameManager {
       console.warn(
         `Ship at index ${this.currentShipIndex} is missing during animation. Skipping.`
       );
-      // Force cycle to next available ship if current one is null
       this.shipDisplayTimer = this.constants.TOTAL_CYCLE_DURATION;
     } else {
       const timer = this.shipDisplayTimer;
+      const startZ = this.constants.START_Z * (shipScale > 1 ? 2 : 1);
+      const targetZ = this.constants.TARGET_POS.z;
 
       if (timer < this.constants.FLY_IN_DURATION) {
-        // Fly In
-        const t = Math.min(1, timer / this.constants.FLY_IN_DURATION); // Clamp t to 0-1
-        // Interpolate Z position using lerp
-        currentShip.position.z = THREE.MathUtils.lerp(
-          this.constants.START_Z,
-          this.constants.TARGET_POS.z,
-          t
-        );
-        currentShip.rotation.y += 0.1 * deltaTime; // Gentle yaw
+        const t = Math.min(1, timer / this.constants.FLY_IN_DURATION);
+        currentShip.position.z = THREE.MathUtils.lerp(startZ, targetZ, t);
+        currentShip.rotation.y += 0.1 * deltaTime;
       } else if (
         timer <
         this.constants.FLY_IN_DURATION + this.constants.HOLD_DURATION
       ) {
-        // Hold and Rotate
-        currentShip.position.z = this.constants.TARGET_POS.z; // Ensure it's exactly at target Z
-        currentShip.rotation.y += 0.5 * deltaTime; // Faster yaw
-        currentShip.rotation.x += 0.25 * deltaTime; // Gentle pitch/roll
+        currentShip.position.z = targetZ;
+        currentShip.rotation.y += 0.5 * deltaTime;
+        currentShip.rotation.x += 0.25 * deltaTime;
       } else if (timer < this.constants.TOTAL_CYCLE_DURATION) {
-        // Fly Out
         const flyOutTimer =
           timer -
           (this.constants.FLY_IN_DURATION + this.constants.HOLD_DURATION);
-        const t = Math.min(1, flyOutTimer / this.constants.FLY_OUT_DURATION); // Clamp t to 0-1
-        // Interpolate Z position using lerp
-        currentShip.position.z = THREE.MathUtils.lerp(
-          this.constants.TARGET_POS.z,
-          this.constants.START_Z,
-          t
-        );
-        currentShip.rotation.y += 0.1 * deltaTime; // Gentle yaw
+        const t = Math.min(1, flyOutTimer / this.constants.FLY_OUT_DURATION);
+        currentShip.position.z = THREE.MathUtils.lerp(targetZ, startZ, t);
+        currentShip.rotation.y += 0.1 * deltaTime;
       } else {
-        // Ensure ship is fully out before hiding (timer might slightly exceed TOTAL_CYCLE_DURATION)
-        currentShip.position.z = this.constants.START_Z;
+        currentShip.position.z = startZ;
       }
     }
 
-    // Check if cycle is complete
     if (this.shipDisplayTimer >= this.constants.TOTAL_CYCLE_DURATION) {
-      if (currentShip) currentShip.visible = false; // Hide the completed ship
-
-      // Find the next *valid* (non-null) ship index
+      if (currentShip) currentShip.visible = false;
       const validShipIndices = this.assets.titleShips
         .map((_, i) => i)
         .filter((i) => this.assets.titleShips[i] !== null);
-
       if (validShipIndices.length > 0) {
         const currentValidIndex = validShipIndices.indexOf(
           this.currentShipIndex
         );
-        // Calculate next index within the valid indices array
         const nextValidIndex =
           (currentValidIndex + 1) % validShipIndices.length;
-        this.currentShipIndex = validShipIndices[nextValidIndex]; // Get the actual ship index
-        this.prepareShip(this.currentShipIndex); // Prepare the next valid ship
+        this.currentShipIndex = validShipIndices[nextValidIndex];
+        this.prepareShip(this.currentShipIndex);
       } else {
         console.warn("No valid title ships available to display.");
-        // Reset timer anyway to prevent infinite loop if called again
       }
-
-      this.shipDisplayTimer = 0; // Reset timer for the next cycle
+      this.shipDisplayTimer = 0;
     }
   }
 
   dispose() {
     console.log("Disposing GameManager...");
     this.stopAnimationLoop();
-
-    // Remove event listeners using the stored bound references
     window.removeEventListener("resize", this.boundOnWindowResize);
     window.removeEventListener("keydown", this.boundHandleGlobalInput);
     window.removeEventListener("mousedown", this.boundHandleGlobalInput);
     console.log("Event listeners removed.");
-
-    // Dispose Three.js resources
     this.renderer?.dispose();
     this.scene?.traverse((object) => {
       if (
@@ -457,18 +401,13 @@ export class GameManager implements IGameManager {
         object instanceof THREE.Points ||
         object instanceof THREE.Line
       ) {
-        // Include Line
         object.geometry?.dispose();
-        if (Array.isArray(object.material)) {
-          object.material.forEach((material) => material.dispose());
-        } else if (object.material) {
-          object.material.dispose();
-        }
+        const materials = Array.isArray(object.material)
+          ? object.material
+          : [object.material];
+        materials.forEach((material) => material?.dispose());
       }
-      // Also dispose textures if any were loaded directly
     });
-
-    // Clear references
     this.scene = null;
     this.camera = null;
     this.renderer = null;
@@ -480,8 +419,6 @@ export class GameManager implements IGameManager {
     };
     this.sceneLogics = {};
     this.loadingCompleteCallback = null;
-    // No need to explicitly nullify bound methods unless strictly necessary for GC
-
     console.log("GameManager disposed.");
   }
 }
