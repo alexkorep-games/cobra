@@ -4,13 +4,13 @@ import { GameState } from "../types";
 import { GameManager } from "../game/GameManager";
 
 // Import Scene Components
-import LoadingScreen from "./scenes/LoadingScreen";
-import TitleScreen from "./scenes/TitleScreen";
-import CreditsScreen from "./scenes/CreditsScreen";
-import StatsScreen from "./scenes/StatsScreen";
-import UndockingScreen from "./scenes/UndockingScreen";
+import LoadingScreen from "../features/loading/LoadingScreen";
+import TitleScreen from "../features/title/TitleScreen";
+import CreditsScreen from "../features/credits/CreditsScreen";
+import StatsScreen from "../features/stats/StatsScreen";
+import UndockingScreen from "../features/undocking/UndockingScreen";
 import CoordinatesDisplay from "./hud/CoordinatesDisplay";
-import SpaceFlightScreen from "./scenes/SpaceFlightScreen";
+import SpaceFlightScreen from "../features/space_flight/SpaceFlightScreen";
 
 const App: React.FC = () => {
   // --- State ---

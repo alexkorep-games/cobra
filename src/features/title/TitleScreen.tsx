@@ -1,6 +1,6 @@
 import React from 'react';
 import BottomHud from '../../components/hud/BottomHud';
-import '../../App.css';
+import '../../components/App.css';
 
 const TitleScreen: React.FC = () => {
   return (

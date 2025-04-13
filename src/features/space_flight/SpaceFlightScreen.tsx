@@ -1,6 +1,5 @@
 import React from 'react';
 import BottomHud from '../../components/hud/BottomHud';
-import '../../App.css';
 
 interface SpaceFlightScreenProps {
   speed: number;
