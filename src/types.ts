@@ -8,10 +8,19 @@ export type GameState =
   | "undocking"
   | "space_flight";
 
+// Interface for game assets
+export interface GameAssets {
+  titleShips: (THREE.Object3D | null)[];
+  planet: THREE.Mesh | null;
+  stars: THREE.Points | null;
+  undockingSquares: THREE.LineLoop[];
+  spaceStation: THREE.Object3D | null; // Added space station
+}
+
 // Forward declaration or interface for GameManager to avoid circular dependencies if needed
 // If SceneLogic needs detailed access, define an interface here.
 export interface IGameManager {
-  assets: any; // Replace 'any' with a more specific type if possible
+  assets: GameAssets;
   currentState: GameState;
   scene: THREE.Scene | null;
   camera: THREE.PerspectiveCamera | null;
@@ -21,6 +30,7 @@ export interface IGameManager {
   reactSetSpeed: (speed: number) => void;
   reactSetRoll: (roll: number) => void;
   reactSetPitch: (pitch: number) => void;
+  reactSetStationDirection: (angle: number | null) => void; // Added for station direction
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   constants: {
@@ -39,6 +49,6 @@ export interface IGameManager {
   // Add other methods/properties SceneLogic needs access to
   currentShipIndex: number;
   shipDisplayTimer: number;
-  prepareShip(index: number): void;
+  prepareNextTitleShip(): void;
   updateTitleShipAnimation(deltaTime: number): void;
 }

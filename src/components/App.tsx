@@ -16,10 +16,13 @@ const App: React.FC = () => {
   // --- State ---
   const [gameState, setGameState] = useState<GameState>("loading");
   const [isLoadingComplete, setIsLoadingComplete] = useState(false);
-  const [coordinates, setCoordinates] = useState<[number, number, number]>([0, 0, 0]);
+  const [coordinates, setCoordinates] = useState<[number, number, number]>([
+    0, 0, 0,
+  ]);
   const [speed, setSpeed] = useState<number>(0); // 0-100%
   const [roll, setRoll] = useState<number>(0); // -1 to 1
   const [pitch, setPitch] = useState<number>(0); // -1 to 1 (Dive/Climb)
+  const [stationDirection, setStationDirection] = useState<number | null>(null); // Angle in radians, null if no station target
 
   // --- Refs ---
   const mountRef = useRef<HTMLDivElement>(null);
@@ -48,7 +51,8 @@ const App: React.FC = () => {
       setCoordinates,
       setSpeed,
       setRoll,
-      setPitch
+      setPitch,
+      setStationDirection // Pass the new setter
     );
 
     const handleLoadingComplete = () => {
@@ -88,7 +92,15 @@ const App: React.FC = () => {
       case "undocking":
         return <UndockingScreen />;
       case "space_flight":
-        return <SpaceFlightScreen speed={speed} roll={roll} pitch={pitch} />; // Pass HUD state
+        return (
+          <SpaceFlightScreen
+            speed={speed}
+            roll={roll}
+            pitch={pitch}
+            stationDirection={stationDirection} // Pass station direction
+          />
+        );
+
       default:
         return null; // Or a default component/error message
     }

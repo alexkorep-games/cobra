@@ -17,26 +17,67 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.boundHandleKeyUp = this.handleKeyUp.bind(this);
   }
 
+  // Positioning logic used by both planet and station
+  private positionObjectRandomly(
+    object: THREE.Object3D,
+    baseDistance: number,
+    offsetRange: THREE.Vector2 = new THREE.Vector2(0.8, 1.2)
+  ) {
+    const distance =
+      baseDistance *
+      THREE.MathUtils.lerp(offsetRange.x, offsetRange.y, Math.random());
+    const angle = Math.random() * Math.PI * 2;
+    const elevationAngle = (Math.random() - 0.5) * Math.PI * 0.5; // Limit elevation slightly
+    const radius = distance * Math.cos(elevationAngle);
+    const x = distance * Math.sin(angle) * Math.cos(elevationAngle);
+    const y = distance * Math.sin(elevationAngle);
+    const z = -distance * Math.cos(angle) * Math.cos(elevationAngle);
+
+    object.position.set(x, y, z);
+    object.visible = true;
+    console.log(
+      `${object.name || "Object"} positioned at distance: ${distance.toFixed(
+        0
+      )}`
+    );
+  }
+
   enter(previousState?: GameState): void {
     super.enter(previousState);
 
     if (this.game.assets.planet && this.game.camera) {
-      const distance = this.game.camera.far * 0.8;
-      const angle = Math.random() * Math.PI * 2;
-      const elevationAngle = (Math.random() - 0.5) * Math.PI * 0.2;
-      const x = distance * Math.sin(angle) * Math.cos(elevationAngle);
-      const y = distance * Math.sin(elevationAngle);
-      const z = -distance * Math.cos(angle) * Math.cos(elevationAngle);
-
-      this.game.assets.planet.position.set(x, y, z);
-      this.game.assets.planet.scale.set(1, 1, 1);
-      this.game.assets.planet.visible = true;
+      // Position planet far away
+      this.positionObjectRandomly(
+        this.game.assets.planet,
+        this.game.camera.far * 0.8
+      );
       (this.game.assets.planet.material as THREE.Material).needsUpdate = true;
-      console.log(`Planet positioned at distance: ${distance.toFixed(0)}`);
     }
 
     if (this.game.assets.stars) {
       this.game.assets.stars.visible = true;
+    }
+
+    if (this.game.assets.spaceStation && this.game.assets.planet) {
+      // Position station relative to the planet
+      const planetPos = this.game.assets.planet.position;
+      const offsetDist = THREE.MathUtils.randFloat(
+        Constants.STATION_PLANET_OFFSET_MIN,
+        Constants.STATION_PLANET_OFFSET_MAX
+      );
+      const randomOffset = new THREE.Vector3()
+        .randomDirection()
+        .multiplyScalar(offsetDist);
+      this.game.assets.spaceStation.position.copy(planetPos).add(randomOffset);
+      this.game.assets.spaceStation.visible = true;
+      this.game.assets.spaceStation.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      ); // Random orientation
+      console.log(
+        `Station positioned near planet at offset: ${offsetDist.toFixed(0)}`
+      );
     }
     console.log("Entered Space Flight Scene. Intro sequence complete.");
 
@@ -61,6 +102,8 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.keysPressed.clear();
     if (this.game.assets.planet) this.game.assets.planet.visible = false;
     if (this.game.assets.stars) this.game.assets.stars.visible = false;
+    if (this.game.assets.spaceStation)
+      this.game.assets.spaceStation.visible = false;
   }
 
   update(deltaTime: number): void {
@@ -71,6 +114,14 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     }
     if (this.game.assets.planet) {
       this.game.assets.planet.rotation.y += 0.005 * deltaTime;
+    }
+
+    // Rotate station slowly
+    if (
+      this.game.assets.spaceStation &&
+      this.game.assets.spaceStation.visible
+    ) {
+      this.game.assets.spaceStation.rotation.y += 0.02 * deltaTime;
     }
 
     let accelerate = false,
@@ -139,6 +190,31 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.game.reactSetSpeed(normalizedSpeed);
     this.game.reactSetRoll(normalizedRoll);
     this.game.reactSetPitch(normalizedPitch);
+
+    // --- Station Proximity Check & Direction ---
+    if (
+      this.game.assets.spaceStation &&
+      this.game.assets.spaceStation.visible &&
+      this.game.camera
+    ) {
+      const playerPos = this.game.camera.position;
+      const stationPos = this.game.assets.spaceStation.position;
+      const distanceToStation = playerPos.distanceTo(stationPos);
+
+      if (distanceToStation < Constants.STATION_DOCKING_RADIUS) {
+        console.log("Reached space station!");
+        this.game.switchState("title"); // Go back to title screen
+      } else {
+        // Calculate direction for HUD
+        const worldDir = new THREE.Vector3().subVectors(stationPos, playerPos);
+        // Project direction onto camera's local XY plane
+        const cameraInverse = this.game.camera.quaternion.clone().invert();
+        const relativeDir = worldDir.applyQuaternion(cameraInverse).normalize();
+        // atan2(y, x) gives angle from positive X axis
+        const angle = Math.atan2(relativeDir.y, relativeDir.x);
+        this.game.reactSetStationDirection(angle);
+      }
+    }
   }
 
   private handleKeyDown(event: KeyboardEvent): void {

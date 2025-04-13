@@ -17,6 +17,7 @@ export class UndockingSceneLogic extends SceneLogicBase {
       }
     );
 
+    // Ensure sound plays from the beginning if re-entering state quickly
     this.game.undockSoundRef.current
       ?.play()
       .catch((e) => console.warn("Undock sound play failed:", e));
@@ -27,7 +28,7 @@ export class UndockingSceneLogic extends SceneLogicBase {
       if (this.game.currentState === "undocking") {
         this.game.switchState("space_flight");
       }
-    }, 3500);
+    }, 4000); // Slightly longer duration maybe?
   }
 
   exit(nextState?: GameState): void {

@@ -2,26 +2,32 @@ import { SceneLogicBase } from "../common/SceneLogicBase";
 import { GameState, IGameManager } from "../../types";
 
 export class CreditsSceneLogic extends SceneLogicBase {
-    constructor(game: IGameManager) {
-        super(game);
+  constructor(game: IGameManager) {
+    super(game);
+  }
+
+  enter(previousState?: GameState): void {
+    super.enter(previousState);
+    if (this.game.assets.stars) this.game.assets.stars.visible = true;
+
+    if (this.timeoutId) clearTimeout(this.timeoutId);
+
+    this.timeoutId = setTimeout(() => {
+      if (this.game.currentState === "credits") {
+        this.game.switchState("stats");
+      }
+    }, 3000);
+  }
+
+  update(deltaTime: number): void {
+    if (this.game.assets.stars) {
+      this.game.assets.stars.rotation.y += 0.01 * deltaTime;
     }
+  }
 
-    enter(previousState?: GameState): void {
-        super.enter(previousState);
-        if (this.game.assets.stars) this.game.assets.stars.visible = true;
-
-        if (this.timeoutId) clearTimeout(this.timeoutId);
-
-        this.timeoutId = setTimeout(() => {
-            if (this.game.currentState === "credits") {
-                this.game.switchState("stats");
-            }
-        }, 3000);
+  handleInput(event: KeyboardEvent | MouseEvent): void {
+    if (event.type === "keydown" || event.type === "mousedown") {
+      if (this.game.currentState === "credits") this.game.switchState("stats");
     }
-
-    update(deltaTime: number): void {
-        if (this.game.assets.stars) {
-            this.game.assets.stars.rotation.y += 0.01 * deltaTime;
-        }
-    }
+  }
 }

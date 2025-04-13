@@ -170,6 +170,28 @@ canvas {
 .hud-bar-fill.red {
   background-color: #ff0000;
 }
+/* Styles for the direction indicator circle */
+.direction-indicator-container {
+  border: 1px solid #ffff00;
+  border-radius: 50%;
+  width: 18px; /* Slightly larger to contain dot */
+  height: 18px;
+  display: inline-block;
+  margin-left: 10px;
+  position: relative; /* For positioning the dot */
+  vertical-align: middle; /* Align with the 1 2 3 boxes */
+}
+
+.direction-indicator-dot {
+  width: 4px;
+  height: 4px;
+  background-color: #00ff00; /* Green dot */
+  border-radius: 50%;
+  position: absolute;
+  /* Position will be set by inline style based on angle */
+  transform: translate(-50%, -50%); /* Center the dot on its coordinate */
+}
+
 .hud-value {
   color: #00ff00;
 }

@@ -6,7 +6,10 @@ export const SHIP_DISPLAY_DURATION = 10.0; // Seconds
 // Constants previously within gameLogic for Title scene animation
 export const FLY_IN_DURATION = 0.5;
 export const FLY_OUT_DURATION = 0.5;
-export const HOLD_DURATION = Math.max(0, SHIP_DISPLAY_DURATION - FLY_IN_DURATION - FLY_OUT_DURATION);
+export const HOLD_DURATION = Math.max(
+  0,
+  SHIP_DISPLAY_DURATION - FLY_IN_DURATION - FLY_OUT_DURATION
+);
 export const TOTAL_CYCLE_DURATION = SHIP_DISPLAY_DURATION;
 export const START_Z = -150;
 export const TARGET_POS = new THREE.Vector3(-3, 0, 0);
@@ -22,3 +25,8 @@ export const ANGULAR_DAMPING = 3.0; // Factor to reduce rotation speed when no i
 export const LINEAR_DAMPING = 0.5; // Factor to reduce speed when no acceleration key
 export const MAX_VISUAL_ROLL_RATE = Math.PI * 0.5; // Radians/sec (Used for HUD Normalization)
 export const MAX_VISUAL_PITCH_RATE = Math.PI * 0.3; // Radians/sec (Used for HUD Normalization)
+
+// Space Station Constants
+export const STATION_PLANET_OFFSET_MIN = 1000; // Min distance from planet surface/center
+export const STATION_PLANET_OFFSET_MAX = 5000; // Max distance from planet surface/center
+export const STATION_DOCKING_RADIUS = 150; // Distance to trigger docking/return to title

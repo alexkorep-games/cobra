@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import '../../components/App.css';
+import React, { useState, useEffect } from "react";
+import "../../components/App.css";
 
 interface LoadingScreenProps {
   isLoadingComplete: boolean;
@@ -13,7 +13,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ isLoadingComplete }) => {
 
     if (isLoadingComplete) {
       const timer = setTimeout(() => {
-        setShowContinuePrompt(true);
+        setShowContinuePrompt(true); // Show prompt slightly after load complete
       }, 100);
       return () => clearTimeout(timer);
     }
@@ -21,7 +21,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ isLoadingComplete }) => {
 
   return (
     <>
-      <div className="top-bar" style={{ visibility: 'hidden' }}></div>
+      <div className="top-bar" style={{ visibility: "hidden" }}></div>
 
       <div id="loader-screen" className="center-text">
         {!showContinuePrompt && <p id="loader-progress-text">LOADING...</p>}
@@ -33,7 +33,7 @@ const LoadingScreen: React.FC<LoadingScreenProps> = ({ isLoadingComplete }) => {
         )}
       </div>
 
-      <div className="bottom-bar" style={{ visibility: 'hidden' }}></div>
+      <div className="bottom-bar" style={{ visibility: "hidden" }}></div>
     </>
   );
 };
