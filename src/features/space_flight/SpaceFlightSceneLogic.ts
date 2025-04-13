@@ -10,6 +10,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
   private keysPressed: Set<string> = new Set();
   private boundHandleKeyDown: (event: KeyboardEvent) => void;
   private boundHandleKeyUp: (event: KeyboardEvent) => void;
+  private isHyperspaceActive: boolean = false;
 
   constructor(game: IGameManager) {
     super(game);
@@ -57,6 +58,10 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     if (this.game.assets.stars) {
       this.game.assets.stars.visible = true;
     }
+    // Ensure hyperspace stars are initially hidden
+    if (this.game.assets.hyperStars) {
+      this.game.assets.hyperStars.visible = false;
+    }
 
     if (this.game.assets.spaceStation && this.game.assets.planet) {
       // Position station relative to the planet
@@ -90,6 +95,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       this.game.camera.position.set(0, 0, 0);
     }
 
+    this.isHyperspaceActive = false;
+    this.game.toggleHyperSpaceVisuals(false);
+
     window.addEventListener("keydown", this.boundHandleKeyDown);
     window.addEventListener("keyup", this.boundHandleKeyUp);
   }
@@ -102,18 +110,28 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.keysPressed.clear();
     if (this.game.assets.planet) this.game.assets.planet.visible = false;
     if (this.game.assets.stars) this.game.assets.stars.visible = false;
-    if (this.game.assets.spaceStation)
+    if (this.game.assets.hyperStars) this.game.assets.hyperStars.visible = false; // Hide hyperspace stars on exit
+    if (this.game.assets.spaceStation) {
       this.game.assets.spaceStation.visible = false;
+    }
+    this.isHyperspaceActive = false; // Ensure reset on exit
   }
 
   update(deltaTime: number): void {
     if (!this.game.camera) return;
 
+    // Update starfield position to follow camera
+    // Needs to happen for both normal and hyper stars
     if (this.game.assets.stars) {
       this.game.assets.stars.position.copy(this.game.camera.position);
     }
     if (this.game.assets.planet) {
       this.game.assets.planet.rotation.y += 0.005 * deltaTime;
+    }
+
+    // Update hyperspace star position as well
+    if (this.game.assets.hyperStars) {
+      this.game.assets.hyperStars.position.copy(this.game.camera.position);
     }
 
     // Rotate station slowly
@@ -130,23 +148,29 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       rollRight = false,
       pitchUp = false,
       pitchDown = false;
+
+    // Read movement keys (Hyperspace doesn't change controls, just speed limit)
     if (this.keysPressed.has("KeyA")) accelerate = true;
     if (this.keysPressed.has("KeyZ")) decelerate = true;
     if (this.keysPressed.has("ArrowLeft")) rollLeft = true;
     if (this.keysPressed.has("ArrowRight")) rollRight = true;
     if (this.keysPressed.has("ArrowUp")) pitchDown = true;
     if (this.keysPressed.has("ArrowDown")) pitchUp = true;
-
     if (accelerate) this.velocity += Constants.ACCELERATION * deltaTime;
     else if (decelerate) this.velocity -= Constants.ACCELERATION * deltaTime;
     else {
       this.velocity *= 1 - Constants.LINEAR_DAMPING * deltaTime;
       if (Math.abs(this.velocity) < 0.01) this.velocity = 0;
     }
+
+    // Clamp speed based on whether hyperspace is active
+    const currentMaxSpeed = this.isHyperspaceActive
+      ? Constants.HYPERSPACE_SPEED
+      : Constants.MAX_SPEED;
     this.velocity = THREE.MathUtils.clamp(
       this.velocity,
       Constants.MIN_SPEED,
-      Constants.MAX_SPEED
+      currentMaxSpeed
     );
 
     if (rollLeft) this.rollRate += Constants.ROLL_ACCELERATION * deltaTime;
@@ -176,7 +200,12 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
     const { x, y, z } = this.game.camera.position;
     this.game.reactSetCoordinates([x, y, z]);
-    const normalizedSpeed = (this.velocity / Constants.MAX_SPEED) * 100;
+
+    // Normalize speed for HUD based on *normal* max speed, even in hyperspace
+    // The HUD bar will just stay full during hyperspace.
+    const normalizedSpeed = THREE.MathUtils.clamp(
+      (this.velocity / Constants.MAX_SPEED) * 100, 0, 100
+    );
     const normalizedRoll = THREE.MathUtils.clamp(
       this.rollRate / Constants.MAX_VISUAL_ROLL_RATE,
       -1,
@@ -221,17 +250,31 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     let keyIdentifier = event.code;
     if (event.key === "/") keyIdentifier = "Slash";
     if (event.key === ".") keyIdentifier = "Period";
+    // Handle J key specifically for hyperspace toggle
+    if (keyIdentifier === "KeyJ") {
+      this.toggleHyperspace();
+      return; // Don't add 'J' to the general keysPressed set
+    }
     if (event.key === ",") keyIdentifier = "Comma";
-    if (event.code === "KeyA") keyIdentifier = "KeyA";
+    if (event.code === "KeyA") keyIdentifier = "KeyA"; // Keep handling KeyA for acceleration
     this.keysPressed.add(keyIdentifier);
   }
 
+
   private handleKeyUp(event: KeyboardEvent): void {
+    // No special handling needed for 'J' on key up
     let keyIdentifier = event.code;
     if (event.key === "/") keyIdentifier = "Slash";
     if (event.key === ".") keyIdentifier = "Period";
     if (event.key === ",") keyIdentifier = "Comma";
     if (event.code === "KeyA") keyIdentifier = "KeyA";
     this.keysPressed.delete(keyIdentifier);
+  }
+
+  private toggleHyperspace(): void {
+    this.isHyperspaceActive = !this.isHyperspaceActive;
+    console.log(`Hyperspace Toggled: ${this.isHyperspaceActive}`);
+    this.game.toggleHyperSpaceVisuals(this.isHyperspaceActive);
+    // Note: Speed limit change is handled in the update loop.
   }
 }

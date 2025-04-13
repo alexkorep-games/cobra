@@ -28,6 +28,7 @@ export class GameManager implements IGameManager {
     planet: null,
     stars: null,
     undockingSquares: [],
+    hyperStars: null, // Add hyperspace stars
     spaceStation: null,
   };
   assetsToLoad: number = 0;
@@ -142,7 +143,7 @@ export class GameManager implements IGameManager {
     ];
     const spaceStationPath = "assets/ships/spacestation.gltf";
 
-    this.assetsToLoad = shipFilePaths.length + 1; // +1 for the space station
+    this.assetsToLoad = shipFilePaths.length + 1 + 1; // +1 for space station, +1 for stars/hyperstars setup
     this.assetsLoaded = 0;
     this.assets.titleShips = new Array(shipFilePaths.length).fill(null);
 
@@ -155,6 +156,7 @@ export class GameManager implements IGameManager {
     this.assets.planet.visible = false;
     this.scene.add(this.assets.planet);
 
+    // --- Star Creation (Normal and Hyperspace) ---
     const starVertices = [];
     const starfieldRadius = cameraFarPlane * 0.95; // Place stars just inside the far plane
     const numStars = 2000;
@@ -168,6 +170,8 @@ export class GameManager implements IGameManager {
       const z = starfieldRadius * Math.cos(phi);
       starVertices.push(x, y, z);
     }
+
+    // Normal Point Stars
     const starGeometry = new THREE.BufferGeometry();
     starGeometry.setAttribute(
       "position",
@@ -182,6 +186,33 @@ export class GameManager implements IGameManager {
     this.assets.stars.visible = false;
     this.assets.stars.renderOrder = -1;
     this.scene.add(this.assets.stars);
+
+    // Hyperspace Line Stars
+    const hyperStarVertices = [];
+    const hyperLineLength = 100; // Length of the streaks
+    for (let i = 0; i < starVertices.length; i += 3) {
+      const x = starVertices[i];
+      const y = starVertices[i + 1];
+      const z = starVertices[i + 2];
+      const originVec = new THREE.Vector3(x, y, z);
+      const direction = originVec.clone().normalize();
+      const startPoint = originVec.clone().sub(direction.multiplyScalar(hyperLineLength / 2));
+      const endPoint = originVec.clone().add(direction.multiplyScalar(hyperLineLength)); // originVec already had half length added back
+      hyperStarVertices.push(startPoint.x, startPoint.y, startPoint.z);
+      hyperStarVertices.push(endPoint.x, endPoint.y, endPoint.z);
+    }
+    const hyperStarGeometry = new THREE.BufferGeometry();
+    hyperStarGeometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(hyperStarVertices, 3)
+    );
+    const hyperStarMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+    this.assets.hyperStars = new THREE.LineSegments(hyperStarGeometry, hyperStarMaterial);
+    this.assets.hyperStars.visible = false; // Initially hidden
+    this.assets.hyperStars.renderOrder = -1; // Render behind other objects
+    this.scene.add(this.assets.hyperStars);
+    this.checkLoadingComplete(); // Count star generation as one loaded "asset" group
+    // --- End Star Creation ---
 
     // --- Undocking Squares ---
     const squareOutlineGeom = new THREE.BufferGeometry();
@@ -294,6 +325,22 @@ export class GameManager implements IGameManager {
       } else {
         console.warn("loadingCompleteCallback not set!");
       }
+    }
+  }
+
+  // Method to toggle between normal and hyperspace star visuals
+  toggleHyperSpaceVisuals(active: boolean): void {
+    if (this.assets.stars) {
+      this.assets.stars.visible = !active;
+    }
+    if (this.assets.hyperStars) {
+      this.assets.hyperStars.visible = active;
+      // Ensure hyper stars are positioned correctly when activated
+      if (active && this.camera && this.assets.hyperStars.position !== this.camera.position) {
+          this.assets.hyperStars.position.copy(this.camera.position);
+      }
+    } else {
+        console.warn("HyperStars asset not available to toggle visibility.");
     }
   }
 
@@ -479,6 +526,7 @@ export class GameManager implements IGameManager {
       planet: null,
       stars: null,
       undockingSquares: [],
+      hyperStars: null,
       spaceStation: null,
     };
     this.sceneLogics = {};

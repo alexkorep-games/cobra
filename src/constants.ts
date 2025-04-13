@@ -14,7 +14,7 @@ export const TOTAL_CYCLE_DURATION = SHIP_DISPLAY_DURATION;
 export const START_Z = -150;
 export const TARGET_POS = new THREE.Vector3(-3, 0, 0);
 
-// Space Flight Constants
+export const HYPERSPACE_SPEED = 500000.0;
 export const MAX_SPEED = 50.0;
 export const MIN_SPEED = 0.0;
 export const ACCELERATION = 15.0; // Units per second^2
