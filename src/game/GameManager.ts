@@ -189,15 +189,20 @@ export class GameManager implements IGameManager {
 
     // Hyperspace Line Stars
     const hyperStarVertices = [];
-    const hyperLineLength = 100; // Length of the streaks
+    const hyperLineLength = 100000000; // Length of the streaks
     for (let i = 0; i < starVertices.length; i += 3) {
       const x = starVertices[i];
       const y = starVertices[i + 1];
       const z = starVertices[i + 2];
       const originVec = new THREE.Vector3(x, y, z);
-      const direction = originVec.clone().normalize();
-      const startPoint = originVec.clone().sub(direction.multiplyScalar(hyperLineLength / 2));
-      const endPoint = originVec.clone().add(direction.multiplyScalar(hyperLineLength)); // originVec already had half length added back
+      const direction = originVec.clone().normalize(); // Unit vector from center to star
+
+      // Calculate the half-length offset vector *without* modifying the original direction
+      const offset = direction.clone().multiplyScalar(hyperLineLength / 2);
+
+      // Calculate start and end points relative to the original star position
+      const startPoint = originVec.clone().sub(offset);
+      const endPoint = originVec.clone().add(offset); // Use the *original* originVec
       hyperStarVertices.push(startPoint.x, startPoint.y, startPoint.z);
       hyperStarVertices.push(endPoint.x, endPoint.y, endPoint.z);
     }
@@ -207,7 +212,10 @@ export class GameManager implements IGameManager {
       new THREE.Float32BufferAttribute(hyperStarVertices, 3)
     );
     const hyperStarMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-    this.assets.hyperStars = new THREE.LineSegments(hyperStarGeometry, hyperStarMaterial);
+    this.assets.hyperStars = new THREE.LineSegments(
+      hyperStarGeometry,
+      hyperStarMaterial
+    );
     this.assets.hyperStars.visible = false; // Initially hidden
     this.assets.hyperStars.renderOrder = -1; // Render behind other objects
     this.scene.add(this.assets.hyperStars);
@@ -336,11 +344,15 @@ export class GameManager implements IGameManager {
     if (this.assets.hyperStars) {
       this.assets.hyperStars.visible = active;
       // Ensure hyper stars are positioned correctly when activated
-      if (active && this.camera && this.assets.hyperStars.position !== this.camera.position) {
-          this.assets.hyperStars.position.copy(this.camera.position);
+      if (
+        active &&
+        this.camera &&
+        this.assets.hyperStars.position !== this.camera.position
+      ) {
+        this.assets.hyperStars.position.copy(this.camera.position);
       }
     } else {
-        console.warn("HyperStars asset not available to toggle visibility.");
+      console.warn("HyperStars asset not available to toggle visibility.");
     }
   }
 
