@@ -59,7 +59,7 @@ export class TitleScene extends SceneLogic {
         if (!this.inputProcessed) {
             if (event.type === "keydown" || event.type === "mousedown") {
                 this.inputProcessed = true;
-                this.game.switchState("credits");
+                this.game.switchState("undocking");
             }
         }
     }
