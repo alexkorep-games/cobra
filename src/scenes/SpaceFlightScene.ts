@@ -9,7 +9,6 @@ export class SpaceFlightScene extends SceneLogic {
   private rollRate: number = 0; // Radians per second
   private pitchRate: number = 0; // Radians per second
 
-  
   // Input state
   private keysPressed: Set<string> = new Set();
 
@@ -80,14 +79,13 @@ export class SpaceFlightScene extends SceneLogic {
     let pitchDown = false;
 
     // Check Elite Controls
-    if (this.keysPressed.has("KeyS")) accelerate = true; // 'S' = Accelerate
-    if (this.keysPressed.has("KeyX")) decelerate = true; // 'X' = Decelerate
-    if (this.keysPressed.has("Comma")) rollLeft = true; // ',' = Roll Left
-    if (this.keysPressed.has("Period")) rollRight = true; // '.' = Roll Right
-    if (this.keysPressed.has("Slash")) pitchDown = true; // '/' = Dive (Pitch Down)
-    // Elite '*' key for climb - check NumpadMultiply or Shift+Digit8 (less reliable across keyboards)
-    if (this.keysPressed.has("NumpadMultiply") || this.keysPressed.has("KeyA"))
-      pitchUp = true; // Using 'A' as alternative Climb for now
+    if (this.keysPressed.has("KeyA")) accelerate = true; // 'A' = Accelerate
+    if (this.keysPressed.has("KeyZ")) decelerate = true; // 'Z' = Decelerate
+    if (this.keysPressed.has("ArrowLeft")) rollLeft = true; // Left Arrow = Roll Left
+    if (this.keysPressed.has("ArrowRight")) rollRight = true; // Right Arrow = Roll Right
+    if (this.keysPressed.has("ArrowUp")) pitchDown = true;
+    if (this.keysPressed.has("ArrowDown")) pitchUp = true;
+
 
     // Update Velocity
     if (accelerate) {
