@@ -9,6 +9,7 @@ import TitleScreen from "./scenes/TitleScreen";
 import CreditsScreen from "./scenes/CreditsScreen";
 import StatsScreen from "./scenes/StatsScreen";
 import UndockingScreen from "./scenes/UndockingScreen";
+import CoordinatesDisplay from "./hud/CoordinatesDisplay";
 import SpaceFlightScreen from "./scenes/SpaceFlightScreen";
 
 const App: React.FC = () => {
@@ -16,6 +17,7 @@ const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>("loading");
   const [isLoadingComplete, setIsLoadingComplete] = useState(false);
   // Removed isReadyToContinue state, now managed within LoadingScreen
+  const [coordinates, setCoordinates] = useState<[number, number, number]>([0, 0, 0]);
 
   // --- Refs ---
   const mountRef = useRef<HTMLDivElement>(null);
@@ -40,7 +42,8 @@ const App: React.FC = () => {
     const gameManager = new GameManager(
       setGameState,
       introMusicRef,
-      undockSoundRef
+      undockSoundRef,
+      setCoordinates
     );
 
     const handleLoadingComplete = () => {
@@ -95,6 +98,10 @@ const App: React.FC = () => {
       <div className="overlay">{renderSceneComponent()}</div>
 
       {/* Audio Elements */}
+      {/* Conditionally render CoordinatesDisplay only during space flight */}
+      {gameState === "space_flight" && (
+        <CoordinatesDisplay coordinates={coordinates} />
+      )}
       <audio ref={introMusicRef} id="introMusic" loop>
         <source src="assets/elite_intro_music.mp3" type="audio/mpeg" />
         Your browser does not support the audio element.

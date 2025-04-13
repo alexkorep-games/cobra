@@ -45,13 +45,14 @@ export class GameManager implements IGameManager {
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   reactSetGameState: (state: GameState) => void;
+  reactSetCoordinates: (coords: [number, number, number]) => void; // Add callback for coordinates
 
   // Title Scene State (kept here as it uses game assets directly)
   currentShipIndex: number = 0;
   shipDisplayTimer: number = 0;
 
   // Store constants for easy access by scenes via `this.game.constants`
-  constants = Constants;
+  constants = { ...Constants };
 
   // --- Bound event handlers ---
   boundHandleGlobalInput: (event: KeyboardEvent | MouseEvent) => void;
@@ -61,10 +62,12 @@ export class GameManager implements IGameManager {
   constructor(
     reactSetGameState: (state: GameState) => void,
     introMusicRef: React.RefObject<HTMLAudioElement>,
-    undockSoundRef: React.RefObject<HTMLAudioElement>
+    undockSoundRef: React.RefObject<HTMLAudioElement>,
+    reactSetCoordinates: (coords: [number, number, number]) => void // Accept coordinate setter
   ) {
     this.reactSetGameState = reactSetGameState;
     this.introMusicRef = introMusicRef;
+    this.reactSetCoordinates = reactSetCoordinates; // Store coordinate setter
     this.undockSoundRef = undockSoundRef;
 
     // Pre-bind methods to ensure `this` context is correct

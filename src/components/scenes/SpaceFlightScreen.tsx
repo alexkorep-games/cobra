@@ -11,11 +11,6 @@ const SpaceFlightScreen: React.FC = () => {
         <span id="view-text" style={{ marginLeft: '20px' }}>Front View</span> {/* Example spacing */}
       </div>
 
-      {/* Center Content (Optional: Placeholder for dynamic info) */}
-      {/* <div id="space-flight-info" className="center-text small">
-            SPACE FLIGHT ACTIVE
-         </div> */}
-        {/* Add empty div to keep space consistent if no center text */}
         <div className="center-text" style={{ visibility: 'hidden' }}></div>
 
       {/* Bottom HUD */}

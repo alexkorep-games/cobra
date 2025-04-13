@@ -52,6 +52,16 @@ canvas {
   margin-bottom: 10px;
 }
 
+.top-left-coords {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: #00ff00; /* Bright Green */
+  font-size: 0.9em;
+  pointer-events: none; /* Allow clicks through */
+  z-index: 10; /* Ensure it's above the canvas but potentially below other overlays if needed */
+}
+
 .center-text {
   position: absolute;
   top: 50%;
