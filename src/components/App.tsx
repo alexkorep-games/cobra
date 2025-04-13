@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react"; // Removed useCallback as it's not used directly now
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js"; // Correct import path
-import "./App.css"; // Import the CSS
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import "./App.css";
 
 // --- Constants ---
 const SHIP_DISPLAY_DURATION = 10.0; // Seconds
@@ -22,30 +22,30 @@ const App: React.FC = () => {
   const [isReadyToContinue, setIsReadyToContinue] = useState(false); // For loader screen prompt
 
   // --- Refs ---
-  const mountRef = useRef<HTMLDivElement>(null); // Ref for the container div
+  const mountRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const gameInstanceRef = useRef<any>(null); // To hold game logic instance/state across renders
+  const gameInstanceRef = useRef<any>(null);
   const introMusicRef = useRef<HTMLAudioElement>(null);
   const undockSoundRef = useRef<HTMLAudioElement>(null);
 
-  // --- Game Logic (encapsulated within useEffect) ---
+  // --- Game Logic ---
   useEffect(() => {
     if (!mountRef.current || !canvasRef.current) {
       console.error("Mount point or canvas not found");
       return;
     }
-
-    // Prevent multiple initializations if StrictMode is on
     if (gameInstanceRef.current) {
-      console.log("Game instance already exists, skipping init.");
+      console.log(
+        "Game instance already exists, skipping init (Strict Mode double render likely)."
+      );
       return;
     }
 
     console.log("Initializing Game Logic...");
 
-    // --- Base Scene Class (Adapted for internal use) ---
+    // --- Base Scene Class ---
     class SceneLogic {
-      game: any; // Reference to the main game logic object
+      game: any;
       inputProcessed: boolean = false;
       timeoutId: NodeJS.Timeout | null = null;
 
@@ -53,12 +53,11 @@ const App: React.FC = () => {
         this.game = game;
       }
       enter(previousState?: GameState) {
-        // Optional previous state for context
         console.log(`Entering state: ${this.game.currentState}`);
         this.inputProcessed = false;
-        // Reset common elements visibility often needed on state change
-        this.game.assets.planet.visible = false;
-        this.game.assets.stars.visible = false;
+        // Reset common visibility
+        if (this.game.assets.planet) this.game.assets.planet.visible = false;
+        if (this.game.assets.stars) this.game.assets.stars.visible = false;
         this.game.assets.titleShips.forEach(
           (ship: THREE.Object3D | null) => ship && (ship.visible = false)
         );
@@ -67,7 +66,6 @@ const App: React.FC = () => {
         );
       }
       exit(nextState?: GameState) {
-        // Optional next state for context
         console.log(`Exiting state: ${this.game.currentState}`);
         if (this.timeoutId) clearTimeout(this.timeoutId);
       }
@@ -75,7 +73,7 @@ const App: React.FC = () => {
       handleInput(event: KeyboardEvent | MouseEvent) {}
     }
 
-    // --- Game Manager Object (Simplified) ---
+    // --- Game Manager Object ---
     const gameLogic = {
       scene: null as THREE.Scene | null,
       camera: null as THREE.PerspectiveCamera | null,
@@ -89,12 +87,10 @@ const App: React.FC = () => {
       },
       assetsToLoad: 0,
       assetsLoaded: 0,
-      loadingCompleteCallback: null as (() => void) | null, // Callback for React state update
-      currentState: "loading" as GameState, // Keep track internally too
-      sceneLogics: {} as Record<GameState, SceneLogic>, // Store logic handlers
+      loadingCompleteCallback: null as (() => void) | null,
+      currentState: "loading" as GameState,
+      sceneLogics: {} as Record<GameState, SceneLogic>,
       animationFrameId: null as number | null,
-
-      // --- Title Scene Specific ---
       currentShipIndex: 0,
       shipDisplayTimer: 0,
       FLY_IN_DURATION: 0.5,
@@ -104,6 +100,10 @@ const App: React.FC = () => {
       START_Z: -150,
       TARGET_POS: new THREE.Vector3(-3, 0, 0),
 
+      // --- Bound event handlers ---
+      boundHandleGlobalInput: null as any,
+      boundOnWindowResize: null as any,
+
       init(canvas: HTMLCanvasElement, loadingCallback: () => void) {
         this.loadingCompleteCallback = loadingCallback;
         this.scene = new THREE.Scene();
@@ -112,7 +112,7 @@ const App: React.FC = () => {
           window.innerWidth / window.innerHeight,
           0.1,
           4100
-        ); // Increased far plane for stars
+        );
         this.camera.position.z = 15;
 
         this.renderer = new THREE.WebGLRenderer({
@@ -128,20 +128,26 @@ const App: React.FC = () => {
         directionalLight.position.set(1, 1, 1);
         this.scene.add(directionalLight);
 
-        this.createAssets(); // Start loading
+        this.createAssets();
         this.setupSceneLogics();
         this.startAnimationLoop();
 
-        window.addEventListener("resize", this.onWindowResize);
-        window.addEventListener("keydown", this.handleGlobalInput);
-        window.addEventListener("mousedown", this.handleGlobalInput);
+        // --- Bind and Add Event Listeners ---
+        this.boundHandleGlobalInput = this.handleGlobalInput.bind(this);
+        this.boundOnWindowResize = this.onWindowResize.bind(this);
+
+        window.addEventListener("resize", this.boundOnWindowResize);
+        window.addEventListener("keydown", this.boundHandleGlobalInput);
+        window.addEventListener("mousedown", this.boundHandleGlobalInput);
+
+        console.log("Game logic initialized and listeners added.");
       },
 
       setupSceneLogics() {
         // Loader Logic
         this.sceneLogics.loading = new SceneLogic(this);
         this.sceneLogics.loading.enter = () => {
-          SceneLogic.prototype.enter.call(this.sceneLogics.loading); // Call base enter
+          SceneLogic.prototype.enter.call(this.sceneLogics.loading);
           if (this.assets.stars) this.assets.stars.visible = true;
         };
         this.sceneLogics.loading.update = (deltaTime) => {
@@ -149,13 +155,11 @@ const App: React.FC = () => {
             this.assets.stars.rotation.y += 0.01 * deltaTime;
         };
         this.sceneLogics.loading.handleInput = (event) => {
-          if (
-            !this.sceneLogics.loading.inputProcessed &&
-            this.game.loadingCompleteCallback
-          ) {
-            // Check if React state is ready
+          // Only process if not already processed *and* the React state `isReadyToContinue` is true (implicit check via UI)
+          if (!this.sceneLogics.loading.inputProcessed) {
             if (event.type === "keydown" || event.type === "mousedown") {
-              this.sceneLogics.loading.inputProcessed = true;
+              this.sceneLogics.loading.inputProcessed = true; // Mark processed for this state
+              console.log("Loader input detected, switching state...");
               this.switchState("title");
             }
           }
@@ -197,12 +201,11 @@ const App: React.FC = () => {
           this.updateTitleShipAnimation(deltaTime);
         };
         this.sceneLogics.title.handleInput = (event) => {
-          if (
-            !this.sceneLogics.title.inputProcessed &&
-            (event.type === "keydown" || event.type === "mousedown")
-          ) {
-            this.sceneLogics.title.inputProcessed = true;
-            this.switchState("credits");
+          if (!this.sceneLogics.title.inputProcessed) {
+            if (event.type === "keydown" || event.type === "mousedown") {
+              this.sceneLogics.title.inputProcessed = true;
+              this.switchState("credits");
+            }
           }
         };
 
@@ -261,7 +264,7 @@ const App: React.FC = () => {
             this.assets.stars.rotation.y += 0.01 * deltaTime;
           const speed = 20.0;
           const cameraZ = this.camera?.position.z ?? 0;
-          this.assets.undockingSquares.forEach((s, i) => {
+          this.assets.undockingSquares.forEach((s) => {
             s.position.z += speed * deltaTime;
             if (s.position.z > cameraZ + 5) {
               s.position.z =
@@ -293,7 +296,7 @@ const App: React.FC = () => {
       createAssets() {
         if (!this.scene) return;
         const loader = new GLTFLoader();
-        // Make paths relative by removing leading slash
+        // Corrected Paths: Relative to public folder, no leading '/'
         const shipFilePaths = [
           "assets/ships/ship-cobra.gltf",
           "assets/ships/ship-pirate.gltf",
@@ -366,7 +369,6 @@ const App: React.FC = () => {
               loadedShip.traverse((child) => {
                 if ((child as THREE.Mesh).isMesh) {
                   const mesh = child as THREE.Mesh;
-                  // Ensure wireframe if needed, or basic material
                   if (
                     !mesh.material ||
                     (mesh.material as THREE.Material).type ===
@@ -380,7 +382,7 @@ const App: React.FC = () => {
                     (mesh.material as THREE.MeshBasicMaterial).wireframe !==
                     undefined
                   ) {
-                    (mesh.material as THREE.MeshBasicMaterial).wireframe = true; // Force wireframe for the retro look
+                    (mesh.material as THREE.MeshBasicMaterial).wireframe = true;
                   }
                 }
               });
@@ -388,16 +390,14 @@ const App: React.FC = () => {
               this.assets.titleShips[index] = loadedShip;
               this.checkLoadingComplete();
             },
-            undefined, // Optional progress handler
+            undefined,
             (error) => {
               console.error(`Error loading ${path}:`, error);
-              this.assets.titleShips[index] = null; // Mark as failed
+              this.assets.titleShips[index] = null;
               this.checkLoadingComplete();
             }
           );
         });
-
-        // Check completion immediately in case there are 0 assets to load
         if (this.assetsToLoad === 0) {
           this.checkLoadingComplete();
         }
@@ -409,7 +409,7 @@ const App: React.FC = () => {
         if (this.assetsLoaded >= this.assetsToLoad) {
           console.log("All assets processed. Informing React.");
           if (this.loadingCompleteCallback) {
-            this.loadingCompleteCallback(); // Trigger React state update
+            this.loadingCompleteCallback();
           } else {
             console.warn("loadingCompleteCallback not set!");
           }
@@ -420,22 +420,18 @@ const App: React.FC = () => {
       animate() {
         if (!this.renderer || !this.scene || !this.camera) return;
         const deltaTime = this.clock.getDelta();
-
-        // Call update function of the current state logic
         const currentLogic = this.sceneLogics[this.currentState];
-        if (currentLogic && typeof currentLogic.update === "function") {
+        if (currentLogic?.update) {
+          // Use optional chaining
           currentLogic.update(deltaTime);
         }
-
         this.renderer.render(this.scene, this.camera);
         this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
       },
-
       startAnimationLoop() {
         if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
         this.animate();
       },
-
       stopAnimationLoop() {
         if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
         this.animationFrameId = null;
@@ -443,36 +439,33 @@ const App: React.FC = () => {
 
       // --- State Switching ---
       switchState(newState: GameState) {
-        if (newState === this.currentState) return; // No change
-
+        if (newState === this.currentState) return;
         const oldState = this.currentState;
         const oldLogic = this.sceneLogics[oldState];
         const newLogic = this.sceneLogics[newState];
 
-        if (oldLogic && typeof oldLogic.exit === "function") {
-          oldLogic.exit(newState); // Pass next state for context
+        if (oldLogic?.exit) {
+          // Use optional chaining
+          oldLogic.exit(newState);
         }
 
         this.currentState = newState;
         console.log("GameLogic switched state to:", newState);
+        this.reactSetGameState(newState); // Call React's state setter
 
-        // Call React's state setter via the callback passed from useEffect
-        this.reactSetGameState(newState);
-
-        if (newLogic && typeof newLogic.enter === "function") {
-          newLogic.enter(oldState); // Pass previous state for context
+        if (newLogic?.enter) {
+          // Use optional chaining
+          newLogic.enter(oldState);
         }
       },
-
-      // This function will be replaced by the actual setGameState from useState
       reactSetGameState: (state: GameState) => {
-        console.warn(
-          "reactSetGameState placeholder called. This should be overridden."
-        );
+        // Placeholder
+        console.warn("reactSetGameState placeholder called.");
       },
 
-      // --- Event Handlers ---
+      // --- Event Handlers (Implementations) ---
       onWindowResize() {
+        // `this` will be correct due to binding
         if (!this.camera || !this.renderer) return;
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
@@ -480,14 +473,14 @@ const App: React.FC = () => {
       },
 
       handleGlobalInput(event: KeyboardEvent | MouseEvent) {
+        // `this` will be correct due to binding
         const currentLogic = this.sceneLogics[this.currentState];
-        if (currentLogic && typeof currentLogic.handleInput === "function") {
-          // Specific check for loader continue prompt activation
-          if (this.currentState === "loading" && !isReadyToContinue) {
-            // Don't process input for loader until 'GAME LOADED' appears
-            return;
-          }
+        // Delegate to the current state's handler if it exists
+        if (currentLogic?.handleInput) {
+          // Use optional chaining
           currentLogic.handleInput(event);
+        } else {
+          // console.log(`No input handler for state: ${this.currentState}`);
         }
       },
 
@@ -502,10 +495,8 @@ const App: React.FC = () => {
           console.warn(`Attempted to prepare missing ship at index ${index}`);
         }
       },
-
       updateTitleShipAnimation(deltaTime: number) {
         if (this.assets.titleShips.length === 0) return;
-
         this.shipDisplayTimer += deltaTime;
         const currentShip = this.assets.titleShips[this.currentShipIndex];
 
@@ -513,7 +504,7 @@ const App: React.FC = () => {
           console.warn(
             `Ship at index ${this.currentShipIndex} is missing. Skipping.`
           );
-          this.shipDisplayTimer = this.TOTAL_CYCLE_DURATION; // Force cycle
+          this.shipDisplayTimer = this.TOTAL_CYCLE_DURATION;
         } else {
           const timer = this.shipDisplayTimer;
           if (timer < this.FLY_IN_DURATION) {
@@ -543,9 +534,23 @@ const App: React.FC = () => {
 
         if (this.shipDisplayTimer >= this.TOTAL_CYCLE_DURATION) {
           if (currentShip) currentShip.visible = false;
-          this.currentShipIndex =
-            (this.currentShipIndex + 1) % this.assets.titleShips.length;
-          this.prepareShip(this.currentShipIndex);
+          // Filter out null ships before calculating next index
+          const validShipIndices = this.assets.titleShips
+            .map((_, i) => i)
+            .filter((i) => this.assets.titleShips[i] !== null);
+
+          if (validShipIndices.length > 0) {
+            const currentValidIndex = validShipIndices.indexOf(
+              this.currentShipIndex
+            );
+            const nextValidIndex =
+              (currentValidIndex + 1) % validShipIndices.length;
+            this.currentShipIndex = validShipIndices[nextValidIndex];
+            this.prepareShip(this.currentShipIndex);
+          } else {
+            console.warn("No valid title ships to display.");
+            // Optionally stop the animation or handle differently
+          }
           this.shipDisplayTimer = 0;
         }
       },
@@ -554,24 +559,25 @@ const App: React.FC = () => {
       dispose() {
         console.log("Disposing game logic...");
         this.stopAnimationLoop();
-        window.removeEventListener("resize", this.onWindowResize);
-        window.removeEventListener("keydown", this.handleGlobalInput);
-        window.removeEventListener("mousedown", this.handleGlobalInput);
+
+        // --- Remove Event Listeners ---
+        // Use the stored bound references
+        if (this.boundOnWindowResize) {
+          window.removeEventListener("resize", this.boundOnWindowResize);
+        }
+        if (this.boundHandleGlobalInput) {
+          window.removeEventListener("keydown", this.boundHandleGlobalInput);
+          window.removeEventListener("mousedown", this.boundHandleGlobalInput);
+        }
+        console.log("Event listeners removed.");
 
         this.renderer?.dispose();
-        // Dispose geometries, materials, textures if needed for full cleanup
         this.scene?.traverse((object) => {
-          if (object instanceof THREE.Mesh) {
+          if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
             object.geometry?.dispose();
-            // Dispose materials carefully, check if array
             if (Array.isArray(object.material)) {
               object.material.forEach((material) => material.dispose());
             } else if (object.material) {
-              object.material.dispose();
-            }
-          } else if (object instanceof THREE.Points) {
-            object.geometry?.dispose();
-            if (object.material instanceof THREE.Material) {
               object.material.dispose();
             }
           }
@@ -585,51 +591,57 @@ const App: React.FC = () => {
           planet: null,
           stars: null,
           undockingSquares: [],
-        }; // Clear assets
-        gameInstanceRef.current = null; // Clear the ref
+        };
+        this.boundHandleGlobalInput = null; // Clear bound refs
+        this.boundOnWindowResize = null;
+        gameInstanceRef.current = null; // Clear the main ref
+        console.log("Game logic disposed.");
       },
     };
 
-    // --- Bind React's state setter to the game logic ---
-    gameLogic.reactSetGameState = setGameState; // Allow game logic to trigger React state updates
+    // --- Connect React State Setter ---
+    gameLogic.reactSetGameState = setGameState;
 
-    // --- Initialize game logic ---
+    // --- Initialize ---
     gameLogic.init(canvasRef.current, () => {
-      // This callback runs when checkLoadingComplete decides loading is done
       console.log("React notified that loading is complete.");
-      setIsLoadingComplete(true); // Update React state
+      setIsLoadingComplete(true);
     });
 
-    // Store the game logic instance in the ref
+    // Store instance
     gameInstanceRef.current = gameLogic;
 
-    // --- Cleanup on component unmount ---
+    // --- Cleanup Function ---
     return () => {
-      gameInstanceRef.current?.dispose();
+      // Check if the instance being cleaned up is the *currently active* one
+      // This helps prevent issues if StrictMode causes rapid mount/unmount/mount
+      if (gameInstanceRef.current === gameLogic) {
+        gameInstanceRef.current?.dispose();
+      } else {
+        // If not the current instance, still try to clean up the specific 'gameLogic'
+        // instance created in *this* effect run, if it hasn't been disposed yet.
+        // This is a bit defensive against potential StrictMode races.
+        if (gameLogic.renderer) {
+          // Check if it was fully initialized
+          console.log(
+            "Cleaning up potentially orphaned gameLogic instance from StrictMode."
+          );
+          gameLogic.dispose();
+        }
+      }
     };
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []); // Run once on mount
 
-  // --- Effect to handle the loader's "Press Key" prompt ---
+  // --- Effect for Loader Prompt ---
   useEffect(() => {
     if (gameState === "loading" && isLoadingComplete) {
-      // Small delay to ensure "LOADING..." text disappears visually first if desired
-      const timer = setTimeout(() => {
-        setIsReadyToContinue(true);
-      }, 100); // Short delay
+      const timer = setTimeout(() => setIsReadyToContinue(true), 100);
       return () => clearTimeout(timer);
     } else {
-      setIsReadyToContinue(false); // Reset if not in loading state or loading isn't complete
+      setIsReadyToContinue(false);
     }
   }, [gameState, isLoadingComplete]);
-
-  // --- Global Input Handler (delegated by gameLogic) ---
-  // We bind the actual event listeners in the gameLogic.init,
-  // but keep this structure if we needed React-level handling later.
-  // const handleInput = useCallback((event: KeyboardEvent | MouseEvent) => {
-  //     gameInstanceRef.current?.handleGlobalInput(event);
-  // }, []); // No dependencies needed as gameInstanceRef is stable
 
   // --- Render ---
   return (
@@ -637,7 +649,7 @@ const App: React.FC = () => {
       <canvas ref={canvasRef} id="eliteCanvas"></canvas>
 
       <div className="overlay">
-        {/* --- Top Bar --- */}
+        {/* Top Bar */}
         <div className="top-bar">
           {gameState !== "loading" &&
             gameState !== "undocking" &&
@@ -645,35 +657,32 @@ const App: React.FC = () => {
               <span id="title-text">--- PROJECT COBRA ---</span>
             )}
           {gameState === "space_flight" && (
-            <span id="bounty-text">
-              BOUNTY: 5.0 Cr
-            </span> /* Example: Show only in flight */
+            <span id="bounty-text"> BOUNTY: 5.0 Cr </span>
           )}
           {(gameState === "undocking" || gameState === "space_flight") && (
             <span id="view-text">Front View</span>
           )}
         </div>
 
-        {/* --- Center Content (Conditional Rendering based on gameState) --- */}
+        {/* Center Content */}
         {gameState === "loading" && (
           <div id="loader-screen" className="center-text">
             {!isReadyToContinue && <p id="loader-progress-text">LOADING...</p>}
             {isReadyToContinue && (
               <p id="loader-continue-text">
+                {" "}
                 GAME LOADED
-                <br />
-                PRESS ANY KEY TO CONTINUE
+                <br /> PRESS ANY KEY TO CONTINUE{" "}
               </p>
             )}
           </div>
         )}
-
         {gameState === "title" && (
           <div id="press-key-text" className="center-text">
-            Press any key to start game
+            {" "}
+            Press any key to start game{" "}
           </div>
         )}
-
         {gameState === "credits" && (
           <div id="credits-text" className="center-text small">
             Game Copyright:-
@@ -695,139 +704,148 @@ const App: React.FC = () => {
             Key Software
           </div>
         )}
-
         {gameState === "stats" && (
           <div id="stats-screen" className="center-text small">
             <h2>COMMANDER JAMESON</h2>
             <p>
               <strong>System:</strong> LAVE
-            </p>
+            </p>{" "}
             <p>
               <strong>Hypersystem:</strong> LAVE
-            </p>
+            </p>{" "}
             <p>
               <strong>Fuel:</strong> 7.0 Light Years
-            </p>
+            </p>{" "}
             <p>
               <strong>Cash:</strong> 100.0 Credits
-            </p>
+            </p>{" "}
             <p>
               <strong>Legal Status:</strong> Clean
-            </p>
+            </p>{" "}
             <p>
               <strong>Rating:</strong> Harmless
-            </p>
+            </p>{" "}
             <p className="equipment">
               <strong>EQUIPMENT:</strong>
-            </p>
-            <p>Missile (3)</p>
-            <p>Pulse Laser (Fore)</p>
+            </p>{" "}
+            <p>Missile (3)</p> <p>Pulse Laser (Fore)</p>
           </div>
         )}
-
         {gameState === "undocking" && (
           <div id="leaving-text" className="center-text small">
-            Leaving Space Station
+            {" "}
+            Leaving Space Station{" "}
           </div>
         )}
 
-        {/* --- Bottom HUD (Show after loading) --- */}
+        {/* Bottom HUD */}
         {gameState !== "loading" && (
           <div className="bottom-bar">
-            {/* HUD Left */}
+            {/* Left HUD */}
             <div className="hud-left">
               <div className="hud-item">
-                <span className="hud-label">FORE-SHIELD</span>
+                {" "}
+                <span className="hud-label">FORE-SHIELD</span>{" "}
                 <div className="hud-bar">
                   <div
                     id="fore-shield-fill"
                     className="hud-bar-fill"
                     style={{ width: "80%" }}
                   ></div>
-                </div>
+                </div>{" "}
               </div>
               <div className="hud-item">
-                <span className="hud-label">AFT-SHIELD</span>
+                {" "}
+                <span className="hud-label">AFT-SHIELD</span>{" "}
                 <div className="hud-bar">
                   <div
                     id="aft-shield-fill"
                     className="hud-bar-fill"
                     style={{ width: "80%" }}
                   ></div>
-                </div>
+                </div>{" "}
               </div>
               <div className="hud-item">
-                <span className="hud-label">FUEL</span>
+                {" "}
+                <span className="hud-label">FUEL</span>{" "}
                 <div className="hud-bar">
                   <div
                     id="fuel-fill"
                     className="hud-bar-fill"
                     style={{ width: "100%" }}
                   ></div>
-                </div>
+                </div>{" "}
               </div>
               <div className="hud-item">
-                <span className="hud-label">CABIN TEMP</span>
+                {" "}
+                <span className="hud-label">CABIN TEMP</span>{" "}
                 <div className="hud-bar">
                   <div
                     id="cabin-temp-fill"
                     className="hud-bar-fill"
                     style={{ width: "10%" }}
                   ></div>
-                </div>
+                </div>{" "}
               </div>
               <div className="hud-item">
-                <span className="hud-label">LASER TEMP</span>
+                {" "}
+                <span className="hud-label">LASER TEMP</span>{" "}
                 <div className="hud-bar">
                   <div
                     id="laser-temp-fill"
                     className="hud-bar-fill red"
                     style={{ width: "5%" }}
                   ></div>
-                </div>
+                </div>{" "}
               </div>
               <div className="hud-item">
-                <span className="hud-label">ALTITUDE</span>
-                <div className="hud-bar"></div> {/* No fill in original */}
+                {" "}
+                <span className="hud-label">ALTITUDE</span>{" "}
+                <div className="hud-bar"></div>{" "}
               </div>
               <div className="hud-item">
+                {" "}
                 <span className="hud-label">MISSILES</span>
-                <span className="hud-value"> M M M M</span>
+                <span className="hud-value"> M M M M</span>{" "}
               </div>
             </div>
-            {/* HUD Center */}
+            {/* Center HUD */}
             <div className="hud-center">
               <div className="scanner-shape"></div>
             </div>
-            {/* HUD Right */}
+            {/* Right HUD */}
             <div className="hud-right">
               <div className="hud-item">
-                <span className="hud-label">SPEED</span>
+                {" "}
+                <span className="hud-label">SPEED</span>{" "}
                 <div className="hud-bar">
                   <div className="hud-bar-fill" style={{ width: "10%" }}></div>
-                </div>
+                </div>{" "}
               </div>
               <div className="hud-item">
-                <span className="hud-label">ROLL</span>
+                {" "}
+                <span className="hud-label">ROLL</span>{" "}
                 <div className="hud-bar">
                   <div className="hud-bar-fill" style={{ width: "50%" }}></div>
-                </div>
+                </div>{" "}
               </div>
               <div className="hud-item">
-                <span className="hud-label">DIVE/CLIMB</span>
+                {" "}
+                <span className="hud-label">DIVE/CLIMB</span>{" "}
                 <div className="hud-bar">
                   <div className="hud-bar-fill" style={{ width: "50%" }}></div>
-                </div>
+                </div>{" "}
               </div>
               <div
                 className="hud-item"
                 style={{ justifyContent: "center", marginTop: "5px" }}
               >
+                {" "}
                 <span
                   style={{ border: "1px solid #00ff00", padding: "2px 5px" }}
                 >
                   1
-                </span>
+                </span>{" "}
                 <span
                   style={{
                     border: "1px solid #00ff00",
@@ -836,12 +854,12 @@ const App: React.FC = () => {
                   }}
                 >
                   2
-                </span>
+                </span>{" "}
                 <span
                   style={{ border: "1px solid #00ff00", padding: "2px 5px" }}
                 >
                   3
-                </span>
+                </span>{" "}
                 <span
                   style={{
                     border: "1px solid #ffff00",
@@ -851,23 +869,21 @@ const App: React.FC = () => {
                     display: "inline-block",
                     marginLeft: "10px",
                   }}
-                ></span>
+                ></span>{" "}
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Audio Elements - Use refs */}
+      {/* Audio Elements - Corrected Paths */}
       <audio ref={introMusicRef} id="introMusic" loop>
         <source src="assets/elite_intro_music.mp3" type="audio/mpeg" />
-        Your browser does not support the audio element. (Needs
-        elite_intro_music.mp3)
+        Your browser does not support the audio element.
       </audio>
       <audio ref={undockSoundRef} id="undockSound">
         <source src="assets/undocking_sound.mp3" type="audio/mpeg" />
-        Your browser does not support the audio element. (Needs
-        undocking_sound.mp3)
+        Your browser does not support the audio element.
       </audio>
     </div>
   );
