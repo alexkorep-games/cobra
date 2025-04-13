@@ -110,7 +110,8 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.keysPressed.clear();
     if (this.game.assets.planet) this.game.assets.planet.visible = false;
     if (this.game.assets.stars) this.game.assets.stars.visible = false;
-    if (this.game.assets.hyperStars) this.game.assets.hyperStars.visible = false; // Hide hyperspace stars on exit
+    if (this.game.assets.hyperStars)
+      this.game.assets.hyperStars.visible = false; // Hide hyperspace stars on exit
     if (this.game.assets.spaceStation) {
       this.game.assets.spaceStation.visible = false;
     }
@@ -163,15 +164,13 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       if (Math.abs(this.velocity) < 0.01) this.velocity = 0;
     }
 
-    // Clamp speed based on whether hyperspace is active
-    const currentMaxSpeed = this.isHyperspaceActive
+    this.velocity = this.isHyperspaceActive
       ? Constants.HYPERSPACE_SPEED
-      : Constants.MAX_SPEED;
-    this.velocity = THREE.MathUtils.clamp(
-      this.velocity,
-      Constants.MIN_SPEED,
-      currentMaxSpeed
-    );
+      : THREE.MathUtils.clamp(
+          this.velocity,
+          Constants.MIN_SPEED,
+          Constants.MAX_SPEED
+        );
 
     if (rollLeft) this.rollRate += Constants.ROLL_ACCELERATION * deltaTime;
     else if (rollRight)
@@ -204,7 +203,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     // Normalize speed for HUD based on *normal* max speed, even in hyperspace
     // The HUD bar will just stay full during hyperspace.
     const normalizedSpeed = THREE.MathUtils.clamp(
-      (this.velocity / Constants.MAX_SPEED) * 100, 0, 100
+      (this.velocity / Constants.MAX_SPEED) * 100,
+      0,
+      100
     );
     const normalizedRoll = THREE.MathUtils.clamp(
       this.rollRate / Constants.MAX_VISUAL_ROLL_RATE,
@@ -259,7 +260,6 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     if (event.code === "KeyA") keyIdentifier = "KeyA"; // Keep handling KeyA for acceleration
     this.keysPressed.add(keyIdentifier);
   }
-
 
   private handleKeyUp(event: KeyboardEvent): void {
     // No special handling needed for 'J' on key up
