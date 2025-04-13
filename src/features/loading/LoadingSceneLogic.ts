@@ -8,13 +8,9 @@ export class LoadingSceneLogic extends SceneLogicBase {
 
   enter(previousState?: GameState): void {
     super.enter(previousState);
-    if (this.game.assets.stars) this.game.assets.stars.visible = true;
   }
 
   update(deltaTime: number): void {
-    if (this.game.assets.stars) {
-      this.game.assets.stars.rotation.y += 0.01 * deltaTime;
-    }
   }
 
   handleInput(event: KeyboardEvent | MouseEvent): void {

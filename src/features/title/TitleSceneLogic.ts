@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { SceneLogicBase } from "../common/SceneLogicBase";
 import { GameState, IGameManager } from "../../types";
-import { TARGET_POS } from "../../constants";
 
 export class TitleSceneLogic extends SceneLogicBase {
   constructor(game: IGameManager) {
@@ -25,9 +24,6 @@ export class TitleSceneLogic extends SceneLogicBase {
       this.game.assets.planet.position.set(200, 0, -500);
       this.game.assets.planet.scale.set(1, 1, 1);
     }
-    if (this.game.assets.stars) {
-      this.game.assets.stars.visible = true;
-    }
 
     this.game.introMusicRef.current
       ?.play()
@@ -50,9 +46,6 @@ export class TitleSceneLogic extends SceneLogicBase {
   }
 
   update(deltaTime: number): void {
-    if (this.game.assets.stars) {
-      this.game.assets.stars.rotation.y += 0.01 * deltaTime;
-    }
     this.game.updateTitleShipAnimation(deltaTime);
   }
 

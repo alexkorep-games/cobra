@@ -8,7 +8,6 @@ export class StatsSceneLogic extends SceneLogicBase {
 
   enter(previousState?: GameState): void {
     super.enter(previousState);
-    if (this.game.assets.stars) this.game.assets.stars.visible = true;
 
     if (this.timeoutId) clearTimeout(this.timeoutId);
 
@@ -20,9 +19,6 @@ export class StatsSceneLogic extends SceneLogicBase {
   }
 
   update(deltaTime: number): void {
-    if (this.game.assets.stars) {
-      this.game.assets.stars.rotation.y += 0.01 * deltaTime;
-    }
   }
 
   handleInput(event: KeyboardEvent | MouseEvent): void {
