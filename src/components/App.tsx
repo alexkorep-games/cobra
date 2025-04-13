@@ -293,11 +293,11 @@ const App: React.FC = () => {
       createAssets() {
         if (!this.scene) return;
         const loader = new GLTFLoader();
-        // Use / prefix for assets in public folder
+        // Make paths relative by removing leading slash
         const shipFilePaths = [
-          "/assets/ships/ship-cobra.gltf",
-          "/assets/ships/ship-pirate.gltf",
-          "/assets/ships/asteroid.gltf",
+          "assets/ships/ship-cobra.gltf",
+          "assets/ships/ship-pirate.gltf",
+          "assets/ships/asteroid.gltf",
         ];
         const shipScale = 6;
 
@@ -859,14 +859,13 @@ const App: React.FC = () => {
       </div>
 
       {/* Audio Elements - Use refs */}
-      {/* Use / prefix for assets in public folder */}
       <audio ref={introMusicRef} id="introMusic" loop>
-        <source src="/assets/elite_intro_music.mp3" type="audio/mpeg" />
+        <source src="assets/elite_intro_music.mp3" type="audio/mpeg" />
         Your browser does not support the audio element. (Needs
         elite_intro_music.mp3)
       </audio>
       <audio ref={undockSoundRef} id="undockSound">
-        <source src="/assets/undocking_sound.mp3" type="audio/mpeg" />
+        <source src="assets/undocking_sound.mp3" type="audio/mpeg" />
         Your browser does not support the audio element. (Needs
         undocking_sound.mp3)
       </audio>
