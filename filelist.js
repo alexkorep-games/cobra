@@ -5,6 +5,24 @@ import path from "path";
 import process from "process";
 
 const targetDirectory = "./src";
+const excludedDirs = [
+  "src/features/credits",
+  "src/features/stats",
+  "src/features/title",
+  "src/features/undocking",
+];
+
+/**
+ * Checks if a given path should be excluded based on excludedDirs
+ * @param {string} currentPath The path to check
+ * @returns {boolean} True if the path should be excluded
+ */
+function shouldExclude(currentPath) {
+  const relativePath = path.relative(process.cwd(), currentPath);
+  return excludedDirs.some((dir) =>
+    path.normalize(relativePath).startsWith(path.normalize(dir))
+  );
+}
 
 /**
  * Recursively reads directories, finds files, and prints their content.
@@ -13,6 +31,10 @@ const targetDirectory = "./src";
  */
 function readAndPrintFilesRecursive(currentAbsolutePath) {
   try {
+    if (shouldExclude(currentAbsolutePath)) {
+      return; // Skip excluded directories
+    }
+
     // Check if the path exists before trying to read it
     if (!fs.existsSync(currentAbsolutePath)) {
       const relativePath = path.relative(process.cwd(), currentAbsolutePath);
@@ -41,6 +63,10 @@ function readAndPrintFilesRecursive(currentAbsolutePath) {
 
     entries.forEach((entry) => {
       const fullAbsolutePath = path.join(currentAbsolutePath, entry);
+      // Skip if this path should be excluded
+      if (shouldExclude(fullAbsolutePath)) {
+        return;
+      }
       // Calculate the relative path for display purposes *now*
       const relativePath = path.relative(process.cwd(), fullAbsolutePath);
       const normalizedRelativePath = path.normalize(relativePath); // Ensure consistent separators
