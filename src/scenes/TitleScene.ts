@@ -35,6 +35,7 @@ export class TitleScene extends SceneLogic {
 
     exit(nextState?: GameState): void {
         super.exit(nextState); // Call base exit
+        this.resetHud(); // Ensure HUD is cleared
 
         // Ensure current ship is hidden when exiting
         const currentShip = this.game.assets.titleShips[this.game.currentShipIndex];

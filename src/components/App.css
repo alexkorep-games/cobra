@@ -155,6 +155,18 @@ canvas {
   bottom: 0;
   background-color: #00ff00;
 }
+/* Style for centered indicator markers within HUD bars */
+.hud-bar-marker {
+  position: absolute;
+  top: -1px; /* Align with border */
+  bottom: -1px; /* Align with border */
+  width: 3px; /* Width of the marker */
+  background-color: #ffff00; /* Yellow marker */
+  transform: translateX(-50%); /* Center the marker */
+}
+.hud-bar-marker.red {
+  background-color: #ff0000; /* Red marker if needed */
+}
 .hud-bar-fill.red {
   background-color: #ff0000;
 }

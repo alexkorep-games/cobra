@@ -18,6 +18,9 @@ const App: React.FC = () => {
   const [isLoadingComplete, setIsLoadingComplete] = useState(false);
   // Removed isReadyToContinue state, now managed within LoadingScreen
   const [coordinates, setCoordinates] = useState<[number, number, number]>([0, 0, 0]);
+  const [speed, setSpeed] = useState<number>(0); // 0-100%
+  const [roll, setRoll] = useState<number>(0); // -1 to 1
+  const [pitch, setPitch] = useState<number>(0); // -1 to 1 (Dive/Climb)
 
   // --- Refs ---
   const mountRef = useRef<HTMLDivElement>(null);
@@ -43,7 +46,10 @@ const App: React.FC = () => {
       setGameState,
       introMusicRef,
       undockSoundRef,
-      setCoordinates
+      setCoordinates,
+      setSpeed,
+      setRoll,
+      setPitch
     );
 
     const handleLoadingComplete = () => {
@@ -83,7 +89,7 @@ const App: React.FC = () => {
       case "undocking":
         return <UndockingScreen />;
       case "space_flight":
-        return <SpaceFlightScreen />;
+        return <SpaceFlightScreen speed={speed} roll={roll} pitch={pitch} />; // Pass HUD state
       default:
         return null; // Or a default component/error message
     }

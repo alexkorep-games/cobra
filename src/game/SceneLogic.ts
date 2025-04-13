@@ -27,6 +27,13 @@ export class SceneLogic {
             this.timeoutId = null;
         }
     }
+    
+    // Default cleanup for HUD elements on scene exit
+    protected resetHud() {
+        this.game.reactSetSpeed(0);
+        this.game.reactSetRoll(0);
+        this.game.reactSetPitch(0);
+    }
 
     // To be overridden by subclasses
     update(deltaTime: number) {}

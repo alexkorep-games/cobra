@@ -35,6 +35,7 @@ export class UndockingScene extends SceneLogic {
 
   exit(nextState?: GameState): void {
     super.exit(nextState);
+    this.resetHud(); // Ensure HUD is cleared
     this.game.assets.undockingSquares.forEach(
       (s: THREE.LineLoop) => (s.visible = false)
     );

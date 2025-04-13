@@ -10,9 +10,9 @@ const CoordinatesDisplay: React.FC<CoordinatesDisplayProps> = ({ coordinates }) 
 
   return (
     <div className="top-left-coords">
-      <span>X: {x.toFixed(0)}</span><br/>
-      <span>Y: {y.toFixed(0)}</span><br/>
-      <span>Z: {z.toFixed(0)}</span>
+      <span>X: {x.toFixed(1)}</span><br/> {/* Increased precision slightly */}
+      <span>Y: {y.toFixed(1)}</span><br/>
+      <span>Z: {z.toFixed(1)}</span>
     </div>
   );
 };

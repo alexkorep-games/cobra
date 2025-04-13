@@ -2,7 +2,13 @@ import React from 'react';
 import BottomHud from '../hud/BottomHud';
 import '../App.css';
 
-const SpaceFlightScreen: React.FC = () => {
+interface SpaceFlightScreenProps {
+  speed: number;
+  roll: number;
+  pitch: number;
+}
+
+const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({ speed, roll, pitch }) => {
   return (
     <>
       {/* Top Bar */}
@@ -14,7 +20,7 @@ const SpaceFlightScreen: React.FC = () => {
         <div className="center-text" style={{ visibility: 'hidden' }}></div>
 
       {/* Bottom HUD */}
-      <BottomHud />
+      <BottomHud speed={speed} roll={roll} pitch={pitch} />
     </>
   );
 };

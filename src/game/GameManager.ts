@@ -46,6 +46,9 @@ export class GameManager implements IGameManager {
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   reactSetGameState: (state: GameState) => void;
   reactSetCoordinates: (coords: [number, number, number]) => void; // Add callback for coordinates
+  reactSetSpeed: (speed: number) => void; // Callback for speed HUD
+  reactSetRoll: (roll: number) => void; // Callback for roll HUD (-1 to 1)
+  reactSetPitch: (pitch: number) => void; // Callback for pitch HUD (-1 to 1)
 
   // Title Scene State (kept here as it uses game assets directly)
   currentShipIndex: number = 0;
@@ -63,13 +66,19 @@ export class GameManager implements IGameManager {
     reactSetGameState: (state: GameState) => void,
     introMusicRef: React.RefObject<HTMLAudioElement>,
     undockSoundRef: React.RefObject<HTMLAudioElement>,
-    reactSetCoordinates: (coords: [number, number, number]) => void // Accept coordinate setter
+    reactSetCoordinates: (coords: [number, number, number]) => void, // Accept coordinate setter
+    reactSetSpeed: (speed: number) => void,           // Accept speed setter
+    reactSetRoll: (roll: number) => void,             // Accept roll setter
+    reactSetPitch: (pitch: number) => void            // Accept pitch setter
   ) {
     this.reactSetGameState = reactSetGameState;
     this.introMusicRef = introMusicRef;
     this.reactSetCoordinates = reactSetCoordinates; // Store coordinate setter
     this.undockSoundRef = undockSoundRef;
-
+    this.reactSetSpeed = reactSetSpeed; // Store speed setter
+    this.reactSetRoll = reactSetRoll;   // Store roll setter
+    this.reactSetPitch = reactSetPitch; // Store pitch setter
+    
     // Pre-bind methods to ensure `this` context is correct
     this.boundHandleGlobalInput = this.handleGlobalInput.bind(this);
     this.boundOnWindowResize = this.onWindowResize.bind(this);
