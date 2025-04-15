@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { SceneLogicBase } from "../common/SceneLogicBase";
 import { GameState, IGameManager } from "../../types";
 import * as Constants from "../../constants";
+import { EntityBase } from "../../game/entities/EntityBase";
 
 export class SpaceFlightSceneLogic extends SceneLogicBase {
   private velocity: number = 0;
@@ -20,44 +21,46 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
   // Positioning logic used by both planet and station
   private positionObjectRandomly(
-    object: THREE.Object3D,
+    entity: EntityBase | null,
     baseDistance: number,
     offsetRange: THREE.Vector2 = new THREE.Vector2(0.8, 1.2)
   ) {
+    if (!entity?.mesh) return; // Check if entity and mesh exist
+
     const distance =
       baseDistance *
       THREE.MathUtils.lerp(offsetRange.x, offsetRange.y, Math.random());
     const angle = Math.random() * Math.PI * 2;
     const elevationAngle = (Math.random() - 0.5) * Math.PI * 0.5; // Limit elevation slightly
-    const radius = distance * Math.cos(elevationAngle);
     const x = distance * Math.sin(angle) * Math.cos(elevationAngle);
     const y = distance * Math.sin(elevationAngle);
-    const z = -distance * Math.cos(angle) * Math.cos(elevationAngle);
+    const z = -distance * Math.cos(angle) * Math.cos(elevationAngle); // Usually move along negative Z
 
-    object.position.set(x, y, z);
-    object.visible = true;
+    entity.setPosition(x, y, z);
+    entity.setVisible(true);
     console.log(
-      `${object.name || "Object"} positioned at distance: ${distance.toFixed(
-        0
-      )}`
+      `${
+        entity.mesh.name || "Object"
+      } positioned at distance: ${distance.toFixed(0)}`
     );
   }
 
   enter(previousState?: GameState): void {
-    super.enter(previousState);
+    super.enter(previousState); // Resets common visibility
 
+    // Position planet far away
     if (this.game.assets.planet && this.game.camera) {
-      // Position planet far away
       this.positionObjectRandomly(
         this.game.assets.planet,
         this.game.camera.far * 0.8
       );
-      (this.game.assets.planet.material as THREE.Material).needsUpdate = true;
+      //(this.game.assets.planet.mesh?.material as THREE.Material).needsUpdate = true;
     }
 
-    if (this.game.assets.spaceStation && this.game.assets.planet) {
-      // Position station relative to the planet
-      const planetPos = this.game.assets.planet.position;
+    // Position station relative to the planet
+    if (this.game.assets.spaceStation && this.game.assets.planet?.mesh) {
+      // Check planet mesh exists
+      const planetPos = this.game.assets.planet.getPosition(); // Use entity method
       const offsetDist = THREE.MathUtils.randFloat(
         Constants.STATION_PLANET_OFFSET_MIN,
         Constants.STATION_PLANET_OFFSET_MAX
@@ -65,19 +68,32 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       const randomOffset = new THREE.Vector3()
         .randomDirection()
         .multiplyScalar(offsetDist);
-      this.game.assets.spaceStation.position.copy(planetPos).add(randomOffset);
-      this.game.assets.spaceStation.visible = true;
-      this.game.assets.spaceStation.rotation.set(
+      const stationPos = planetPos.add(randomOffset);
+
+      this.game.assets.spaceStation.setPosition(
+        stationPos.x,
+        stationPos.y,
+        stationPos.z
+      );
+      this.game.assets.spaceStation.setRotation(
+        // Random orientation
         Math.random() * Math.PI,
         Math.random() * Math.PI,
         Math.random() * Math.PI
-      ); // Random orientation
+      );
+      this.game.assets.spaceStation.setVisible(true);
+
       console.log(
         `Station positioned near planet at offset: ${offsetDist.toFixed(0)}`
       );
+    } else {
+      console.warn(
+        "Could not position station relative to planet (planet missing?)."
+      );
     }
-    console.log("Entered Space Flight Scene. Intro sequence complete.");
+    console.log("Entered Space Flight Scene.");
 
+    // Reset player state
     this.velocity = 0;
     this.rollRate = 0;
     this.pitchRate = 0;
@@ -86,7 +102,6 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       this.game.camera.rotation.set(0, 0, 0);
       this.game.camera.position.set(0, 0, 0);
     }
-
     this.isHyperspaceActive = false; // Start with hyperspace off
 
     window.addEventListener("keydown", this.boundHandleKeyDown);
@@ -99,27 +114,11 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     window.removeEventListener("keydown", this.boundHandleKeyDown);
     window.removeEventListener("keyup", this.boundHandleKeyUp);
     this.keysPressed.clear();
-    if (this.game.assets.planet) this.game.assets.planet.visible = false;
-    if (this.game.assets.spaceStation) {
-      this.game.assets.spaceStation.visible = false;
-    }
     this.isHyperspaceActive = false; // Reset hyperspace state on exit
   }
 
   update(deltaTime: number): void {
     if (!this.game.camera) return;
-
-    if (this.game.assets.planet) {
-      this.game.assets.planet.rotation.y += 0.005 * deltaTime;
-    }
-
-    // Rotate station slowly
-    if (
-      this.game.assets.spaceStation &&
-      this.game.assets.spaceStation.visible
-    ) {
-      this.game.assets.spaceStation.rotation.y += 0.02 * deltaTime;
-    }
 
     let accelerate = false,
       decelerate = false,
@@ -128,58 +127,76 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       pitchUp = false,
       pitchDown = false;
 
-    // Read movement keys (Hyperspace doesn't change controls, just speed limit)
+    // Read movement keys
     if (this.keysPressed.has("KeyA")) accelerate = true;
     if (this.keysPressed.has("KeyZ")) decelerate = true;
     if (this.keysPressed.has("ArrowLeft")) rollLeft = true;
     if (this.keysPressed.has("ArrowRight")) rollRight = true;
-    if (this.keysPressed.has("ArrowUp")) pitchDown = true;
-    if (this.keysPressed.has("ArrowDown")) pitchUp = true;
+    if (this.keysPressed.has("ArrowUp")) pitchDown = true; // ArrowUp -> Pitch Nose Down
+    if (this.keysPressed.has("ArrowDown")) pitchUp = true; // ArrowDown -> Pitch Nose Up
+
+    // Update Velocity
     if (accelerate) this.velocity += Constants.ACCELERATION * deltaTime;
     else if (decelerate) this.velocity -= Constants.ACCELERATION * deltaTime;
     else {
+      // Apply linear damping only if not accelerating or decelerating
       this.velocity *= 1 - Constants.LINEAR_DAMPING * deltaTime;
       if (Math.abs(this.velocity) < 0.01) this.velocity = 0;
     }
 
+    // Clamp velocity based on hyperspace status
     this.velocity = this.isHyperspaceActive
-      ? Constants.HYPERSPACE_SPEED
+      ? Constants.HYPERSPACE_SPEED // If hyperspace, set to max hyperspace speed
       : THREE.MathUtils.clamp(
+          // Otherwise, clamp to normal min/max
           this.velocity,
           Constants.MIN_SPEED,
           Constants.MAX_SPEED
         );
 
+    // Update Roll Rate
     if (rollLeft) this.rollRate += Constants.ROLL_ACCELERATION * deltaTime;
     else if (rollRight)
       this.rollRate -= Constants.ROLL_ACCELERATION * deltaTime;
     else {
+      // Apply angular damping only if not rolling
       this.rollRate *= 1 - Constants.ANGULAR_DAMPING * deltaTime;
       if (Math.abs(this.rollRate) < 0.01) this.rollRate = 0;
     }
 
-    if (pitchDown) this.pitchRate -= Constants.PITCH_ACCELERATION * deltaTime;
+    // Update Pitch Rate
+    if (pitchDown)
+      this.pitchRate -=
+        Constants.PITCH_ACCELERATION *
+        deltaTime; // Pitch nose down is negative rotation around X
     else if (pitchUp)
-      this.pitchRate += Constants.PITCH_ACCELERATION * deltaTime;
+      this.pitchRate +=
+        Constants.PITCH_ACCELERATION *
+        deltaTime; // Pitch nose up is positive rotation around X
     else {
+      // Apply angular damping only if not pitching
       this.pitchRate *= 1 - Constants.ANGULAR_DAMPING * deltaTime;
       if (Math.abs(this.pitchRate) < 0.01) this.pitchRate = 0;
     }
 
-    const moveDirection = new THREE.Vector3(0, 0, -1);
+    // Apply Movement and Rotation to Camera
+    const moveDirection = new THREE.Vector3(0, 0, -1); // Move along camera's local Z
     moveDirection.applyQuaternion(this.game.camera.quaternion);
     this.game.camera.position.addScaledVector(
       moveDirection,
       this.velocity * deltaTime
     );
-    this.game.camera.rotateX(this.pitchRate * deltaTime);
-    this.game.camera.rotateZ(this.rollRate * deltaTime);
 
+    // Apply rotation. Order matters (e.g., pitch then roll relative to new pitch)
+    // Typically, you'd apply pitch around the camera's local X axis,
+    // and roll around the camera's local Z axis.
+    this.game.camera.rotateX(this.pitchRate * deltaTime); // Rotate around local X axis
+    this.game.camera.rotateZ(this.rollRate * deltaTime); // Rotate around local Z axis
+
+    // --- Update HUD ---
     const { x, y, z } = this.game.camera.position;
     this.game.reactSetCoordinates([x, y, z]);
 
-    // Normalize speed for HUD based on *normal* max speed, even in hyperspace
-    // The HUD bar will just stay full during hyperspace.
     const normalizedSpeed = THREE.MathUtils.clamp(
       (this.velocity / Constants.MAX_SPEED) * 100,
       0,
@@ -190,23 +207,22 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       -1,
       1
     );
+    // Invert pitch for HUD: positive pitch rate (nose up) should move marker right (positive direction)
     const normalizedPitch = THREE.MathUtils.clamp(
       this.pitchRate / Constants.MAX_VISUAL_PITCH_RATE,
       -1,
       1
     );
+
     this.game.reactSetSpeed(normalizedSpeed);
     this.game.reactSetRoll(normalizedRoll);
-    this.game.reactSetPitch(normalizedPitch);
+    this.game.reactSetPitch(normalizedPitch); // Pass the possibly inverted pitch for HUD
 
     // --- Station Proximity Check & Direction ---
-    if (
-      this.game.assets.spaceStation &&
-      this.game.assets.spaceStation.visible &&
-      this.game.camera
-    ) {
+    if (this.game.assets.spaceStation?.visible && this.game.camera) {
+      // Check station is visible
       const playerPos = this.game.camera.position;
-      const stationPos = this.game.assets.spaceStation.position;
+      const stationPos = this.game.assets.spaceStation.getPosition(); // Use entity method
       const distanceToStation = playerPos.distanceTo(stationPos);
 
       if (distanceToStation < Constants.STATION_DOCKING_RADIUS) {
@@ -222,36 +238,48 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
         const angle = Math.atan2(relativeDir.y, relativeDir.x);
         this.game.reactSetStationDirection(angle);
       }
+    } else {
+      // No station visible or loaded, clear direction indicator
+      this.game.reactSetStationDirection(null);
     }
   }
 
+  // --- Input Handlers ---
   private handleKeyDown(event: KeyboardEvent): void {
     let keyIdentifier = event.code;
-    if (event.key === "/") keyIdentifier = "Slash";
-    if (event.key === ".") keyIdentifier = "Period";
+    // Handle specific keys needing mapping
+    if (event.key === "/") keyIdentifier = "Slash"; // Pitch Up (Alternative)
+    if (event.key === ".") keyIdentifier = "Period"; // Roll Right (Alternative)
+    if (event.key === ",") keyIdentifier = "Comma"; // Roll Left (Alternative)
+
     // Handle J key specifically for hyperspace toggle
     if (keyIdentifier === "KeyJ") {
       this.toggleHyperspace();
       return; // Don't add 'J' to the general keysPressed set
     }
-    if (event.key === ",") keyIdentifier = "Comma"; // Roll Left (Alternative)
-    if (event.code === "KeyA") keyIdentifier = "KeyA"; // Keep handling KeyA for acceleration
+    // Add the identified key to the set
     this.keysPressed.add(keyIdentifier);
   }
 
   private handleKeyUp(event: KeyboardEvent): void {
-    // No special handling needed for 'J' on key up
     let keyIdentifier = event.code;
+    // Handle specific keys needing mapping
     if (event.key === "/") keyIdentifier = "Slash";
     if (event.key === ".") keyIdentifier = "Period";
-    if (event.key === ",") keyIdentifier = "Comma"; // Roll Left (Alternative)
-    if (event.code === "KeyA") keyIdentifier = "KeyA";
+    if (event.key === ",") keyIdentifier = "Comma";
+
+    // Remove the identified key from the set
     this.keysPressed.delete(keyIdentifier);
   }
 
   private toggleHyperspace(): void {
     this.isHyperspaceActive = !this.isHyperspaceActive;
-    console.log(`Hyperspace Toggled: ${this.isHyperspaceActive}`); // Log state change
-    // Note: Speed limit change is handled in the update loop.
+    console.log(`Hyperspace Toggled: ${this.isHyperspaceActive}`);
+    if (!this.isHyperspaceActive) {
+      // When turning hyperspace OFF, clamp speed back to normal max immediately
+      this.velocity = Math.min(this.velocity, Constants.MAX_SPEED);
+    } else {
+      // When turning hyperspace ON, velocity will be set in the update loop
+    }
   }
 }

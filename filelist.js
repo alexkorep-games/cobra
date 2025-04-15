@@ -6,10 +6,10 @@ import process from "process";
 
 const targetDirectory = "./src";
 const excludedDirs = [
-  "src/features/credits",
-  "src/features/stats",
-  "src/features/title",
-  "src/features/undocking",
+  // "src/features/credits",
+  // "src/features/stats",
+  // "src/features/title",
+  // "src/features/undocking",
 ];
 
 /**

@@ -1,4 +1,8 @@
+// src/types.ts
 import * as THREE from "three";
+import { Planet } from "./game/entities/Planet";
+import { Ship } from "./game/entities/Ship";
+import { SpaceStation } from "./game/entities/SpaceStation";
 
 export type GameState =
   | "loading"
@@ -10,10 +14,10 @@ export type GameState =
 
 // Interface for game assets
 export interface GameAssets {
-  titleShips: (THREE.Object3D | null)[];
-  planet: THREE.Mesh | null;
+  titleShips: Ship[];
+  planet: Planet | null;
   undockingSquares: THREE.LineLoop[];
-  spaceStation: THREE.Object3D | null; // Added space station
+  spaceStation: SpaceStation | null;
 }
 
 // Forward declaration or interface for GameManager to avoid circular dependencies if needed

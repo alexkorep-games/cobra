@@ -1,10 +1,10 @@
 // src/game/GameManager.ts
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { GameState, IGameManager, GameAssets } from "../types"; // Import GameAssets
+// Removed GLTFLoader import here, entities handle their own loading
+import { GameState, IGameManager, GameAssets } from "../types";
 import { SceneLogicBase } from "../features/common/SceneLogicBase";
 
-// Import Scene Logics
+// Import Scene Logics (no change needed here)
 import { LoadingSceneLogic } from "../features/loading/LoadingSceneLogic";
 import { TitleSceneLogic } from "../features/title/TitleSceneLogic";
 import { CreditsSceneLogic } from "../features/credits/CreditsSceneLogic";
@@ -12,31 +12,37 @@ import { StatsSceneLogic } from "../features/stats/StatsSceneLogic";
 import { UndockingSceneLogic } from "../features/undocking/UndockingSceneLogic";
 import { SpaceFlightSceneLogic } from "../features/space_flight/SpaceFlightSceneLogic";
 
+// Import Entity Classes
+import { Planet } from "./entities/Planet";
+import { Ship } from "./entities/Ship";
+import { SpaceStation } from "./entities/SpaceStation";
+
 // Import Constants
 import * as Constants from "../constants";
 
 // Keep ship scale as needed based on model source size
 const shipScale = 6;
+const stationScale = shipScale * 1.5; // Make station a bit larger
 
 export class GameManager implements IGameManager {
   scene: THREE.Scene | null = null;
   camera: THREE.PerspectiveCamera | null = null;
   renderer: THREE.WebGLRenderer | null = null;
   clock: THREE.Clock = new THREE.Clock();
+  // Initialize assets with correct types
   assets: GameAssets = {
     titleShips: [],
     planet: null,
     undockingSquares: [],
     spaceStation: null,
   };
-  assetsToLoad: number = 0;
-  assetsLoaded: number = 0;
+  // Removed assetsToLoad, assetsLoaded - now handled by Promise.all
   loadingCompleteCallback: (() => void) | null = null;
   currentState: GameState = "loading";
   sceneLogics: Partial<Record<GameState, SceneLogicBase>> = {};
   animationFrameId: number | null = null;
 
-  // Refs from React
+  // Refs from React (no change)
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   reactSetGameState: (state: GameState) => void;
@@ -46,14 +52,14 @@ export class GameManager implements IGameManager {
   reactSetPitch: (pitch: number) => void;
   reactSetStationDirection: (angle: number | null) => void;
 
-  // Title Scene State
+  // Title Scene State (no change)
   currentShipIndex: number = 0;
   shipDisplayTimer: number = 0;
 
-  // Constants
+  // Constants (no change)
   constants = { ...Constants };
 
-  // Bound event handlers
+  // Bound event handlers (no change)
   boundHandleGlobalInput: (event: KeyboardEvent | MouseEvent) => void;
   boundOnWindowResize: () => void;
   boundAnimate: () => void;
@@ -86,11 +92,11 @@ export class GameManager implements IGameManager {
     this.loadingCompleteCallback = loadingCallback;
     this.scene = new THREE.Scene();
 
-    const cameraFarPlane = 10000000; // 10 million units (meters / 10,000 km)
+    const cameraFarPlane = 10000000; // 10 million units
     this.camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
-      0.1, // Keep near plane small for close objects
+      0.1,
       cameraFarPlane
     );
     this.camera.position.z = 15;
@@ -101,16 +107,16 @@ export class GameManager implements IGameManager {
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setClearColor(0x000000);
-    this.renderer.logarithmicDepthBuffer = true; // Crucial for large far plane values
+    this.renderer.logarithmicDepthBuffer = true;
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     this.scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.position.set(1, 1, 1);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Slightly stronger directional
+    directionalLight.position.set(5, 5, 5); // Adjust position for better angles
     this.scene.add(directionalLight);
 
-    this.createAssets(cameraFarPlane);
+    this.createAssets(cameraFarPlane); // Will now trigger async loading
     this.setupSceneLogics();
     this.startAnimationLoop();
 
@@ -119,7 +125,7 @@ export class GameManager implements IGameManager {
     window.addEventListener("mousedown", this.boundHandleGlobalInput);
 
     console.log("GameManager initialized and listeners added.");
-    this.sceneLogics[this.currentState]?.enter();
+    // Don't enter initial state here, wait for loading to complete
   }
 
   setupSceneLogics() {
@@ -133,7 +139,7 @@ export class GameManager implements IGameManager {
 
   createAssets(cameraFarPlane: number) {
     if (!this.scene || !this.camera) return;
-    const loader = new GLTFLoader();
+
     const shipFilePaths = [
       "assets/ships/ship-cobra.gltf",
       "assets/ships/ship-pirate.gltf",
@@ -141,20 +147,43 @@ export class GameManager implements IGameManager {
     ];
     const spaceStationPath = "assets/ships/spacestation.gltf";
 
-    this.assetsToLoad = shipFilePaths.length + 1; // Ships + Station
-    this.assetsLoaded = 0;
-    this.assets.titleShips = new Array(shipFilePaths.length).fill(null);
+    const loadPromises: Promise<void>[] = [];
 
-    console.log(`Expecting ${this.assetsToLoad} assets (Ships, Station).`);
+    // --- Instantiate Planet ---
+    const planetRadius = 500000;
+    this.assets.planet = new Planet(this.scene, planetRadius, 0x44aa44); // Greenish planet
+    loadPromises.push(
+      this.assets.planet.load().then(() => {
+        this.assets.planet?.addToScene(); // Add to scene after successful load
+      })
+    );
 
-    const planetRadius = 500000; // 500 km radius (adjust as needed for visual size)
-    const planetGeometry = new THREE.SphereGeometry(planetRadius, 128, 64); // Increased segments for smoother large sphere
-    const planetMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    this.assets.planet = new THREE.Mesh(planetGeometry, planetMaterial);
-    this.assets.planet.visible = false;
-    this.scene.add(this.assets.planet);
+    // --- Instantiate Space Station ---
+    this.assets.spaceStation = new SpaceStation(
+      this.scene,
+      spaceStationPath,
+      stationScale,
+      0xffff00 // Yellow station
+    );
+    loadPromises.push(
+      this.assets.spaceStation.load().then(() => {
+        this.assets.spaceStation?.addToScene();
+      })
+    );
 
-    // --- Undocking Squares ---
+    // --- Instantiate Title Ships ---
+    this.assets.titleShips = []; // Clear previous array if any
+    shipFilePaths.forEach((path) => {
+      const ship = new Ship(this.scene!, path, shipScale, 0x00ffff); // Cyan ships
+      this.assets.titleShips.push(ship);
+      loadPromises.push(
+        ship.load().then(() => {
+          ship.addToScene(); // Add each ship after it loads
+        })
+      );
+    });
+
+    // --- Undocking Squares (Keep as is for now) ---
     const squareOutlineGeom = new THREE.BufferGeometry();
     const vertices = new Float32Array([
       -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0,
@@ -170,117 +199,60 @@ export class GameManager implements IGameManager {
       squareLine.scale.set((i + 1) * 2, (i + 1) * 2, 1);
       squareLine.position.z = -i * 5;
       squareLine.visible = false;
-      this.scene.add(squareLine);
+      this.scene.add(squareLine); // Add squares directly
       this.assets.undockingSquares.push(squareLine);
     }
     // --- End Undocking Squares ---
 
-    // Load Ships
-    shipFilePaths.forEach((path, index) => {
-      loader.load(
-        path,
-        (gltf) => {
-          console.log(`Successfully loaded ${path}`);
-          const loadedShip = gltf.scene.clone(); // Clone scene to avoid issues if model is reused
-          loadedShip.scale.set(shipScale, shipScale, shipScale);
-          loadedShip.visible = false;
-
-          loadedShip.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-              const mesh = child as THREE.Mesh;
-              mesh.material = new THREE.MeshBasicMaterial({
-                color: 0xffff00,
-                wireframe: true,
-              });
-              // Ensure material compatibility with logarithmic depth buffer
-              mesh.material.needsUpdate = true;
-            }
-          });
-
-          this.scene?.add(loadedShip);
-          this.assets.titleShips[index] = loadedShip;
-          this.checkLoadingComplete();
-        },
-        undefined,
-        (error) => {
-          console.error(`Error loading ${path}:`, error);
-          this.assets.titleShips[index] = null; // Ensure null on error
-          this.checkLoadingComplete();
+    // --- Loading Completion ---
+    console.log(`Starting loading of ${loadPromises.length} assets...`);
+    Promise.all(loadPromises)
+      .then(() => {
+        console.log("All assets loaded successfully.");
+        if (this.loadingCompleteCallback) {
+          this.loadingCompleteCallback();
+        } else {
+          console.warn("loadingCompleteCallback not set!");
         }
-      );
-    });
-
-    // Load Space Station Separately
-    loader.load(
-      spaceStationPath,
-      (gltf) => {
-        console.log(`Successfully loaded ${spaceStationPath}`);
-        this.assets.spaceStation = gltf.scene.clone(); // Clone scene
-        // Apply scale - might need adjustment specifically for station
-        this.assets.spaceStation.scale.set(
-          shipScale * 1.5,
-          shipScale * 1.5,
-          shipScale * 1.5
-        ); // Make station a bit larger
-        this.assets.spaceStation.visible = false;
-
-        this.assets.spaceStation.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            const mesh = child as THREE.Mesh;
-            mesh.material = new THREE.MeshBasicMaterial({
-              color: 0xffff00, // Yellow wireframe
-              wireframe: true,
-            });
-            mesh.material.needsUpdate = true;
-          }
-        });
-
-        this.scene?.add(this.assets.spaceStation);
-        this.checkLoadingComplete();
-      },
-      undefined,
-      (error) => {
-        console.error(`Error loading ${spaceStationPath}:`, error);
-        this.assets.spaceStation = null; // Explicitly set to null on error
-        this.checkLoadingComplete(); // Still count it as "processed"
-      }
-    );
-
-    // Check completion in case all assets were already loaded (e.g., cached) or if there were none to load
-    if (this.assetsLoaded >= this.assetsToLoad) {
-      this.checkLoadingComplete();
-    }
+        // Enter the initial state ONLY after loading is complete
+        this.sceneLogics[this.currentState]?.enter();
+      })
+      .catch((error) => {
+        console.error("Error loading one or more assets:", error);
+        // Handle loading failure, maybe show an error message
+        // Possibly still call loadingCompleteCallback to unblock UI
+        if (this.loadingCompleteCallback) {
+          this.loadingCompleteCallback(); // Still notify React UI might need update
+        }
+        // Enter initial state even with errors? Or a specific error state?
+        this.sceneLogics[this.currentState]?.enter(); // Or switch to an error state
+      });
   }
 
-  checkLoadingComplete() {
-    this.assetsLoaded++;
-    console.log(`Assets loaded: ${this.assetsLoaded}/${this.assetsToLoad}`);
-    if (
-      this.assetsLoaded >= this.assetsToLoad &&
-      this.loadingCompleteCallback
-    ) {
-      console.log("All assets processed. Informing React.");
-      if (this.loadingCompleteCallback) {
-        this.loadingCompleteCallback();
-      } else {
-        console.warn("loadingCompleteCallback not set!");
-      }
-    }
-  }
+  // Removed checkLoadingComplete method
 
   animate() {
     if (!this.renderer || !this.scene || !this.camera) return;
     const deltaTime = this.clock.getDelta();
+
+    // Update Entities
+    this.assets.planet?.update(deltaTime);
+    this.assets.spaceStation?.update(deltaTime);
+    // Ships might have their own update logic, but title animation is external
+    // this.assets.titleShips.forEach(ship => ship.update(deltaTime));
+
+    // Update Current Scene Logic
     const currentLogic = this.sceneLogics[this.currentState];
     currentLogic?.update(deltaTime);
+
     this.renderer.render(this.scene, this.camera);
     this.animationFrameId = requestAnimationFrame(this.boundAnimate);
   }
 
   startAnimationLoop() {
     if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
-    this.clock.start();
-    this.animationFrameId = requestAnimationFrame(this.boundAnimate);
+    this.clock.start(); // Ensure clock is running
+    this.boundAnimate(); // Initial call
   }
 
   stopAnimationLoop() {
@@ -288,6 +260,7 @@ export class GameManager implements IGameManager {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
     }
+    this.clock.stop(); // Stop the clock
   }
 
   switchState(newState: GameState) {
@@ -303,7 +276,7 @@ export class GameManager implements IGameManager {
     console.log(`Switching state from ${oldState} to ${newState}`);
     oldLogic?.exit(newState);
     this.currentState = newState;
-    this.reactSetGameState(newState);
+    this.reactSetGameState(newState); // Update React state
     newLogic?.enter(oldState);
   }
 
@@ -320,104 +293,104 @@ export class GameManager implements IGameManager {
   }
 
   // --- Title Scene Animation Helpers ---
+  // These now manipulate the Ship *entity* properties, primarily position/rotation via its mesh
 
   prepareNextTitleShip() {
-    const ship = this.assets.titleShips[this.currentShipIndex]; // Get the *intended* next ship
-    if (ship) {
-      // Keep existing logic assuming constants are okay for now
+    const shipEntity = this.assets.titleShips[this.currentShipIndex];
+    if (shipEntity?.mesh) { // Check if ship and its mesh exist
       const startZ = this.constants.START_Z * (shipScale > 1 ? 2 : 1);
-      ship.position.set(
+      // Use entity methods or direct mesh access for positioning
+      shipEntity.setPosition(
         this.constants.TARGET_POS.x,
         this.constants.TARGET_POS.y,
         startZ
       );
-      ship.rotation.set(0, Math.PI, 0);
-      ship.visible = true;
+      shipEntity.setRotation(0, Math.PI, 0);
+      shipEntity.setVisible(true);
     } else {
       console.warn(
-        `Ship at index ${this.currentShipIndex} is missing or null. Attempting next.`
+        `Ship entity or mesh at index ${this.currentShipIndex} is missing. Attempting next.`
       );
-      // Immediately try to advance to the next *valid* ship
       this.advanceTitleShip();
     }
   }
 
   advanceTitleShip() {
-    if (this.assets.titleShips.length === 0) return; // No ships to cycle
-    const currentShip = this.assets.titleShips[this.currentShipIndex];
-    if (currentShip) currentShip.visible = false; // Hide the old one
+    if (this.assets.titleShips.length === 0) return; // No ships
 
-    // Find the next valid index
+    const currentShipEntity = this.assets.titleShips[this.currentShipIndex];
+    currentShipEntity?.setVisible(false); // Hide the old one using entity method
+
+    // Find the next valid index (checking if entity and its mesh exist)
     let nextIndex = (this.currentShipIndex + 1) % this.assets.titleShips.length;
+    let attempts = 0; // Prevent infinite loop if no valid ships
     while (
-      !this.assets.titleShips[nextIndex] &&
-      nextIndex !== this.currentShipIndex
+      (!this.assets.titleShips[nextIndex]?.mesh &&
+       attempts < this.assets.titleShips.length)
     ) {
-      // Skip null/missing ships
       nextIndex = (nextIndex + 1) % this.assets.titleShips.length;
+      attempts++;
     }
 
-    if (
-      !this.assets.titleShips[nextIndex] &&
-      nextIndex === this.currentShipIndex
-    ) {
+    if (!this.assets.titleShips[nextIndex]?.mesh) {
       console.warn("No valid title ships available to display.");
-      this.currentShipIndex = 0; // Reset or handle appropriately
+      // Optionally hide all ships or handle error
+      this.assets.titleShips.forEach(ship => ship?.setVisible(false));
+      this.currentShipIndex = 0; // Reset index
       this.shipDisplayTimer = 0;
-      return; // Exit if no valid ship found
-    } else {
-      this.currentShipIndex = nextIndex;
-      this.shipDisplayTimer = 0;
-      this.prepareNextTitleShip(); // Prepare the newly selected valid ship
-    }
-  }
-
-  updateTitleShipAnimation(deltaTime: number) {
-    const validShips = this.assets.titleShips.filter((ship) => ship !== null);
-    if (validShips.length === 0) return; // No valid ships to animate
-
-    this.shipDisplayTimer += deltaTime;
-    const currentShip = this.assets.titleShips[this.currentShipIndex];
-
-    if (!currentShip) {
-      // This case should be less likely now with prepareNextTitleShip, but handle defensively
-      console.warn(
-        `Current ship index ${this.currentShipIndex} invalid during animation update.`
-      );
-      this.advanceTitleShip(); // Try to move to the next valid one
       return;
     }
 
-    // --- Animation Logic (largely unchanged) ---
+    this.currentShipIndex = nextIndex;
+    this.shipDisplayTimer = 0;
+    this.prepareNextTitleShip(); // Prepare the newly selected valid ship
+  }
+
+  updateTitleShipAnimation(deltaTime: number) {
+    const currentShipEntity = this.assets.titleShips[this.currentShipIndex];
+
+    // Ensure the current entity and its mesh are valid
+    if (!currentShipEntity?.mesh) {
+      console.warn(
+        `Current ship entity or mesh invalid (index ${this.currentShipIndex}) during animation update.`
+      );
+      this.advanceTitleShip(); // Try to recover
+      return;
+    }
+
+    this.shipDisplayTimer += deltaTime;
+    const currentShipMesh = currentShipEntity.mesh; // Use the mesh for direct manipulation
+
+    // --- Animation Logic (manipulating the mesh directly) ---
     const timer = this.shipDisplayTimer;
     const startZ = this.constants.START_Z * (shipScale > 1 ? 2 : 1);
     const targetZ = this.constants.TARGET_POS.z;
 
     if (timer < this.constants.FLY_IN_DURATION) {
       const t = Math.min(1, timer / this.constants.FLY_IN_DURATION);
-      currentShip.position.z = THREE.MathUtils.lerp(startZ, targetZ, t);
-      currentShip.rotation.y += 0.1 * deltaTime;
+      currentShipMesh.position.z = THREE.MathUtils.lerp(startZ, targetZ, t);
+      currentShipMesh.rotation.y += 0.1 * deltaTime; // Keep rotation direct for now
     } else if (
       timer <
       this.constants.FLY_IN_DURATION + this.constants.HOLD_DURATION
     ) {
-      currentShip.position.z = targetZ;
-      currentShip.rotation.y += 0.5 * deltaTime;
-      currentShip.rotation.x += 0.25 * deltaTime;
+      currentShipMesh.position.z = targetZ;
+      currentShipMesh.rotation.y += 0.5 * deltaTime;
+      currentShipMesh.rotation.x += 0.25 * deltaTime;
     } else if (timer < this.constants.TOTAL_CYCLE_DURATION) {
       const flyOutTimer =
         timer - (this.constants.FLY_IN_DURATION + this.constants.HOLD_DURATION);
       const t = Math.min(1, flyOutTimer / this.constants.FLY_OUT_DURATION);
-      currentShip.position.z = THREE.MathUtils.lerp(targetZ, startZ, t);
-      currentShip.rotation.y += 0.1 * deltaTime;
+      currentShipMesh.position.z = THREE.MathUtils.lerp(targetZ, startZ, t);
+      currentShipMesh.rotation.y += 0.1 * deltaTime;
     } else {
-      currentShip.position.z = startZ; // Ensure it's fully out
+      currentShipMesh.position.z = startZ; // Ensure it's fully out before advancing
     }
     // --- End Animation Logic ---
 
     // Cycle to next ship
     if (this.shipDisplayTimer >= this.constants.TOTAL_CYCLE_DURATION) {
-      this.advanceTitleShip();
+      this.advanceTitleShip(); // Advances index, resets timer, prepares next
     }
   }
 
@@ -427,24 +400,34 @@ export class GameManager implements IGameManager {
     window.removeEventListener("resize", this.boundOnWindowResize);
     window.removeEventListener("keydown", this.boundHandleGlobalInput);
     window.removeEventListener("mousedown", this.boundHandleGlobalInput);
-    console.log("Event listeners removed.");
-    this.renderer?.dispose();
-    this.scene?.traverse((object) => {
-      if (
-        object instanceof THREE.Mesh ||
-        object instanceof THREE.Points ||
-        object instanceof THREE.Line
-      ) {
-        object.geometry?.dispose();
-        const materials = Array.isArray(object.material)
-          ? object.material
-          : [object.material];
-        materials.forEach((material) => material?.dispose());
-      }
+
+    // Dispose Entities
+    this.assets.planet?.dispose();
+    this.assets.spaceStation?.dispose();
+    this.assets.titleShips.forEach((ship) => ship.dispose());
+
+    // Dispose remaining non-entity THREE objects (like undocking squares)
+    this.assets.undockingSquares.forEach(square => {
+         square.geometry?.dispose();
+         if (Array.isArray(square.material)) {
+             square.material.forEach(m => m.dispose());
+         } else {
+             square.material?.dispose();
+         }
+         this.scene?.remove(square); // Remove from scene as well
     });
+
+
+    console.log("Entities and remaining objects disposed.");
+
+    this.renderer?.dispose(); // Dispose renderer resources
+    // Scene objects should be handled by entity dispose, but clear scene just in case
+    // this.scene?.clear(); // Use dispose methods instead
+
     this.scene = null;
     this.camera = null;
     this.renderer = null;
+    // Reset assets structure
     this.assets = {
       titleShips: [],
       planet: null,

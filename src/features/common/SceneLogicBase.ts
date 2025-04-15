@@ -41,15 +41,17 @@ export class SceneLogicBase {
 
   // Hides common scene elements that might persist between states
   protected resetCommonVisibility() {
-    if (this.game.assets.planet) this.game.assets.planet.visible = false;
-    if (this.game.assets.stars) this.game.assets.stars.visible = false;
-    this.game.assets.titleShips?.forEach(
-      (ship: THREE.Object3D | null) => ship && (ship.visible = false)
-    );
+    // Use entity setVisible methods
+    this.game.assets.planet?.setVisible(false);
+    this.game.assets.spaceStation?.setVisible(false);
+    this.game.assets.titleShips.forEach(ship => ship.setVisible(false));
+
+
     this.game.assets.undockingSquares?.forEach(
       (square: THREE.LineLoop) => (square.visible = false)
     );
-    if (this.game.assets.spaceStation)
-      this.game.assets.spaceStation.visible = false;
+
+    // Hide stars if/when implemented
+    // if (this.game.assets.stars) this.game.assets.stars.visible = false;
   }
 }
