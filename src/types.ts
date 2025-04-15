@@ -18,6 +18,7 @@ export interface GameAssets {
   planet: Planet | null;
   undockingSquares: THREE.LineLoop[];
   spaceStation: SpaceStation | null;
+  pirateShips: Ship[]; // Added for pirate NPCs
 }
 
 // Forward declaration or interface for GameManager to avoid circular dependencies if needed

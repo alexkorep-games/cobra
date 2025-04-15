@@ -15,10 +15,10 @@ export const START_Z = -150;
 export const TARGET_POS = new THREE.Vector3(-3, 0, 0);
 
 export const HYPERSPACE_SPEED = 500000.0;
-export const MAX_SPEED = 50.0;
+export const MAX_SPEED = 500.0;
 export const MIN_SPEED = 0.0;
-export const ACCELERATION = 15.0; // Units per second^2
-export const DECELERATION = 10.0; // Deceleration when no key pressed (used by specific key)
+export const ACCELERATION = 150.0; // Units per second^2
+export const DECELERATION = 100.0; // Deceleration when no key pressed (used by specific key)
 export const ROLL_ACCELERATION = Math.PI * 0.8; // Radians per second^2
 export const PITCH_ACCELERATION = Math.PI * 0.5; // Radians per second^2
 export const ANGULAR_DAMPING = 3.0; // Factor to reduce rotation speed when no input
@@ -30,3 +30,11 @@ export const MAX_VISUAL_PITCH_RATE = Math.PI * 0.3; // Radians/sec (Used for HUD
 export const STATION_PLANET_OFFSET_MIN = 1000; // Min distance from planet surface/center
 export const STATION_PLANET_OFFSET_MAX = 5000; // Max distance from planet surface/center
 export const STATION_DOCKING_RADIUS = 150; // Distance to trigger docking/return to title
+
+// Pirate Constants
+export const PIRATE_COUNT = 3;
+export const PIRATE_BASE_DISTANCE = 5000; // Base distance from player start
+export const PIRATE_POSITION_OFFSET_RANGE = new THREE.Vector2(0.5, 2.0); // Randomness factor
+export const PIRATE_ATTACK_RANGE = 1500; // Distance within which pirates attack
+export const PIRATE_SPEED = 25.0; // Speed when attacking
+export const PIRATE_TURN_RATE = 0.5; // Radians per second towards player

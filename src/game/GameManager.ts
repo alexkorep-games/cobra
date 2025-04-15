@@ -35,6 +35,7 @@ export class GameManager implements IGameManager {
     planet: null,
     undockingSquares: [],
     spaceStation: null,
+    pirateShips: [], // Initialize pirate ships array
   };
   // Removed assetsToLoad, assetsLoaded - now handled by Promise.all
   loadingCompleteCallback: (() => void) | null = null;
@@ -146,6 +147,7 @@ export class GameManager implements IGameManager {
       "assets/ships/asteroid.gltf",
     ];
     const spaceStationPath = "assets/ships/spacestation.gltf";
+    const pirateShipPath = "assets/ships/ship-pirate.gltf"; // Use pirate model
 
     const loadPromises: Promise<void>[] = [];
 
@@ -182,6 +184,19 @@ export class GameManager implements IGameManager {
         })
       );
     });
+
+    // --- Instantiate Pirate Ships ---
+    this.assets.pirateShips = []; // Clear previous array if any
+    for (let i = 0; i < Constants.PIRATE_COUNT; i++) {
+        const pirate = new Ship(this.scene!, pirateShipPath, shipScale, 0xff0000); // Red pirates
+        this.assets.pirateShips.push(pirate);
+        loadPromises.push(
+            pirate.load().then(() => {
+                pirate.addToScene(); // Add each pirate after it loads
+            })
+        );
+    }
+
 
     // --- Undocking Squares (Keep as is for now) ---
     const squareOutlineGeom = new THREE.BufferGeometry();
@@ -238,6 +253,7 @@ export class GameManager implements IGameManager {
     // Update Entities
     this.assets.planet?.update(deltaTime);
     this.assets.spaceStation?.update(deltaTime);
+    this.assets.pirateShips.forEach(pirate => pirate.update(deltaTime)); // Update pirates
     // Ships might have their own update logic, but title animation is external
     // this.assets.titleShips.forEach(ship => ship.update(deltaTime));
 
@@ -405,6 +421,7 @@ export class GameManager implements IGameManager {
     this.assets.planet?.dispose();
     this.assets.spaceStation?.dispose();
     this.assets.titleShips.forEach((ship) => ship.dispose());
+    this.assets.pirateShips.forEach((pirate) => pirate.dispose()); // Dispose pirates
 
     // Dispose remaining non-entity THREE objects (like undocking squares)
     this.assets.undockingSquares.forEach(square => {
@@ -433,6 +450,7 @@ export class GameManager implements IGameManager {
       planet: null,
       undockingSquares: [],
       spaceStation: null,
+      pirateShips: [],
     };
     this.sceneLogics = {};
     this.loadingCompleteCallback = null;

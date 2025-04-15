@@ -12,6 +12,8 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
   private boundHandleKeyDown: (event: KeyboardEvent) => void;
   private boundHandleKeyUp: (event: KeyboardEvent) => void;
   private isHyperspaceActive: boolean = false;
+  private tempQuaternion = new THREE.Quaternion(); // Reusable quaternion for calculations
+  private tempVector = new THREE.Vector3(); // Reusable vector for calculations
 
   constructor(game: IGameManager) {
     super(game);
@@ -23,7 +25,8 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
   private positionObjectRandomly(
     entity: EntityBase | null,
     baseDistance: number,
-    offsetRange: THREE.Vector2 = new THREE.Vector2(0.8, 1.2)
+    offsetRange: THREE.Vector2 = new THREE.Vector2(0.8, 1.2),
+    relativeTo: THREE.Vector3 = new THREE.Vector3(0, 0, 0) // Optional origin
   ) {
     if (!entity?.mesh) return; // Check if entity and mesh exist
 
@@ -31,17 +34,22 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       baseDistance *
       THREE.MathUtils.lerp(offsetRange.x, offsetRange.y, Math.random());
     const angle = Math.random() * Math.PI * 2;
-    const elevationAngle = (Math.random() - 0.5) * Math.PI * 0.5; // Limit elevation slightly
-    const x = distance * Math.sin(angle) * Math.cos(elevationAngle);
-    const y = distance * Math.sin(elevationAngle);
-    const z = -distance * Math.cos(angle) * Math.cos(elevationAngle); // Usually move along negative Z
+    const elevationAngle = (Math.random() - 0.5) * Math.PI; // Wider elevation range
+    const x = relativeTo.x + distance * Math.sin(angle) * Math.cos(elevationAngle);
+    const y = relativeTo.y + distance * Math.sin(elevationAngle);
+    const z = relativeTo.z - distance * Math.cos(angle) * Math.cos(elevationAngle); // Usually move along negative Z
 
     entity.setPosition(x, y, z);
+    entity.setRotation( // Random orientation
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2,
+        Math.random() * Math.PI * 2
+    );
     entity.setVisible(true);
     console.log(
       `${
         entity.mesh.name || "Object"
-      } positioned at distance: ${distance.toFixed(0)}`
+      } positioned at distance: ${distance.toFixed(0)} from ${relativeTo.toArray()}`
     );
   }
 
@@ -91,6 +99,18 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
         "Could not position station relative to planet (planet missing?)."
       );
     }
+
+    // Position Pirates randomly around the player's starting position
+    const playerStartPosition = this.game.camera?.position ?? new THREE.Vector3(0,0,0);
+    this.game.assets.pirateShips.forEach(pirate => {
+        this.positionObjectRandomly(
+            pirate,
+            Constants.PIRATE_BASE_DISTANCE,
+            Constants.PIRATE_POSITION_OFFSET_RANGE,
+            playerStartPosition
+        );
+    });
+
     console.log("Entered Space Flight Scene.");
 
     // Reset player state
@@ -115,6 +135,11 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     window.removeEventListener("keyup", this.boundHandleKeyUp);
     this.keysPressed.clear();
     this.isHyperspaceActive = false; // Reset hyperspace state on exit
+
+    // Hide planet, station, and pirates
+    this.game.assets.planet?.setVisible(false);
+    this.game.assets.spaceStation?.setVisible(false);
+    this.game.assets.pirateShips.forEach(pirate => pirate.setVisible(false));
   }
 
   update(deltaTime: number): void {
@@ -242,6 +267,49 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       // No station visible or loaded, clear direction indicator
       this.game.reactSetStationDirection(null);
     }
+
+    // --- Pirate AI ---
+    const playerPos = this.game.camera.position;
+    this.game.assets.pirateShips.forEach(pirate => {
+        if (!pirate.mesh || !pirate.visible) return; // Skip inactive pirates
+
+        const piratePos = pirate.getPosition();
+        const distanceToPlayer = playerPos.distanceTo(piratePos);
+
+        if (distanceToPlayer < Constants.PIRATE_ATTACK_RANGE) {
+            // --- Attack Behavior ---
+
+            // 1. Turn towards player
+            const directionToPlayer = this.tempVector.subVectors(playerPos, piratePos).normalize();
+            const targetQuaternion = this.tempQuaternion.setFromUnitVectors(
+                new THREE.Vector3(0, 0, 1), // Assuming pirate model faces +Z
+                directionToPlayer
+            );
+
+            // Smoothly rotate towards the target orientation
+            pirate.mesh.quaternion.rotateTowards(targetQuaternion, Constants.PIRATE_TURN_RATE * deltaTime);
+
+            // 2. Move towards player
+            // Get the pirate's forward direction based on its current rotation
+            const forward = new THREE.Vector3(0, 0, 1);
+            forward.applyQuaternion(pirate.mesh.quaternion);
+
+            // Move along the forward vector
+            piratePos.addScaledVector(forward, Constants.PIRATE_SPEED * deltaTime);
+            pirate.setPosition(piratePos.x, piratePos.y, piratePos.z);
+
+            // (Future: Add firing logic here)
+            // console.log(`Pirate ${pirate.mesh.name} attacking! Dist: ${distanceToPlayer.toFixed(0)}`);
+
+        } else {
+            // --- Idle/Patrol Behavior (Optional) ---
+            // For now, pirates do nothing if player is out of range.
+            // Could add simple patrolling logic here later.
+        }
+    });
+
+    // --- Collision Detection (Placeholder) ---
+    // ... (Add basic collision checks later if needed) ...
   }
 
   // --- Input Handlers ---
