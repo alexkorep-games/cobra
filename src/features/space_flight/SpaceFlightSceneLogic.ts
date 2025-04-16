@@ -3,6 +3,7 @@ import { SceneLogicBase } from "../common/SceneLogicBase";
 import { GameState, IGameManager } from "../../types";
 import * as Constants from "../../constants";
 import { EntityBase } from "../../game/entities/EntityBase";
+import { Ship } from "../../game/entities/Ship"; // Import Ship
 
 export class SpaceFlightSceneLogic extends SceneLogicBase {
   private velocity: number = 0;
@@ -14,9 +15,19 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
   private isHyperspaceActive: boolean = false;
   private tempQuaternion = new THREE.Quaternion(); // Reusable quaternion for calculations
   private tempVector = new THREE.Vector3(); // Reusable vector for calculations
+  private tempVector2 = new THREE.Vector3(); // Another reusable vector
+
+  // Laser state
+  private laserHeat: number = 0;
+  private laserCooldownTimer: number = 0;
+  private wantsToFire: boolean = false;
+  private laserBeam: THREE.Line | null = null;
+  private laserBeamHideTimer: number = 0;
+  private raycaster = new THREE.Raycaster();
 
   constructor(game: IGameManager) {
     super(game);
+    console.log("SpaceFlightSceneLogic constructor");
     this.boundHandleKeyDown = this.handleKeyDown.bind(this);
     this.boundHandleKeyUp = this.handleKeyUp.bind(this);
   }
@@ -54,6 +65,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
   }
 
   enter(previousState?: GameState): void {
+    console.log("Entering SpaceFlightSceneLogic scene");
     super.enter(previousState); // Resets common visibility
 
     // Position planet far away
@@ -121,11 +133,49 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     if (this.game.camera) {
       this.game.camera.rotation.set(0, 0, 0);
       this.game.camera.position.set(0, 0, 0);
+      // Log camera clipping planes
+      console.log(`Camera Clipping Planes: Near=${this.game.camera.near}, Far=${this.game.camera.far}`);
     }
     this.isHyperspaceActive = false; // Start with hyperspace off
 
+    this.laserHeat = 0;
+    this.laserCooldownTimer = 0;
+    this.wantsToFire = false;
+    this.laserBeamHideTimer = 0;
+
+    // Initialize laser beam object
+    if (this.laserBeam) {
+        this.game.scene?.remove(this.laserBeam);
+        this.laserBeam.geometry.dispose();
+        (this.laserBeam.material as THREE.Material).dispose();
+    }
+    const laserMaterial = new THREE.LineBasicMaterial({
+        color: Constants.LASER_COLOR,
+        linewidth: 5,
+        transparent: true,
+        opacity: 1,
+    });
+
+    // Create two slightly offset lines to make the beam more visible
+    const points1 = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)];
+    const points2 = [new THREE.Vector3(0.1, 0.1, 0), new THREE.Vector3(0.1, 0.1, -1)];
+    const allPoints = [...points1, ...points2];
+    const laserGeometry = new THREE.BufferGeometry().setFromPoints(allPoints);
+    this.laserBeam = new THREE.LineSegments(laserGeometry, laserMaterial);
+    this.laserBeam.visible = false;
+    this.laserBeam.frustumCulled = false;
+    this.laserBeam.renderOrder = 999;
+    if (this.game.scene) {
+        console.log("Adding laser beam to scene");
+        this.game.scene.add(this.laserBeam);
+    }
+    
+    // Make sure event listeners are properly bound
+    window.removeEventListener("keydown", this.boundHandleKeyDown); // Remove first in case
+    window.removeEventListener("keyup", this.boundHandleKeyUp);
     window.addEventListener("keydown", this.boundHandleKeyDown);
     window.addEventListener("keyup", this.boundHandleKeyUp);
+    console.log("Key event listeners bound");
   }
 
   exit(nextState?: GameState): void {
@@ -140,11 +190,25 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.game.assets.planet?.setVisible(false);
     this.game.assets.spaceStation?.setVisible(false);
     this.game.assets.pirateShips.forEach(pirate => pirate.setVisible(false));
+
+    this.wantsToFire = false; // Ensure firing stops on exit
+    if (this.laserBeam) {
+        this.laserBeam.visible = false;
+        this.game.scene?.remove(this.laserBeam); // Remove from scene
+        this.laserBeam.geometry.dispose();
+        (this.laserBeam.material as THREE.Material).dispose();
+        this.laserBeam = null;
+    }
   }
 
   update(deltaTime: number): void {
-    if (!this.game.camera) return;
+    if (!this.game.camera || !this.laserBeam) return;
 
+    // --- Update Timers ---
+    this.laserCooldownTimer = Math.max(0, this.laserCooldownTimer - deltaTime);
+    this.laserBeamHideTimer = Math.max(0, this.laserBeamHideTimer - deltaTime);
+
+    // --- Handle Input ---
     let accelerate = false,
       decelerate = false,
       rollLeft = false,
@@ -160,7 +224,108 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     if (this.keysPressed.has("ArrowUp")) pitchDown = true; // ArrowUp -> Pitch Nose Down
     if (this.keysPressed.has("ArrowDown")) pitchUp = true; // ArrowDown -> Pitch Nose Up
 
-    // Update Velocity
+    // Read firing key
+    this.wantsToFire = this.keysPressed.has("Space"); // Use Spacebar to fire
+    if (this.wantsToFire) {
+      console.log("Space pressed - wants to fire");
+      console.log(`Cooldown: ${this.laserCooldownTimer}, Heat: ${this.laserHeat}`);
+    }
+
+    // --- Laser Cooling ---
+    if (!this.wantsToFire && this.laserHeat > 0) {
+      this.laserHeat = Math.max(
+        0,
+        this.laserHeat - Constants.LASER_HEAT_DECREASE_RATE * deltaTime
+      );
+    }
+
+    // --- Laser Firing ---
+    if (
+      this.wantsToFire &&
+      this.laserCooldownTimer <= 0 &&
+      this.laserHeat < Constants.LASER_MAX_HEAT
+    ) {
+      console.log("=== LASER FIRING ===");
+      console.log(`LaserBeam exists: ${this.laserBeam !== null}`);
+      console.log(`LaserBeam in scene: ${this.game.scene?.children.includes(this.laserBeam!)}`);
+      console.log(`Heat: ${this.laserHeat}, Cooldown: ${this.laserCooldownTimer}`);
+
+      this.laserCooldownTimer = Constants.LASER_COOLDOWN;
+      this.laserHeat = Math.min(
+        Constants.LASER_MAX_HEAT,
+        this.laserHeat + Constants.LASER_HEAT_INCREASE
+      );
+
+      // --- Re-enable Raycasting ---
+      // Set raycaster from camera center
+      this.raycaster.setFromCamera({ x: 0, y: 0 }, this.game.camera); // Ray from screen center
+
+      // Prepare list of pirate meshes to check against
+      const pirateMeshes: THREE.Object3D[] = this.game.assets.pirateShips
+        .map((p) => p.mesh) // Get the mesh from each Ship entity
+        .filter((mesh): mesh is THREE.Object3D => mesh !== null && mesh.visible); // Filter out null or invisible meshes
+
+      const intersects = this.raycaster.intersectObjects(pirateMeshes, true); // Check recursively
+
+      let hitDistance = Constants.LASER_RANGE; // Default range
+      let hitTarget: Ship | null = null;
+
+      if (intersects.length > 0) {
+        // Find the closest intersection
+        const closestHit = intersects[0];
+        if (closestHit.distance <= Constants.LASER_RANGE) {
+          hitDistance = closestHit.distance;
+          console.log(`Raycast hit distance: ${hitDistance.toFixed(0)}`); // Keep log
+
+          // Find which pirate Ship entity corresponds to the hit mesh
+          let hitMesh = closestHit.object;
+          while (hitMesh.parent && !(hitMesh.userData.entity instanceof Ship)) {
+              hitMesh = hitMesh.parent; // Traverse up if we hit a child mesh
+          }
+          if (hitMesh.userData.entity instanceof Ship) {
+              hitTarget = hitMesh.userData.entity;
+              console.log(`Hit Pirate: ${hitTarget.mesh?.name}! Distance: ${hitDistance.toFixed(0)}`); // Keep log
+              // TODO: Apply damage to hitTarget
+          } else {
+              console.log(`Hit something, but couldn't identify pirate. Distance: ${hitDistance.toFixed(0)}`); // Keep log
+          }
+        }
+      }
+      // --- End Re-enabled Raycasting ---
+
+
+      // Visualize Laser Beam
+      const startPoint = this.game.camera.position.clone();
+      const direction = this.tempVector.set(0, 0, -1).applyQuaternion(this.game.camera.quaternion);
+      startPoint.addScaledVector(direction, 10.0); // Offset in front of camera
+      const endPoint = this.tempVector2.copy(startPoint).addScaledVector(direction, hitDistance);
+
+      // Offset for the second line (for thickness effect)
+      const offset = new THREE.Vector3(0.1, 0.1, 0).applyQuaternion(this.game.camera.quaternion);
+      const startPoint2 = startPoint.clone().add(offset);
+      const endPoint2 = endPoint.clone().add(offset);
+
+      const positions = this.laserBeam.geometry.attributes.position as THREE.BufferAttribute;
+      positions.setXYZ(0, startPoint.x, startPoint.y, startPoint.z);
+      positions.setXYZ(1, endPoint.x, endPoint.y, endPoint.z);
+      positions.setXYZ(2, startPoint2.x, startPoint2.y, startPoint2.z);
+      positions.setXYZ(3, endPoint2.x, endPoint2.y, endPoint2.z);
+      positions.needsUpdate = true;
+      this.laserBeam.geometry.computeBoundingSphere(); // Update bounds
+
+      console.log("Setting laser beam visible..."); // Keep pre-visibility log
+      this.laserBeam.visible = true;
+      this.laserBeamHideTimer = Constants.LASER_DURATION;
+      console.log(`Laser visible: ${this.laserBeam.visible}, Hide timer: ${this.laserBeamHideTimer}`); // Keep final log
+
+    } else if (this.laserBeamHideTimer <= 0 && this.laserBeam.visible) {
+        // Hide laser beam if timer expired
+        this.laserBeam.visible = false;
+        console.log("Laser hidden by timer.");
+    }
+
+    // --- Update Velocity & Movement (existing code) ---
+    // ... (velocity update logic remains the same) ...
     if (accelerate) this.velocity += Constants.ACCELERATION * deltaTime;
     else if (decelerate) this.velocity -= Constants.ACCELERATION * deltaTime;
     else {
@@ -218,7 +383,10 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.game.camera.rotateX(this.pitchRate * deltaTime); // Rotate around local X axis
     this.game.camera.rotateZ(this.rollRate * deltaTime); // Rotate around local Z axis
 
+
     // --- Update HUD ---
+    // Crosshair: This is typically a static overlay element in the center of the HUD UI (React component).
+    // The raycast logic above effectively uses the center of the screen as the aiming point.
     const { x, y, z } = this.game.camera.position;
     this.game.reactSetCoordinates([x, y, z]);
 
@@ -238,12 +406,20 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       -1,
       1
     );
+    const normalizedLaserHeat = THREE.MathUtils.clamp(
+        (this.laserHeat / Constants.LASER_MAX_HEAT) * 100,
+        0,
+        100
+    );
+
 
     this.game.reactSetSpeed(normalizedSpeed);
     this.game.reactSetRoll(normalizedRoll);
     this.game.reactSetPitch(normalizedPitch); // Pass the possibly inverted pitch for HUD
+    this.game.reactSetLaserHeat(normalizedLaserHeat); // Update laser heat on HUD
 
-    // --- Station Proximity Check & Direction ---
+    // --- Station Proximity Check & Direction (existing code) ---
+    // ... (station logic remains the same) ...
     if (this.game.assets.spaceStation?.visible && this.game.camera) {
       // Check station is visible
       const playerPos = this.game.camera.position;
@@ -268,7 +444,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       this.game.reactSetStationDirection(null);
     }
 
-    // --- Pirate AI ---
+
+    // --- Pirate AI (existing code) ---
+    // ... (pirate AI logic remains the same) ...
     const playerPos = this.game.camera.position;
     this.game.assets.pirateShips.forEach(pirate => {
         if (!pirate.mesh || !pirate.visible) return; // Skip inactive pirates
@@ -281,6 +459,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
             // 1. Turn towards player
             const directionToPlayer = this.tempVector.subVectors(playerPos, piratePos).normalize();
+            // Ensure pirate mesh has userData.entity set if not already
+            if (!pirate.mesh.userData.entity) pirate.mesh.userData.entity = pirate;
+
             const targetQuaternion = this.tempQuaternion.setFromUnitVectors(
                 new THREE.Vector3(0, 0, 1), // Assuming pirate model faces +Z
                 directionToPlayer
@@ -308,6 +489,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
         }
     });
 
+
     // --- Collision Detection (Placeholder) ---
     // ... (Add basic collision checks later if needed) ...
   }
@@ -319,6 +501,10 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     if (event.key === "/") keyIdentifier = "Slash"; // Pitch Up (Alternative)
     if (event.key === ".") keyIdentifier = "Period"; // Roll Right (Alternative)
     if (event.key === ",") keyIdentifier = "Comma"; // Roll Left (Alternative)
+    // Map Spacebar explicitly if needed, though event.code should be "Space"
+    if (event.key === " ") keyIdentifier = "Space";
+    
+    console.log(`Key pressed: ${keyIdentifier}`);
 
     // Handle J key specifically for hyperspace toggle
     if (keyIdentifier === "KeyJ") {
@@ -327,6 +513,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     }
     // Add the identified key to the set
     this.keysPressed.add(keyIdentifier);
+    console.log(`Keys pressed set: ${Array.from(this.keysPressed).join(', ')}`);
   }
 
   private handleKeyUp(event: KeyboardEvent): void {
@@ -335,9 +522,12 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     if (event.key === "/") keyIdentifier = "Slash";
     if (event.key === ".") keyIdentifier = "Period";
     if (event.key === ",") keyIdentifier = "Comma";
+    if (event.key === " ") keyIdentifier = "Space";
 
+    console.log(`Key released: ${keyIdentifier}`);
     // Remove the identified key from the set
     this.keysPressed.delete(keyIdentifier);
+    console.log(`Keys still pressed: ${Array.from(this.keysPressed).join(', ')}`);
   }
 
   private toggleHyperspace(): void {

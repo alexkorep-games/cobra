@@ -34,6 +34,7 @@ export interface IGameManager {
   reactSetSpeed: (speed: number) => void;
   reactSetRoll: (roll: number) => void;
   reactSetPitch: (pitch: number) => void;
+  reactSetLaserHeat: (heat: number) => void;
   reactSetStationDirection: (angle: number | null) => void; // Added for station direction
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;

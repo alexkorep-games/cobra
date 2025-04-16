@@ -38,3 +38,12 @@ export const PIRATE_POSITION_OFFSET_RANGE = new THREE.Vector2(0.5, 2.0); // Rand
 export const PIRATE_ATTACK_RANGE = 1500; // Distance within which pirates attack
 export const PIRATE_SPEED = 25.0; // Speed when attacking
 export const PIRATE_TURN_RATE = 0.5; // Radians per second towards player
+
+// Laser Constants
+export const LASER_RANGE = 2000; // Max distance the laser travels
+export const LASER_COOLDOWN = 0.15; // Seconds between shots
+export const LASER_HEAT_INCREASE = 15; // Heat added per shot
+export const LASER_HEAT_DECREASE_RATE = 20; // Heat lost per second when not firing
+export const LASER_MAX_HEAT = 100; // Max heat before overheating
+export const LASER_COLOR = 0xff0000; // Red laser
+export const LASER_DURATION = 0.1; // How long the beam is visible per shot

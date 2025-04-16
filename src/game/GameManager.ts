@@ -51,6 +51,7 @@ export class GameManager implements IGameManager {
   reactSetSpeed: (speed: number) => void;
   reactSetRoll: (roll: number) => void;
   reactSetPitch: (pitch: number) => void;
+  reactSetLaserHeat: (heat: number) => void = () => {};
   reactSetStationDirection: (angle: number | null) => void;
 
   // Title Scene State (no change)
@@ -456,4 +457,17 @@ export class GameManager implements IGameManager {
     this.loadingCompleteCallback = null;
     console.log("GameManager disposed.");
   }
+
+  setReactSetters(setters: {
+    setPitch: (pitch: number) => void;
+    setLaserHeat: (heat: number) => void; // Add this line
+    setStationDirection: (angle: number | null) => void;
+    setCoordinates: (coords: [number, number, number]) => void;
+  }) {
+    this.reactSetPitch = setters.setPitch;
+    this.reactSetLaserHeat = setters.setLaserHeat; // Add this line
+    this.reactSetStationDirection = setters.setStationDirection;
+    this.reactSetCoordinates = setters.setCoordinates;
+  }
+
 }
