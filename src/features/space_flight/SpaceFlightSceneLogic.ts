@@ -494,11 +494,12 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
         );
 
         // Pass the projected X/Y for angle, and offCenterAmount for distance
-        this.game.reactSetStationDirection([
-          relativeDir.x,
-          relativeDir.y,
-          offCenterAmount,
-        ]);
+        this.game.reactSetStationDirection({
+          x: relativeDir.x,
+          y: relativeDir.y,
+          offCenterAmount: offCenterAmount,
+          isInFront: isStationInFrontOfCamera
+        });
       }
     } else {
       // No station visible or loaded

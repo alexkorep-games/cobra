@@ -5,7 +5,12 @@ interface SpaceFlightScreenProps {
   speed: number;
   roll: number;
   pitch: number;
-  stationDirection: number | null; // Angle in radians or null
+  stationDirection: {
+    x: number;
+    y: number;
+    offCenterAmount: number;
+    isInFront: boolean;
+  } | null; // Updated to use object structure
 }
 
 const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({

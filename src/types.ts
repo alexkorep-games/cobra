@@ -35,7 +35,12 @@ export interface IGameManager {
   reactSetRoll: (roll: number) => void;
   reactSetPitch: (pitch: number) => void;
   reactSetLaserHeat: (heat: number) => void;
-  reactSetStationDirection: (direction: [number, number, number] | null) => void; // Updated type
+  reactSetStationDirection: (direction: {
+    x: number;
+    y: number;
+    offCenterAmount: number;
+    isInFront: boolean;
+  } | null) => void; // Updated type
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   constants: {

@@ -52,7 +52,12 @@ export class GameManager implements IGameManager {
   reactSetRoll: (roll: number) => void;
   reactSetPitch: (pitch: number) => void;
   reactSetLaserHeat: (heat: number) => void = () => {};
-  reactSetStationDirection: (direction: [number, number, number] | null) => void; // Updated to include offCenterAmount
+  reactSetStationDirection: (direction: {
+    x: number;
+    y: number;
+    offCenterAmount: number;
+    isInFront: boolean;
+  } | null) => void; // Updated to include structured object
 
   // Constants (no change)
   constants = { ...Constants };
@@ -70,7 +75,12 @@ export class GameManager implements IGameManager {
     reactSetSpeed: (speed: number) => void,
     reactSetRoll: (roll: number) => void,
     reactSetPitch: (pitch: number) => void,
-    reactSetStationDirection: (direction: [number, number, number] | null) => void // Updated type
+    reactSetStationDirection: (direction: {
+      x: number;
+      y: number;
+      offCenterAmount: number;
+      isInFront: boolean;
+    } | null) => void // Updated type
   ) {
     this.reactSetGameState = reactSetGameState;
     this.introMusicRef = introMusicRef;

@@ -6,7 +6,12 @@ interface BottomHudProps {
   speed?: number; // Optional for scenes other than flight, expected 0-100
   roll?: number; // Optional, range -1 to 1 (-1 left, 1 right)
   pitch?: number; // Optional, range -1 to 1 (-1 dive, 1 climb)
-  stationDirection?: [number, number, number] | null; // [x, y, offCenterAmount]
+  stationDirection?: {
+    x: number;
+    y: number;
+    offCenterAmount: number;
+    isInFront: boolean;
+  } | null; // Updated to use object structure
 }
 
 const BottomHud: React.FC<BottomHudProps> = ({
@@ -25,7 +30,7 @@ const BottomHud: React.FC<BottomHudProps> = ({
   // Calculate position for the direction indicator dot
   let dotStyle: React.CSSProperties = { display: "none" };
   if (stationDirection !== null) {
-    const [relX, relY, offCenterAmount] = stationDirection;
+    const { x: relX, y: relY, offCenterAmount, isInFront } = stationDirection;
     const indicatorRadius = 8; // px, radius of the circle container inner space
 
     // Use atan2 for direction
@@ -38,7 +43,17 @@ const BottomHud: React.FC<BottomHudProps> = ({
     const dotX = displayDist * Math.cos(angle) + indicatorRadius + 1;
     const dotY = -displayDist * Math.sin(angle) + indicatorRadius + 1;
 
-    dotStyle = { top: `${dotY}px`, left: `${dotX}px`, display: "block" };
+    // Change style based on whether station is in front or behind
+    dotStyle = { 
+      top: `${dotY}px`, 
+      left: `${dotX}px`, 
+      display: "block",
+      // When behind camera, show a hollow circle instead of a filled dot
+      backgroundColor: isInFront ? "#00ff00" : "transparent",
+      border: isInFront ? "none" : "1px solid #00ff00",
+      width: isInFront ? "4px" : "2px",
+      height: isInFront ? "4px" : "2px"
+    };
   }
 
   return (
