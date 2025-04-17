@@ -12,10 +12,12 @@ interface BottomHudProps {
     offCenterAmount: number;
     isInFront: boolean;
   } | null; // Updated to use object structure
+  // Update radarPosition structure for x, y, z coordinates
   radarPosition?: Array<{
-    relativeX: number; // -1 to 1, horizontal position
-    relativeZ: number; // -1 to 1, distance (forward/backward)
-    isInFront: boolean; // Whether the pirate is in front of the player
+    x: number; // -1 to 1, horizontal position
+    y: number; // -1 to 1, vertical position (altitude relative to player)
+    z: number; // -1 to 1, distance (depth, forward/backward)
+    isInFront: boolean; // Whether the target is in front of the player
   }>;
 }
 
@@ -128,32 +130,70 @@ const BottomHud: React.FC<BottomHudProps> = ({
       {/* Center HUD */}
       <div className="hud-center">
         <div className="scanner-shape">
+          {/* Add horizontal center line */}
+          <div className="radar-center-line"></div>
           {/* Radar positions in center scanner */}
           {radarPosition.map((position, index) => {
+            const { x, y, z, isInFront } = position;
+
             // Calculate position within the scanner
-            // x: Convert from -1...1 to scanner width percentage
-            const xPos = 50 + position.relativeX * 40; // 40% width from center (10% to 90%)
+            // x: Convert from -1...1 to scanner width percentage (e.g., 10% to 90%)
+            const xPos = 50 + x * 40; 
             
-            // z: Convert from -1...1 to scanner height (frontmost at bottom)
-            // Invert Z so ships in front appear at bottom of scanner
-            const zPos = 70 - position.relativeZ * 60; // Map to 10%-70% of height
+            // z: Convert from -1...1 to scanner height percentage (e.g., 10% to 90%)
+            // z=0 should be the center line (50%)
+            const zPos = 50 + z * 40; 
             
+            // y: Determine line length and direction. Max length (e.g., 40% of height)
+            const yLength = Math.abs(y) * 40; 
+
+            let topStyle: number;
+            let heightStyle: string;
+            let borderStyle: string | undefined = undefined;
+
+            if (y === 0) {
+              // Centered vertically at zPos, minimal height for serifs, no line
+              // Adjust top slightly to center the minimal height element
+              const serifHeightPx = 2; // Assuming serifs need about 2px height
+              // Convert zPos percentage to pixels relative to container height (assume 100px for calc)
+              const zPosPx = (zPos / 100) * 100; // Example height
+              topStyle = ((zPosPx - serifHeightPx / 2) / 100) * 100; // Back to percentage
+              heightStyle = `${serifHeightPx}px`;
+              borderStyle = 'none';
+            } else if (y > 0) {
+              // Line goes down from zPos
+              topStyle = zPos;
+              heightStyle = `${yLength}%`;
+              borderStyle = isInFront 
+                ? '2px solid #00ff00' 
+                : '2px dashed #00ff00';
+            } else { // y < 0
+              // Line goes up from zPos
+              topStyle = zPos - yLength;
+              heightStyle = `${yLength}%`;
+              borderStyle = isInFront 
+                ? '2px solid #00ff00' 
+                : '2px dashed #00ff00';
+            }
+            
+            // Clamp top position to prevent going outside scanner bounds (e.g., 10% to 90% vertically)
+            // Consider the height as well when clamping
+            const clampedTop = Math.max(10, Math.min(topStyle, 90 - parseFloat(heightStyle.endsWith('%') ? heightStyle : '0')));
+
             return (
               <div 
                 key={`radar-${index}`}
                 className="pirate-radar-line"
                 style={{
-                  left: `${xPos}%`,
-                  top: `${zPos}%`,
-                  // Solid line for in front, dashed for behind
-                  borderLeft: position.isInFront 
-                    ? '2px solid #00ff00' 
-                    : '2px dashed #00ff00'
+                  left: `${Math.max(10, Math.min(90, xPos))}%`, // Clamp horizontal position
+                  top: `${clampedTop}%`,
+                  height: heightStyle,
+                  borderLeft: borderStyle,
                 }}
               >
-                {/* Top serif (crossbar) */}
+                {/* Top serif (crossbar) - CSS should position it at the top */}
                 <div className="pirate-radar-serif top-serif"></div>
-                {/* Bottom serif (crossbar) */}
+                {/* Bottom serif (crossbar) - CSS should position it at the bottom */}
                 <div className="pirate-radar-serif bottom-serif"></div>
               </div>
             );

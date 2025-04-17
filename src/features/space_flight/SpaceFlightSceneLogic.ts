@@ -5,6 +5,9 @@ import * as Constants from "../../constants";
 import { EntityBase } from "../../game/entities/EntityBase";
 import { Ship } from "../../game/entities/Ship"; // Import Ship
 
+// Define radar range constant
+const RADAR_DISTANCE = 10000;
+
 export class SpaceFlightSceneLogic extends SceneLogicBase {
   private velocity: number = 0;
   private rollRate: number = 0;
@@ -557,14 +560,21 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     // ... (Add basic collision checks later if needed) ...
 
     // --- Update pirate positions for radar ---
-    const piratePositions = this.gameManager.assets.pirateShips
+    const piratePositions: RadarPosition[] = this.gameManager.assets.pirateShips
       .filter(pirate => pirate.mesh && pirate.visible)
       .map(pirate => {
         const piratePos = pirate.getPosition();
+        const distance = playerPos.distanceTo(piratePos);
+
+        // Only include pirates within radar range
+        if (distance > RADAR_DISTANCE) {
+          return null; // Exclude pirates outside radar range
+        }
+
         // Get direction vector from player to pirate
         const worldDir = this.tempVector
           .subVectors(piratePos, playerPos)
-          .normalize();
+          .normalize(); // Normalize to get direction only
 
         // Project onto camera's local coordinate system
         const cameraInverse = this.tempQuaternion
@@ -574,28 +584,23 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
           .copy(worldDir)
           .applyQuaternion(cameraInverse);
 
-        // Check if pirate is in front or behind player
+        // Check if pirate is in front or behind player based on local Z
         const isPirateInFront = relativeDir.z < 0;
 
-        // Calculate normalized x coordinate (-1 to 1) for radar display
-        // Use X component of relative direction, clamped to -1...1 range
+        // Use the components of the relative direction vector, clamped to -1..1
         const relativeX = THREE.MathUtils.clamp(relativeDir.x, -1, 1);
-
-        // Calculate normalized distance for radar display
-        // Map the raw distance to a 0-1 range based on attack range
-        const distance = playerPos.distanceTo(piratePos);
-        const normalizedDistance = THREE.MathUtils.clamp(
-          1 - (distance / (Constants.PIRATE_ATTACK_RANGE * 2)), 
-          0, 
-          1
-        );
+        const relativeY = THREE.MathUtils.clamp(relativeDir.y, -1, 1);
+        // Z component indicates forward/backward direction relative to camera view
+        const relativeZ = THREE.MathUtils.clamp(relativeDir.z, -1, 1); 
 
         return {
-          relativeX: 0,
-          relativeY: 0,
-          relativeZ: 0,
+          x: relativeX,
+          y: relativeY,
+          z: relativeZ,
+          isInFront: isPirateInFront,
         };
-      });
+      })
+      .filter((p): p is RadarPosition => p !== null); // Filter out null entries
 
     // Update radar with pirate positions
     this.gameManager.reactSetters.setRadarPositions(piratePositions);
@@ -657,7 +662,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.gameManager.reactSetters.setPitch(0);
     this.gameManager.reactSetters.setLaserHeat(0);
     this.gameManager.reactSetters.setStationDirection(null);
-    this.gameManager.reactSetters.setRadarPositions([]);
+    this.gameManager.reactSetters.setRadarPositions([]); // Ensure radar is cleared
   }
 
    // Update coordinate display in React UI

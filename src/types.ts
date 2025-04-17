@@ -25,9 +25,10 @@ export interface GameEntities {
 // like BottomHud, etc.
 
 export type RadarPosition = {
-  relativeX: number; // -1..1
-  relativeY: number; // -1..1
-  relativeZ: number; // -1..1
+  x: number; // -1..1 (relative horizontal direction)
+  y: number; // -1..1 (relative vertical direction)
+  z: number; // -1..1 (relative forward/backward direction)
+  isInFront: boolean; // Is the target in front of the player?
 }
 
 export interface ReactSetters {
