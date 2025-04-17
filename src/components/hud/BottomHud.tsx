@@ -50,15 +50,15 @@ const BottomHud: React.FC<BottomHudProps> = ({
     const dotY = -displayDist * Math.sin(angle) + indicatorRadius + 1;
 
     // Change style based on whether station is in front or behind
-    dotStyle = { 
-      top: `${dotY}px`, 
-      left: `${dotX}px`, 
+    dotStyle = {
+      top: `${dotY}px`,
+      left: `${dotX}px`,
       display: "block",
       // When behind camera, show a hollow circle instead of a filled dot
       backgroundColor: isInFront ? "#00ff00" : "transparent",
       border: isInFront ? "none" : "1px solid #00ff00",
       width: isInFront ? "4px" : "2px",
-      height: isInFront ? "4px" : "2px"
+      height: isInFront ? "4px" : "2px",
     };
   }
 
@@ -142,18 +142,19 @@ const BottomHud: React.FC<BottomHudProps> = ({
 
             // Calculate position within the scanner
             // x: Convert from -1...1 to scanner width percentage (e.g., 10% to 90%)
-            const xPos = 50 + x * 40; 
-            
+            const xPos = 50 + x * 40;
+
             // z: Convert from -1...1 to scanner height percentage (e.g., 10% to 90%)
             // z=0 should be the center line (50%)
-            const zPos = 50 + z * 40; 
-            
+            const zPos = 50 + z * 40;
+
             // y: Determine line length and direction. Max length (e.g., 40% of height)
-            const yLength = Math.abs(y) * 40; 
+            const yLength = Math.abs(y) * 40;
 
             let topStyle: number;
             let heightStyle: string;
             let borderStyle: string | undefined = undefined;
+            const isTopSerif = y > 0; // True if line goes down from zPos
 
             if (y === 0) {
               // Centered vertically at zPos, minimal height for serifs, no line
@@ -163,25 +164,32 @@ const BottomHud: React.FC<BottomHudProps> = ({
               const zPosPx = (zPos / 100) * 100; // Example height
               topStyle = ((zPosPx - serifHeightPx / 2) / 100) * 100; // Back to percentage
               heightStyle = `${serifHeightPx}px`;
-              borderStyle = 'none';
+              borderStyle = "none";
             } else if (y > 0) {
               // Line goes down from zPos
               topStyle = zPos;
               heightStyle = `${yLength}%`;
-              borderStyle = '2px solid #00ff00';
-            } else { // y < 0
+              borderStyle = "2px solid #00ff00";
+            } else {
+              // y < 0
               // Line goes up from zPos
               topStyle = zPos - yLength;
               heightStyle = `${yLength}%`;
-              borderStyle = '2px solid #00ff00';
+              borderStyle = "2px solid #00ff00";
             }
-            
+
             // Clamp top position to prevent going outside scanner bounds (e.g., 10% to 90% vertically)
             // Consider the height as well when clamping
-            const clampedTop = Math.max(10, Math.min(topStyle, 90 - parseFloat(heightStyle.endsWith('%') ? heightStyle : '0')));
+            const clampedTop = Math.max(
+              10,
+              Math.min(
+                topStyle,
+                90 - parseFloat(heightStyle.endsWith("%") ? heightStyle : "0")
+              )
+            );
 
             return (
-              <div 
+              <div
                 key={`radar-${index}`}
                 className="pirate-radar-line"
                 style={{
@@ -191,10 +199,11 @@ const BottomHud: React.FC<BottomHudProps> = ({
                   borderLeft: borderStyle,
                 }}
               >
-                {/* Top serif (crossbar) - CSS should position it at the top */}
-                <div className="pirate-radar-serif top-serif"></div>
-                {/* Bottom serif (crossbar) - CSS should position it at the bottom */}
-                <div className="pirate-radar-serif bottom-serif"></div>
+                {isTopSerif ? (
+                  <div className="pirate-radar-serif top-serif"></div>
+                ) : (
+                  <div className="pirate-radar-serif bottom-serif"></div>
+                )}
               </div>
             );
           })}
