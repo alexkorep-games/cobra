@@ -58,6 +58,11 @@ export class GameManager implements IGameManager {
     offCenterAmount: number;
     isInFront: boolean;
   } | null) => void; // Updated to include structured object
+  reactSetPiratePositions: (positions: Array<{
+    relativeX: number;
+    relativeZ: number;
+    isInFront: boolean;
+  }>) => void = () => {}; // New function to update pirate positions on HUD
 
   // Constants (no change)
   constants = { ...Constants };
@@ -80,7 +85,12 @@ export class GameManager implements IGameManager {
       y: number;
       offCenterAmount: number;
       isInFront: boolean;
-    } | null) => void // Updated type
+    } | null) => void, // Updated type
+    reactSetPiratePositions: (positions: Array<{
+      relativeX: number;
+      relativeZ: number;
+      isInFront: boolean;
+    }>) => void = () => {}
   ) {
     this.reactSetGameState = reactSetGameState;
     this.introMusicRef = introMusicRef;
@@ -90,6 +100,7 @@ export class GameManager implements IGameManager {
     this.reactSetRoll = reactSetRoll;
     this.reactSetPitch = reactSetPitch;
     this.reactSetStationDirection = reactSetStationDirection;
+    this.reactSetPiratePositions = reactSetPiratePositions;
 
     this.boundHandleGlobalInput = this.handleGlobalInput.bind(this);
     this.boundOnWindowResize = this.onWindowResize.bind(this);

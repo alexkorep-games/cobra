@@ -22,7 +22,17 @@ const App: React.FC = () => {
   const [speed, setSpeed] = useState<number>(0); // 0-100%
   const [roll, setRoll] = useState<number>(0); // -1 to 1
   const [pitch, setPitch] = useState<number>(0); // -1 to 1 (Dive/Climb)
-  const [stationDirection, setStationDirection] = useState<number | null>(null); // Angle in radians, null if no station target
+  const [stationDirection, setStationDirection] = useState<{
+    x: number;
+    y: number;
+    offCenterAmount: number;
+    isInFront: boolean;
+  } | null>(null); // Updated to use object structure
+  const [piratePositions, setPiratePositions] = useState<Array<{
+    relativeX: number;
+    relativeZ: number;
+    isInFront: boolean;
+  }>>([]);
 
   // --- Refs ---
   const mountRef = useRef<HTMLDivElement>(null);
@@ -52,7 +62,8 @@ const App: React.FC = () => {
       setSpeed,
       setRoll,
       setPitch,
-      setStationDirection // Pass the new setter
+      setStationDirection,
+      setPiratePositions // Pass the pirate positions setter
     );
 
     const handleLoadingComplete = () => {
@@ -97,7 +108,8 @@ const App: React.FC = () => {
             speed={speed}
             roll={roll}
             pitch={pitch}
-            stationDirection={stationDirection} // Pass station direction
+            stationDirection={stationDirection}
+            piratePositions={piratePositions} // Pass pirate positions
           />
         );
 

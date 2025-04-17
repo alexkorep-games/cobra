@@ -33,6 +33,7 @@ export class SceneLogicBase {
     this.game.reactSetRoll(0);
     this.game.reactSetPitch(0);
     this.game.reactSetStationDirection(null); // Reset station direction
+    this.game.reactSetPiratePositions([]); // Reset pirate positions
   }
 
   update(deltaTime: number) {}

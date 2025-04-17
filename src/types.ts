@@ -41,6 +41,11 @@ export interface IGameManager {
     offCenterAmount: number;
     isInFront: boolean;
   } | null) => void; // Updated type
+  reactSetPiratePositions: (positions: Array<{
+    relativeX: number;
+    relativeZ: number;
+    isInFront: boolean;
+  }>) => void;
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   constants: {

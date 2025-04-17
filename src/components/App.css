@@ -265,3 +265,30 @@ canvas {
   margin-top: 15px;
   color: #ffff00;
 }
+
+/* Pirate radar styles */
+.pirate-radar-line {
+  position: absolute;
+  width: 0;
+  height: 16px; /* Increased height of the vertical line */
+  border-left-width: 2px;
+  transform: translateX(-1px); /* Center the line */
+  z-index: 5; /* Ensure lines appear above other elements */
+}
+
+.pirate-radar-serif {
+  position: absolute;
+  width: 10px; /* Wider horizontal serif for better visibility */
+  height: 0;
+  border-top: 2px solid #00ff00; /* Green serifs */
+  left: -5px; /* Center the serif on the vertical line */
+}
+
+.top-serif {
+  top: 0;
+}
+
+.bottom-serif {
+  bottom: 0;
+}
+/* End pirate radar styles */

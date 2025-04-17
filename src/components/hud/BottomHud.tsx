@@ -12,6 +12,11 @@ interface BottomHudProps {
     offCenterAmount: number;
     isInFront: boolean;
   } | null; // Updated to use object structure
+  piratePositions?: Array<{
+    relativeX: number; // -1 to 1, horizontal position
+    relativeZ: number; // -1 to 1, distance (forward/backward)
+    isInFront: boolean; // Whether the pirate is in front of the player
+  }>;
 }
 
 const BottomHud: React.FC<BottomHudProps> = ({
@@ -19,6 +24,7 @@ const BottomHud: React.FC<BottomHudProps> = ({
   roll = 0,
   pitch = 0,
   stationDirection = null,
+  piratePositions = [],
 }) => {
   // Calculate marker positions (0% to 100%) based on -1 to 1 range
   // Roll: -1 (left) -> 0%, 0 (center) -> 50%, 1 (right) -> 100%
@@ -121,7 +127,38 @@ const BottomHud: React.FC<BottomHudProps> = ({
       </div>
       {/* Center HUD */}
       <div className="hud-center">
-        <div className="scanner-shape"></div> {/* Placeholder for scanner */}
+        <div className="scanner-shape">
+          {/* Pirate radar lines in center scanner */}
+          {piratePositions.map((pirate, index) => {
+            // Calculate position within the scanner
+            // x: Convert from -1...1 to scanner width percentage
+            const xPos = 50 + pirate.relativeX * 40; // 40% width from center (10% to 90%)
+            
+            // z: Convert from -1...1 to scanner height (frontmost at bottom)
+            // Invert Z so ships in front appear at bottom of scanner
+            const zPos = 70 - pirate.relativeZ * 60; // Map to 10%-70% of height
+            
+            return (
+              <div 
+                key={`pirate-${index}`}
+                className="pirate-radar-line"
+                style={{
+                  left: `${xPos}%`,
+                  top: `${zPos}%`,
+                  // Solid line for in front, dashed for behind
+                  borderLeft: pirate.isInFront 
+                    ? '2px solid #00ff00' 
+                    : '2px dashed #00ff00'
+                }}
+              >
+                {/* Top serif (crossbar) */}
+                <div className="pirate-radar-serif top-serif"></div>
+                {/* Bottom serif (crossbar) */}
+                <div className="pirate-radar-serif bottom-serif"></div>
+              </div>
+            );
+          })}
+        </div>
       </div>
       {/* Right HUD */}
       <div className="hud-right">
