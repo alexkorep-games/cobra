@@ -1,6 +1,7 @@
 // src/components/hud/BottomHud.tsx
 import React from "react";
 import "../App.css"; // Assuming App.css contains the HUD styles
+import { RadarPosition } from "../../types";
 
 interface BottomHudProps {
   speed?: number; // Optional for scenes other than flight, expected 0-100
@@ -14,12 +15,7 @@ interface BottomHudProps {
     isInFront: boolean;
   } | null; // Updated to use object structure
   // Update radarPosition structure for x, y, z coordinates
-  radarPosition?: Array<{
-    x: number; // -1 to 1, horizontal position
-    y: number; // -1 to 1, vertical position (altitude relative to player)
-    z: number; // -1 to 1, distance (depth, forward/backward)
-    isInFront: boolean; // Whether the target is in front of the player
-  }>;
+  radarPosition?: Array<RadarPosition>;
 }
 
 const BottomHud: React.FC<BottomHudProps> = ({
@@ -142,7 +138,7 @@ const BottomHud: React.FC<BottomHudProps> = ({
           <div className="radar-center-line"></div>
           {/* Radar positions in center scanner */}
           {radarPosition.map((position, index) => {
-            const { x, y, z, isInFront } = position;
+            const { x, y, z } = position;
 
             // Calculate position within the scanner
             // x: Convert from -1...1 to scanner width percentage (e.g., 10% to 90%)
@@ -172,16 +168,12 @@ const BottomHud: React.FC<BottomHudProps> = ({
               // Line goes down from zPos
               topStyle = zPos;
               heightStyle = `${yLength}%`;
-              borderStyle = isInFront 
-                ? '2px solid #00ff00' 
-                : '2px dashed #00ff00';
+              borderStyle = '2px solid #00ff00';
             } else { // y < 0
               // Line goes up from zPos
               topStyle = zPos - yLength;
               heightStyle = `${yLength}%`;
-              borderStyle = isInFront 
-                ? '2px solid #00ff00' 
-                : '2px dashed #00ff00';
+              borderStyle = '2px solid #00ff00';
             }
             
             // Clamp top position to prevent going outside scanner bounds (e.g., 10% to 90% vertically)

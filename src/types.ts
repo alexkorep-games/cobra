@@ -28,8 +28,7 @@ export type RadarPosition = {
   x: number; // -1..1 (relative horizontal direction)
   y: number; // -1..1 (relative vertical direction)
   z: number; // -1..1 (relative forward/backward direction)
-  isInFront: boolean; // Is the target in front of the player?
-}
+};
 
 export interface ReactSetters {
   setGameState: (state: GameState) => void;

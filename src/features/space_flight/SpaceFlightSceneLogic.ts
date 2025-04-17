@@ -282,7 +282,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
       // --- Re-enable Raycasting ---
       // Set raycaster from camera center
-      this.raycaster.setFromCamera({ x: 0, y: 0 }, this.gameManager.camera); // Ray from screen center
+      this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.gameManager.camera); // Ray from screen center
 
       // Prepare list of pirate meshes to check against
       const pirateMeshes: THREE.Object3D[] = this.gameManager.assets.pirateShips
@@ -516,7 +516,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
         // Project onto camera's local coordinate system
         const cameraInverse = this.tempQuaternion
-          .copy(this.gameManager.camera.quaternion)
+          .copy(this.gameManager.camera?.quaternion || new THREE.Quaternion())
           .invert();
         const relativeDir = this.tempVector2
           .copy(worldDir)
@@ -620,14 +620,11 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
         // Project onto camera's local coordinate system
         const cameraInverse = this.tempQuaternion
-          .copy(this.gameManager.camera.quaternion)
+          .copy(this.gameManager.camera?.quaternion || new THREE.Quaternion())
           .invert();
         const relativeDir = this.tempVector2
           .copy(worldDir)
           .applyQuaternion(cameraInverse);
-
-        // Check if pirate is in front or behind player based on local Z
-        const isPirateInFront = relativeDir.z < 0;
 
         // Use the components of the relative direction vector, clamped to -1..1
         const relativeX = THREE.MathUtils.clamp(relativeDir.x, -1, 1);
@@ -639,7 +636,6 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
           x: relativeX,
           y: relativeY,
           z: relativeZ,
-          isInFront: isPirateInFront,
         };
       })
       .filter((p): p is RadarPosition => p !== null); // Filter out null entries
