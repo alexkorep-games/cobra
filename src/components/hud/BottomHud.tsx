@@ -6,6 +6,7 @@ interface BottomHudProps {
   speed?: number; // Optional for scenes other than flight, expected 0-100
   roll?: number; // Optional, range -1 to 1 (-1 left, 1 right)
   pitch?: number; // Optional, range -1 to 1 (-1 dive, 1 climb)
+  altitude?: number; // Optional, range 0-100 for normalized altitude display
   stationDirection?: {
     x: number;
     y: number;
@@ -25,6 +26,7 @@ const BottomHud: React.FC<BottomHudProps> = ({
   speed = 0,
   roll = 0,
   pitch = 0,
+  altitude = 0,
   stationDirection = null,
   radarPosition = [],
 }) => {
@@ -120,7 +122,13 @@ const BottomHud: React.FC<BottomHudProps> = ({
         </div>
         <div className="hud-item">
           <span className="hud-label">ALTITUDE</span>
-          <div className="hud-bar"></div>
+          <div className="hud-bar">
+            <div
+              id="altitude-fill"
+              className="hud-bar-fill"
+              style={{ width: `${Math.max(0, Math.min(100, altitude))}%` }}
+            ></div>
+          </div>
         </div>
         <div className="hud-item">
           <span className="hud-label">MISSILES</span>

@@ -454,6 +454,26 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.gameManager.reactSetters.setPitch(normalizedPitch); // Pass the possibly inverted pitch for HUD
     this.gameManager.reactSetters.setLaserHeat(normalizedLaserHeat); // Update laser heat on HUD
 
+    // --- Calculate altitude (distance to planet) ---
+    if (this.gameManager.assets.planet?.visible) {
+      const playerPos = this.gameManager.camera.position;
+      const planetPos = this.gameManager.assets.planet.getPosition();
+      const distanceToPlanet = playerPos.distanceTo(planetPos);
+      
+      // Normalize altitude as a percentage of the max value (10000000)
+      const MAX_ALTITUDE = 10000000; // Max altitude in units
+      const normalizedAltitude = THREE.MathUtils.clamp(
+        (distanceToPlanet / MAX_ALTITUDE) * 100,
+        0,
+        100
+      );
+      
+      this.gameManager.reactSetters.setAltitude(normalizedAltitude);
+    } else {
+      // No planet visible
+      this.gameManager.reactSetters.setAltitude(0);
+    }
+
     // --- Station Proximity Check & Direction ---
     if (this.gameManager.assets.spaceStation?.visible && this.gameManager.camera) {
       // Check station is visible
@@ -661,6 +681,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.gameManager.reactSetters.setRoll(0);
     this.gameManager.reactSetters.setPitch(0);
     this.gameManager.reactSetters.setLaserHeat(0);
+    this.gameManager.reactSetters.setAltitude(0);
     this.gameManager.reactSetters.setStationDirection(null);
     this.gameManager.reactSetters.setRadarPositions([]); // Ensure radar is cleared
   }

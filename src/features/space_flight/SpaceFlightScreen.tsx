@@ -5,6 +5,7 @@ interface SpaceFlightScreenProps {
   speed: number;
   roll: number;
   pitch: number;
+  altitude?: number;
   stationDirection: {
     x: number;
     y: number;
@@ -22,6 +23,7 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
   speed,
   roll,
   pitch,
+  altitude = 0,
   stationDirection,
   radarPosition = [],
 }) => {
@@ -40,6 +42,7 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
         speed={speed}
         roll={roll}
         pitch={pitch}
+        altitude={altitude}
         stationDirection={stationDirection}
         radarPosition={radarPosition}
       />

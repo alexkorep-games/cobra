@@ -22,6 +22,8 @@ const App: React.FC = () => {
   const [speed, setSpeed] = useState<number>(0); // 0-100%
   const [roll, setRoll] = useState<number>(0); // -1 to 1
   const [pitch, setPitch] = useState<number>(0); // -1 to 1 (Dive/Climb)
+  const [laserHeat, setLaserHeat] = useState<number>(0); // 0-100%
+  const [altitude, setAltitude] = useState<number>(0); // 0-100%
   const [stationDirection, setStationDirection] = useState<{
     x: number;
     y: number;
@@ -57,7 +59,8 @@ const App: React.FC = () => {
       setSpeed,
       setRoll,
       setPitch, 
-      setLaserHeat: () => {}, // Not implemented in this component yet
+      setLaserHeat,
+      setAltitude,
       setStationDirection,
       setRadarPositions: setRadarPosition
     };
@@ -110,6 +113,7 @@ const App: React.FC = () => {
             speed={speed}
             roll={roll}
             pitch={pitch}
+            altitude={altitude}
             stationDirection={stationDirection}
             radarPosition={radarPosition} // Pass radar positions
           />

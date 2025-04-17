@@ -38,6 +38,7 @@ export interface ReactSetters {
   setRoll: (roll: number) => void;
   setPitch: (pitch: number) => void;
   setLaserHeat: (heat: number) => void;
+  setAltitude: (altitude: number) => void; // Add altitude setter
   setStationDirection: (direction: {
     x: number;
     y: number;
