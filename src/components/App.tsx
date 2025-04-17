@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
-import { GameState, ReactSetters } from "../types";
+import { GameState, PiratePosition, ReactSetters } from "../types";
 import { GameManager } from "../game/GameManager";
 
 // Import Scene Components
@@ -28,11 +28,7 @@ const App: React.FC = () => {
     offCenterAmount: number;
     isInFront: boolean;
   } | null>(null); // Updated to use object structure
-  const [piratePositions, setPiratePositions] = useState<Array<{
-    relativeX: number;
-    relativeZ: number;
-    isInFront: boolean;
-  }>>([]);
+  const [radarPosition, setRadarPosition] = useState<PiratePosition[]>([]);
 
   // --- Refs ---
   const mountRef = useRef<HTMLDivElement>(null);
@@ -63,7 +59,7 @@ const App: React.FC = () => {
       setPitch, 
       setLaserHeat: () => {}, // Not implemented in this component yet
       setStationDirection,
-      setPiratePositions
+      setRadarPositions: setRadarPosition
     };
 
     const gameManager = new GameManager(
@@ -115,7 +111,7 @@ const App: React.FC = () => {
             roll={roll}
             pitch={pitch}
             stationDirection={stationDirection}
-            piratePositions={piratePositions} // Pass pirate positions
+            radarPosition={radarPosition} // Pass radar positions
           />
         );
 

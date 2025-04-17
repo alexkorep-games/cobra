@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { SceneLogicBase } from "../common/SceneLogicBase";
-import { GameState, IGameManager } from "../../types";
+import { GameState, IGameManager, RadarPosition } from "../../types";
 import * as Constants from "../../constants";
 import { EntityBase } from "../../game/entities/EntityBase";
 import { Ship } from "../../game/entities/Ship"; // Import Ship
@@ -591,14 +591,14 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
         );
 
         return {
-          relativeX: relativeX,
-          relativeZ: normalizedDistance, // Z will represent distance on radar
-          isInFront: isPirateInFront
+          relativeX: 0,
+          relativeY: 0,
+          relativeZ: 0,
         };
       });
 
     // Update radar with pirate positions
-    this.gameManager.reactSetters.setPiratePositions(piratePositions);
+    this.gameManager.reactSetters.setRadarPositions(piratePositions);
   }
 
   // --- Input Handlers ---
@@ -657,6 +657,53 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.gameManager.reactSetters.setPitch(0);
     this.gameManager.reactSetters.setLaserHeat(0);
     this.gameManager.reactSetters.setStationDirection(null);
-    this.gameManager.reactSetters.setPiratePositions([]);
+    this.gameManager.reactSetters.setRadarPositions([]);
+  }
+
+   // Update coordinate display in React UI
+   protected updateCoordinates(coords: [number, number, number]): void {
+    if (!this.isActive) return;
+    this.gameManager.reactSetters.setCoordinates(coords);
+  }
+
+  // Update speed display in React UI
+  protected updateSpeed(speed: number): void {
+    if (!this.isActive) return;
+    this.gameManager.reactSetters.setSpeed(speed);
+  }
+
+  // Update roll indicator in React UI
+  protected updateRoll(roll: number): void {
+    if (!this.isActive) return;
+    this.gameManager.reactSetters.setRoll(roll);
+  }
+
+  // Update pitch indicator in React UI
+  protected updatePitch(pitch: number): void {
+    if (!this.isActive) return;
+    this.gameManager.reactSetters.setPitch(pitch);
+  }
+
+  // Update space station direction indicator in React UI
+  protected updateStationDirection(direction: {
+    x: number;
+    y: number;
+    offCenterAmount: number;
+    isInFront: boolean;
+  } | null): void {
+    if (!this.isActive) return;
+    this.gameManager.reactSetters.setStationDirection(direction);
+  }
+
+  // Update pirate ship positions for radar display
+  protected updatePiratePositions(positions: RadarPosition[]): void {
+    if (!this.isActive) return;
+    this.gameManager.reactSetters.setRadarPositions(positions);
+  }
+
+  // Common utility for switching to different scenes
+  protected switchToScene(scene: string): void {
+    if (!this.isActive) return;
+    this.gameManager.switchState(scene as any); // GameState is string union type
   }
 }

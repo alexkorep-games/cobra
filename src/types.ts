@@ -23,6 +23,13 @@ export interface GameEntities {
 
 // These functions called by GameManager to update the React components
 // like BottomHud, etc.
+
+export type RadarPosition = {
+  relativeX: number; // -1..1
+  relativeY: number; // -1..1
+  relativeZ: number; // -1..1
+}
+
 export interface ReactSetters {
   setGameState: (state: GameState) => void;
   setCoordinates: (coords: [number, number, number]) => void;
@@ -36,11 +43,7 @@ export interface ReactSetters {
     offCenterAmount: number;
     isInFront: boolean;
   } | null) => void;
-  setPiratePositions: (positions: Array<{
-    relativeX: number;
-    relativeZ: number;
-    isInFront: boolean;
-  }>) => void;
+  setRadarPositions: (positions: RadarPosition[]) => void;
 }
 
 // Forward declaration or interface for GameManager to avoid circular dependencies if needed

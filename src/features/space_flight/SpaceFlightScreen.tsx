@@ -11,7 +11,7 @@ interface SpaceFlightScreenProps {
     offCenterAmount: number;
     isInFront: boolean;
   } | null; // Updated to use object structure
-  piratePositions?: Array<{
+  radarPosition?: Array<{
     relativeX: number;
     relativeZ: number;
     isInFront: boolean;
@@ -23,7 +23,7 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
   roll,
   pitch,
   stationDirection,
-  piratePositions = [],
+  radarPosition = [],
 }) => {
   return (
     <>
@@ -41,7 +41,7 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
         roll={roll}
         pitch={pitch}
         stationDirection={stationDirection}
-        piratePositions={piratePositions}
+        radarPosition={radarPosition}
       />
     </>
   );
