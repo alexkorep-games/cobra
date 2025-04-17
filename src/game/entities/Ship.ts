@@ -20,6 +20,12 @@ export class Ship extends EntityBase {
     this.wireframeColor = wireframeColor;
   }
 
+  static async loadCommonAssets(scene: THREE.Scene) {
+    // Load and cache any shared geometry/materials/models here if needed
+    // For Ship, this could cache GLTF models if you want to reuse them
+    return Promise.resolve();
+  }
+
   async load(): Promise<void> {
     return new Promise((resolve, reject) => {
       const loader = new GLTFLoader();
@@ -70,6 +76,13 @@ export class Ship extends EntityBase {
         }
       );
     });
+  }
+
+  addToScene(scene: THREE.Scene) {
+    if (this.mesh && !scene.children.includes(this.mesh)) {
+      scene.add(this.mesh);
+      this.visible = this.mesh.visible;
+    }
   }
 
   // Basic update - specific behaviors (like title animation) will be

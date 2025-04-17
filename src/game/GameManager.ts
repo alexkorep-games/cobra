@@ -90,8 +90,10 @@ export class GameManager implements IGameManager {
     this.boundAnimate = this.animate.bind(this);
   }
 
-  init(canvas: HTMLCanvasElement, loadingCallback: () => void) {
+  async init(canvas: HTMLCanvasElement, loadingCallback: () => void) {
     this.loadingCompleteCallback = loadingCallback;
+    
+    // Create scene first
     this.scene = new THREE.Scene();
 
     const cameraFarPlane = 10000000; // 10 million units
@@ -114,20 +116,29 @@ export class GameManager implements IGameManager {
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
     this.scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Slightly stronger directional
-    directionalLight.position.set(5, 5, 5); // Adjust position for better angles
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(5, 5, 5);
     this.scene.add(directionalLight);
 
-    this.createAssets(cameraFarPlane); // Will now trigger async loading
+    // Setup scene logics before loading assets
     this.setupSceneLogics();
-    this.startAnimationLoop();
-
-    window.addEventListener("resize", this.boundOnWindowResize);
-    window.addEventListener("keydown", this.boundHandleGlobalInput);
-    window.addEventListener("mousedown", this.boundHandleGlobalInput);
-
-    console.log("GameManager initialized and listeners added.");
-    // Don't enter initial state here, wait for loading to complete
+    
+    try {
+      await this.createAssets(cameraFarPlane); // Wait for assets to load
+      this.startAnimationLoop();
+      
+      window.addEventListener("resize", this.boundOnWindowResize);
+      window.addEventListener("keydown", this.boundHandleGlobalInput);
+      window.addEventListener("mousedown", this.boundHandleGlobalInput);
+      
+      console.log("GameManager initialized and listeners added.");
+    } catch (error) {
+      console.error("Error during initialization:", error);
+      // Still call callback to unblock UI
+      if (this.loadingCompleteCallback) {
+        this.loadingCompleteCallback();
+      }
+    }
   }
 
   setupSceneLogics() {
@@ -139,9 +150,25 @@ export class GameManager implements IGameManager {
     this.sceneLogics.space_flight = new SpaceFlightSceneLogic(this);
   }
 
-  createAssets(cameraFarPlane: number) {
-    if (!this.scene || !this.camera) return;
+  async createAssets(cameraFarPlane: number) {
+    if (!this.scene || !this.camera) {
+      throw new Error("Scene or camera not initialized");
+    }
 
+    console.log("Starting asset loading...");
+    
+    // Load shared/common assets first
+    try {
+      await Promise.all([
+        Planet.loadCommonAssets(this.scene),
+        Ship.loadCommonAssets(this.scene),
+        SpaceStation.loadCommonAssets(this.scene),
+      ]);
+    } catch (error) {
+      console.error("Error loading common assets:", error);
+      throw error;
+    }
+    
     const shipFilePaths = [
       "assets/ships/ship-cobra.gltf",
       "assets/ships/ship-pirate.gltf",
@@ -157,7 +184,12 @@ export class GameManager implements IGameManager {
     this.assets.planet = new Planet(this.scene, planetRadius, 0x44aa44); // Greenish planet
     loadPromises.push(
       this.assets.planet.load().then(() => {
-        this.assets.planet?.addToScene(); // Add to scene after successful load
+        // Check if scene still exists before adding
+        if (this.scene) {
+            this.assets.planet?.addToScene(this.scene); // Add to scene after successful load
+        } else {
+            console.warn("Scene disposed before Planet could be added.");
+        }
       })
     );
 
@@ -170,7 +202,12 @@ export class GameManager implements IGameManager {
     );
     loadPromises.push(
       this.assets.spaceStation.load().then(() => {
-        this.assets.spaceStation?.addToScene();
+        // Check if scene still exists before adding
+        if (this.scene) {
+            this.assets.spaceStation?.addToScene(this.scene);
+        } else {
+            console.warn("Scene disposed before SpaceStation could be added.");
+        }
       })
     );
 
@@ -181,7 +218,12 @@ export class GameManager implements IGameManager {
       this.assets.titleShips.push(ship);
       loadPromises.push(
         ship.load().then(() => {
-          ship.addToScene(); // Add each ship after it loads
+          // Check if scene still exists before adding
+          if (this.scene) {
+              ship.addToScene(this.scene); // Add each ship after it loads
+          } else {
+              console.warn(`Scene disposed before Title Ship (${path}) could be added.`);
+          }
         })
       );
     });
@@ -189,15 +231,19 @@ export class GameManager implements IGameManager {
     // --- Instantiate Pirate Ships ---
     this.assets.pirateShips = []; // Clear previous array if any
     for (let i = 0; i < Constants.PIRATE_COUNT; i++) {
-        const pirate = new Ship(this.scene!, pirateShipPath, shipScale, 0xff0000); // Red pirates
-        this.assets.pirateShips.push(pirate);
-        loadPromises.push(
-            pirate.load().then(() => {
-                pirate.addToScene(); // Add each pirate after it loads
-            })
-        );
+      const pirate = new Ship(this.scene!, pirateShipPath, shipScale, 0xff0000); // Red pirates
+      this.assets.pirateShips.push(pirate);
+      loadPromises.push(
+        pirate.load().then(() => {
+          // Check if scene still exists before adding
+          if (this.scene) {
+              pirate.addToScene(this.scene); // Add each pirate after it loads
+          } else {
+              console.warn(`Scene disposed before Pirate Ship (${i}) could be added.`);
+          }
+        })
+      );
     }
-
 
     // --- Undocking Squares (Keep as is for now) ---
     const squareOutlineGeom = new THREE.BufferGeometry();
@@ -210,13 +256,20 @@ export class GameManager implements IGameManager {
     );
     const squareLineMat = new THREE.LineBasicMaterial({ color: 0x00ff00 });
     this.assets.undockingSquares = [];
-    for (let i = 0; i < 20; i++) {
-      const squareLine = new THREE.LineLoop(squareOutlineGeom, squareLineMat);
-      squareLine.scale.set((i + 1) * 2, (i + 1) * 2, 1);
-      squareLine.position.z = -i * 5;
-      squareLine.visible = false;
-      this.scene.add(squareLine); // Add squares directly
-      this.assets.undockingSquares.push(squareLine);
+    // Check if scene exists before adding squares directly
+    if (this.scene) {
+        for (let i = 0; i < 20; i++) {
+            const squareLine = new THREE.LineLoop(squareOutlineGeom, squareLineMat);
+            squareLine.scale.set((i + 1) * 2, (i + 1) * 2, 1);
+            squareLine.position.z = -i * 5;
+            squareLine.visible = false;
+            this.scene.add(squareLine); // Add squares directly
+            this.assets.undockingSquares.push(squareLine);
+        }
+    } else {
+        console.warn("Scene disposed before Undocking Squares could be added.");
+        // Ensure the array exists even if squares aren't added
+        this.assets.undockingSquares = [];
     }
     // --- End Undocking Squares ---
 
@@ -224,13 +277,22 @@ export class GameManager implements IGameManager {
     console.log(`Starting loading of ${loadPromises.length} assets...`);
     Promise.all(loadPromises)
       .then(() => {
+        // Check if scene exists before proceeding
+        if (!this.scene) {
+            console.warn("Scene disposed before asset loading completed fully.");
+            // Still call callback? Maybe not, as the game state is invalid.
+            // if (this.loadingCompleteCallback) {
+            //     this.loadingCompleteCallback();
+            // }
+            return; // Don't proceed if scene is gone
+        }
         console.log("All assets loaded successfully.");
         if (this.loadingCompleteCallback) {
           this.loadingCompleteCallback();
         } else {
           console.warn("loadingCompleteCallback not set!");
         }
-        // Enter the initial state ONLY after loading is complete
+        // Enter the initial state ONLY after loading is complete and scene exists
         this.sceneLogics[this.currentState]?.enter();
       })
       .catch((error) => {
@@ -240,8 +302,13 @@ export class GameManager implements IGameManager {
         if (this.loadingCompleteCallback) {
           this.loadingCompleteCallback(); // Still notify React UI might need update
         }
-        // Enter initial state even with errors? Or a specific error state?
-        this.sceneLogics[this.currentState]?.enter(); // Or switch to an error state
+        // Check if scene exists before trying to enter state
+        if (this.scene) {
+            // Enter initial state even with errors? Or a specific error state?
+            this.sceneLogics[this.currentState]?.enter(); // Or switch to an error state
+        } else {
+            console.warn("Scene disposed after asset loading error.");
+        }
       });
   }
 

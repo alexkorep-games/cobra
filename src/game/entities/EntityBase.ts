@@ -18,12 +18,16 @@ export abstract class EntityBase {
   abstract update(deltaTime: number): void;
 
   // Add the entity's mesh to the scene
-  public addToScene(): void {
+  public addToScene(scene: THREE.Scene): void {
+    if (!scene) {
+      console.warn('Attempted to add entity to null scene');
+      return;
+    }
     if (this.mesh) {
-      this.scene.add(this.mesh);
-      this.visible = this.mesh.visible; // Sync state
+      scene.add(this.mesh);
+      this.visible = this.mesh.visible;
     } else {
-      console.warn("Attempted to add entity to scene before mesh was loaded.");
+      console.warn('Attempted to add null mesh to scene');
     }
   }
 

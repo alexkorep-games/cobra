@@ -19,6 +19,12 @@ export class Planet extends EntityBase {
     this.rotationSpeed = rotationSpeed;
   }
 
+  static async loadCommonAssets(scene: THREE.Scene) {
+    // Load and cache any shared geometry/materials/models here if needed
+    // For Planet, this may be a no-op unless you want to share geometry/material
+    return Promise.resolve();
+  }
+
   async load(): Promise<void> {
     // Simple geometry, no async loading needed, but conform to interface
     const geometry = new THREE.SphereGeometry(this.radius, 128, 64);
@@ -33,6 +39,13 @@ export class Planet extends EntityBase {
     this.visible = false;
     // No need to add to scene here, GameManager will do it after load
     return Promise.resolve();
+  }
+
+  addToScene(scene: THREE.Scene) {
+    if (this.mesh && !scene.children.includes(this.mesh)) {
+      scene.add(this.mesh);
+      this.visible = this.mesh.visible;
+    }
   }
 
   update(deltaTime: number): void {
