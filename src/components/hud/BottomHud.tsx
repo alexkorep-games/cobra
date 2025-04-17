@@ -6,7 +6,7 @@ interface BottomHudProps {
   speed?: number; // Optional for scenes other than flight, expected 0-100
   roll?: number; // Optional, range -1 to 1 (-1 left, 1 right)
   pitch?: number; // Optional, range -1 to 1 (-1 dive, 1 climb)
-  stationDirection?: number | null; // Optional, angle in radians (0 is right, PI/2 up, PI left, -PI/2 down) or null
+  stationDirection?: [number, number, number] | null; // [x, y, offCenterAmount]
 }
 
 const BottomHud: React.FC<BottomHudProps> = ({
@@ -25,9 +25,19 @@ const BottomHud: React.FC<BottomHudProps> = ({
   // Calculate position for the direction indicator dot
   let dotStyle: React.CSSProperties = { display: "none" };
   if (stationDirection !== null) {
-    const radius = 8; // px, radius of the circle container inner space
-    const dotX = radius * Math.cos(stationDirection) + radius + 1; // +radius+1 to center in 18x18 container
-    const dotY = -radius * Math.sin(stationDirection) + radius + 1; // Y is inverted in CSS coords
+    const [relX, relY, offCenterAmount] = stationDirection;
+    const indicatorRadius = 8; // px, radius of the circle container inner space
+
+    // Use atan2 for direction
+    const angle = Math.atan2(relY, relX);
+
+    // Use offCenterAmount for distance from center
+    const displayDist = offCenterAmount * indicatorRadius;
+
+    // Center in 18x18 container (border is 1px)
+    const dotX = displayDist * Math.cos(angle) + indicatorRadius + 1;
+    const dotY = -displayDist * Math.sin(angle) + indicatorRadius + 1;
+
     dotStyle = { top: `${dotY}px`, left: `${dotX}px`, display: "block" };
   }
 

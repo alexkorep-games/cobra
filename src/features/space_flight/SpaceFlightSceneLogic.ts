@@ -16,6 +16,8 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
   private tempQuaternion = new THREE.Quaternion(); // Reusable quaternion for calculations
   private tempVector = new THREE.Vector3(); // Reusable vector for calculations
   private tempVector2 = new THREE.Vector3(); // Another reusable vector
+  // Add a third temporary vector if needed, or create inline
+  // private tempVector3 = new THREE.Vector3(); 
 
   // Laser state
   private laserHeat: number = 0;
@@ -418,8 +420,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.game.reactSetPitch(normalizedPitch); // Pass the possibly inverted pitch for HUD
     this.game.reactSetLaserHeat(normalizedLaserHeat); // Update laser heat on HUD
 
-    // --- Station Proximity Check & Direction (existing code) ---
-    // ... (station logic remains the same) ...
+    // --- Station Proximity Check & Direction ---
     if (this.game.assets.spaceStation?.visible && this.game.camera) {
       // Check station is visible
       const playerPos = this.game.camera.position;
@@ -429,24 +430,61 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       if (distanceToStation < Constants.STATION_DOCKING_RADIUS) {
         console.log("Reached space station!");
         this.game.switchState("title"); // Go back to title screen
+        this.game.reactSetStationDirection(null); // Clear direction on docking
       } else {
         // Calculate direction for HUD
-        const worldDir = new THREE.Vector3().subVectors(stationPos, playerPos);
-        // Project direction onto camera's local XY plane
-        const cameraInverse = this.game.camera.quaternion.clone().invert();
-        const relativeDir = worldDir.applyQuaternion(cameraInverse).normalize();
-        // atan2(y, x) gives angle from positive X axis
-        const angle = Math.atan2(relativeDir.y, relativeDir.x);
-        this.game.reactSetStationDirection(angle);
+        // Use tempVector for worldDir
+        const worldDir = this.tempVector.subVectors(stationPos, playerPos).normalize(); 
+
+        // Project onto camera's local coordinate system
+        const cameraInverse = this.tempQuaternion.copy(this.game.camera.quaternion).invert();
+        // Use tempVector2 for relativeDir
+        const relativeDir = this.tempVector2.copy(worldDir).applyQuaternion(cameraInverse); 
+
+        // Check if the station is generally in front of the camera
+        if (relativeDir.z < 0) {  // Station is in front
+            // Calculate how far "off-center" the station is
+            
+            // Use a *new* or *different* temp vector for cameraForward
+            const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.game.camera.quaternion); 
+            // Or: const cameraForward = this.tempVector3.set(0, 0, -1).applyQuaternion(this.game.camera.quaternion);
+            
+            // Calculate the angle between camera forward and world direction to station
+            // worldDir (in tempVector) should now be correct
+            const angleBetween = cameraForward.angleTo(worldDir); 
+            
+            // ... rest of the calculation for offCenterAmount ...
+            const currentFOV = this.game.camera.fov || 75;
+            const halfFOV = THREE.MathUtils.degToRad(currentFOV) / 2;
+            const offCenterAmount = THREE.MathUtils.clamp(angleBetween / halfFOV, 0, 1);
+            
+            // --- Logging ---
+            console.log(`Station Direction Debug: relZ=${relativeDir.z.toFixed(2)}, angle=${angleBetween.toFixed(2)}, halfFOV=${halfFOV.toFixed(2)}, offCenter=${offCenterAmount.toFixed(2)}, relX=${relativeDir.x.toFixed(2)}, relY=${relativeDir.y.toFixed(2)}`);
+            // --- End Logging ---
+
+            // Pass the projected X/Y for angle, and offCenterAmount for distance
+            this.game.reactSetStationDirection([
+                relativeDir.x, 
+                relativeDir.y,
+                offCenterAmount
+            ] as [number, number, number]);
+        } else {
+            // Station is behind
+            console.log(`Station Direction Debug: Station behind (relZ=${relativeDir.z.toFixed(2)}). Hiding dot.`);
+            this.game.reactSetStationDirection(null);
+        }
       }
     } else {
-      // No station visible or loaded, clear direction indicator
+      // No station visible or loaded
+      if (!this.game.assets.spaceStation?.visible) {
+          console.log("Station Direction Debug: Station not visible. Hiding dot.");
+      } else {
+          console.log("Station Direction Debug: Camera not ready? Hiding dot.");
+      }
       this.game.reactSetStationDirection(null);
     }
 
-
-    // --- Pirate AI (existing code) ---
-    // ... (pirate AI logic remains the same) ...
+    // --- Pirate AI ---
     const playerPos = this.game.camera.position;
     this.game.assets.pirateShips.forEach(pirate => {
         if (!pirate.mesh || !pirate.visible) return; // Skip inactive pirates

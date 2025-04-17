@@ -52,7 +52,7 @@ export class GameManager implements IGameManager {
   reactSetRoll: (roll: number) => void;
   reactSetPitch: (pitch: number) => void;
   reactSetLaserHeat: (heat: number) => void = () => {};
-  reactSetStationDirection: (angle: number | null) => void;
+  reactSetStationDirection: (direction: [number, number, number] | null) => void; // Updated to include offCenterAmount
 
   // Constants (no change)
   constants = { ...Constants };
@@ -70,7 +70,7 @@ export class GameManager implements IGameManager {
     reactSetSpeed: (speed: number) => void,
     reactSetRoll: (roll: number) => void,
     reactSetPitch: (pitch: number) => void,
-    reactSetStationDirection: (angle: number | null) => void
+    reactSetStationDirection: (direction: [number, number, number] | null) => void // Updated type
   ) {
     this.reactSetGameState = reactSetGameState;
     this.introMusicRef = introMusicRef;
@@ -421,13 +421,13 @@ export class GameManager implements IGameManager {
 
   setReactSetters(setters: {
     setPitch: (pitch: number) => void;
-    setLaserHeat: (heat: number) => void; // Add this line
-    setStationDirection: (angle: number | null) => void;
+    setLaserHeat: (heat: number) => void;
+    setStationDirection: (direction: [number, number, number] | null) => void; // Updated type
     setCoordinates: (coords: [number, number, number]) => void;
   }) {
     this.reactSetPitch = setters.setPitch;
-    this.reactSetLaserHeat = setters.setLaserHeat; // Add this line
-    this.reactSetStationDirection = setters.setStationDirection;
+    this.reactSetLaserHeat = setters.setLaserHeat;
+    this.reactSetStationDirection = setters.setStationDirection; // Updated type
     this.reactSetCoordinates = setters.setCoordinates;
   }
 
