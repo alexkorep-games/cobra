@@ -17,7 +17,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
   private tempVector = new THREE.Vector3(); // Reusable vector for calculations
   private tempVector2 = new THREE.Vector3(); // Another reusable vector
   // Add a third temporary vector if needed, or create inline
-  // private tempVector3 = new THREE.Vector3(); 
+  // private tempVector3 = new THREE.Vector3();
 
   // Laser state
   private laserHeat: number = 0;
@@ -48,21 +48,26 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       THREE.MathUtils.lerp(offsetRange.x, offsetRange.y, Math.random());
     const angle = Math.random() * Math.PI * 2;
     const elevationAngle = (Math.random() - 0.5) * Math.PI; // Wider elevation range
-    const x = relativeTo.x + distance * Math.sin(angle) * Math.cos(elevationAngle);
+    const x =
+      relativeTo.x + distance * Math.sin(angle) * Math.cos(elevationAngle);
     const y = relativeTo.y + distance * Math.sin(elevationAngle);
-    const z = relativeTo.z - distance * Math.cos(angle) * Math.cos(elevationAngle); // Usually move along negative Z
+    const z =
+      relativeTo.z - distance * Math.cos(angle) * Math.cos(elevationAngle); // Usually move along negative Z
 
     entity.setPosition(x, y, z);
-    entity.setRotation( // Random orientation
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2,
-        Math.random() * Math.PI * 2
+    entity.setRotation(
+      // Random orientation
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2,
+      Math.random() * Math.PI * 2
     );
     entity.setVisible(true);
     console.log(
       `${
         entity.mesh.name || "Object"
-      } positioned at distance: ${distance.toFixed(0)} from ${relativeTo.toArray()}`
+      } positioned at distance: ${distance.toFixed(
+        0
+      )} from ${relativeTo.toArray()}`
     );
   }
 
@@ -115,14 +120,15 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     }
 
     // Position Pirates randomly around the player's starting position
-    const playerStartPosition = this.game.camera?.position ?? new THREE.Vector3(0,0,0);
-    this.game.assets.pirateShips.forEach(pirate => {
-        this.positionObjectRandomly(
-            pirate,
-            Constants.PIRATE_BASE_DISTANCE,
-            Constants.PIRATE_POSITION_OFFSET_RANGE,
-            playerStartPosition
-        );
+    const playerStartPosition =
+      this.game.camera?.position ?? new THREE.Vector3(0, 0, 0);
+    this.game.assets.pirateShips.forEach((pirate) => {
+      this.positionObjectRandomly(
+        pirate,
+        Constants.PIRATE_BASE_DISTANCE,
+        Constants.PIRATE_POSITION_OFFSET_RANGE,
+        playerStartPosition
+      );
     });
 
     console.log("Entered Space Flight Scene.");
@@ -136,7 +142,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       this.game.camera.rotation.set(0, 0, 0);
       this.game.camera.position.set(0, 0, 0);
       // Log camera clipping planes
-      console.log(`Camera Clipping Planes: Near=${this.game.camera.near}, Far=${this.game.camera.far}`);
+      console.log(
+        `Camera Clipping Planes: Near=${this.game.camera.near}, Far=${this.game.camera.far}`
+      );
     }
     this.isHyperspaceActive = false; // Start with hyperspace off
 
@@ -147,20 +155,23 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
     // Initialize laser beam object
     if (this.laserBeam) {
-        this.game.scene?.remove(this.laserBeam);
-        this.laserBeam.geometry.dispose();
-        (this.laserBeam.material as THREE.Material).dispose();
+      this.game.scene?.remove(this.laserBeam);
+      this.laserBeam.geometry.dispose();
+      (this.laserBeam.material as THREE.Material).dispose();
     }
     const laserMaterial = new THREE.LineBasicMaterial({
-        color: Constants.LASER_COLOR,
-        linewidth: 5,
-        transparent: true,
-        opacity: 1,
+      color: Constants.LASER_COLOR,
+      linewidth: 5,
+      transparent: true,
+      opacity: 1,
     });
 
     // Create two slightly offset lines to make the beam more visible
     const points1 = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -1)];
-    const points2 = [new THREE.Vector3(0.1, 0.1, 0), new THREE.Vector3(0.1, 0.1, -1)];
+    const points2 = [
+      new THREE.Vector3(0.1, 0.1, 0),
+      new THREE.Vector3(0.1, 0.1, -1),
+    ];
     const allPoints = [...points1, ...points2];
     const laserGeometry = new THREE.BufferGeometry().setFromPoints(allPoints);
     this.laserBeam = new THREE.LineSegments(laserGeometry, laserMaterial);
@@ -168,10 +179,10 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.laserBeam.frustumCulled = false;
     this.laserBeam.renderOrder = 999;
     if (this.game.scene) {
-        console.log("Adding laser beam to scene");
-        this.game.scene.add(this.laserBeam);
+      console.log("Adding laser beam to scene");
+      this.game.scene.add(this.laserBeam);
     }
-    
+
     // Make sure event listeners are properly bound
     window.removeEventListener("keydown", this.boundHandleKeyDown); // Remove first in case
     window.removeEventListener("keyup", this.boundHandleKeyUp);
@@ -191,15 +202,15 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     // Hide planet, station, and pirates
     this.game.assets.planet?.setVisible(false);
     this.game.assets.spaceStation?.setVisible(false);
-    this.game.assets.pirateShips.forEach(pirate => pirate.setVisible(false));
+    this.game.assets.pirateShips.forEach((pirate) => pirate.setVisible(false));
 
     this.wantsToFire = false; // Ensure firing stops on exit
     if (this.laserBeam) {
-        this.laserBeam.visible = false;
-        this.game.scene?.remove(this.laserBeam); // Remove from scene
-        this.laserBeam.geometry.dispose();
-        (this.laserBeam.material as THREE.Material).dispose();
-        this.laserBeam = null;
+      this.laserBeam.visible = false;
+      this.game.scene?.remove(this.laserBeam); // Remove from scene
+      this.laserBeam.geometry.dispose();
+      (this.laserBeam.material as THREE.Material).dispose();
+      this.laserBeam = null;
     }
   }
 
@@ -230,7 +241,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.wantsToFire = this.keysPressed.has("Space"); // Use Spacebar to fire
     if (this.wantsToFire) {
       console.log("Space pressed - wants to fire");
-      console.log(`Cooldown: ${this.laserCooldownTimer}, Heat: ${this.laserHeat}`);
+      console.log(
+        `Cooldown: ${this.laserCooldownTimer}, Heat: ${this.laserHeat}`
+      );
     }
 
     // --- Laser Cooling ---
@@ -249,8 +262,14 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     ) {
       console.log("=== LASER FIRING ===");
       console.log(`LaserBeam exists: ${this.laserBeam !== null}`);
-      console.log(`LaserBeam in scene: ${this.game.scene?.children.includes(this.laserBeam!)}`);
-      console.log(`Heat: ${this.laserHeat}, Cooldown: ${this.laserCooldownTimer}`);
+      console.log(
+        `LaserBeam in scene: ${this.game.scene?.children.includes(
+          this.laserBeam!
+        )}`
+      );
+      console.log(
+        `Heat: ${this.laserHeat}, Cooldown: ${this.laserCooldownTimer}`
+      );
 
       this.laserCooldownTimer = Constants.LASER_COOLDOWN;
       this.laserHeat = Math.min(
@@ -265,7 +284,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       // Prepare list of pirate meshes to check against
       const pirateMeshes: THREE.Object3D[] = this.game.assets.pirateShips
         .map((p) => p.mesh) // Get the mesh from each Ship entity
-        .filter((mesh): mesh is THREE.Object3D => mesh !== null && mesh.visible); // Filter out null or invisible meshes
+        .filter(
+          (mesh): mesh is THREE.Object3D => mesh !== null && mesh.visible
+        ); // Filter out null or invisible meshes
 
       const intersects = this.raycaster.intersectObjects(pirateMeshes, true); // Check recursively
 
@@ -282,32 +303,46 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
           // Find which pirate Ship entity corresponds to the hit mesh
           let hitMesh = closestHit.object;
           while (hitMesh.parent && !(hitMesh.userData.entity instanceof Ship)) {
-              hitMesh = hitMesh.parent; // Traverse up if we hit a child mesh
+            hitMesh = hitMesh.parent; // Traverse up if we hit a child mesh
           }
           if (hitMesh.userData.entity instanceof Ship) {
-              hitTarget = hitMesh.userData.entity;
-              console.log(`Hit Pirate: ${hitTarget?.mesh?.name}! Distance: ${hitDistance.toFixed(0)}`); // Keep log
-              // TODO: Apply damage to hitTarget
+            hitTarget = hitMesh.userData.entity;
+            console.log(
+              `Hit Pirate: ${
+                hitTarget?.mesh?.name
+              }! Distance: ${hitDistance.toFixed(0)}`
+            ); // Keep log
+            // TODO: Apply damage to hitTarget
           } else {
-              console.log(`Hit something, but couldn't identify pirate. Distance: ${hitDistance.toFixed(0)}`); // Keep log
+            console.log(
+              `Hit something, but couldn't identify pirate. Distance: ${hitDistance.toFixed(
+                0
+              )}`
+            ); // Keep log
           }
         }
       }
       // --- End Re-enabled Raycasting ---
 
-
       // Visualize Laser Beam
       const startPoint = this.game.camera.position.clone();
-      const direction = this.tempVector.set(0, 0, -1).applyQuaternion(this.game.camera.quaternion);
+      const direction = this.tempVector
+        .set(0, 0, -1)
+        .applyQuaternion(this.game.camera.quaternion);
       startPoint.addScaledVector(direction, 10.0); // Offset in front of camera
-      const endPoint = this.tempVector2.copy(startPoint).addScaledVector(direction, hitDistance);
+      const endPoint = this.tempVector2
+        .copy(startPoint)
+        .addScaledVector(direction, hitDistance);
 
       // Offset for the second line (for thickness effect)
-      const offset = new THREE.Vector3(0.1, 0.1, 0).applyQuaternion(this.game.camera.quaternion);
+      const offset = new THREE.Vector3(0.1, 0.1, 0).applyQuaternion(
+        this.game.camera.quaternion
+      );
       const startPoint2 = startPoint.clone().add(offset);
       const endPoint2 = endPoint.clone().add(offset);
 
-      const positions = this.laserBeam.geometry.attributes.position as THREE.BufferAttribute;
+      const positions = this.laserBeam.geometry.attributes
+        .position as THREE.BufferAttribute;
       positions.setXYZ(0, startPoint.x, startPoint.y, startPoint.z);
       positions.setXYZ(1, endPoint.x, endPoint.y, endPoint.z);
       positions.setXYZ(2, startPoint2.x, startPoint2.y, startPoint2.z);
@@ -318,12 +353,13 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       console.log("Setting laser beam visible..."); // Keep pre-visibility log
       this.laserBeam.visible = true;
       this.laserBeamHideTimer = Constants.LASER_DURATION;
-      console.log(`Laser visible: ${this.laserBeam.visible}, Hide timer: ${this.laserBeamHideTimer}`); // Keep final log
-
+      console.log(
+        `Laser visible: ${this.laserBeam.visible}, Hide timer: ${this.laserBeamHideTimer}`
+      ); // Keep final log
     } else if (this.laserBeamHideTimer <= 0 && this.laserBeam.visible) {
-        // Hide laser beam if timer expired
-        this.laserBeam.visible = false;
-        console.log("Laser hidden by timer.");
+      // Hide laser beam if timer expired
+      this.laserBeam.visible = false;
+      console.log("Laser hidden by timer.");
     }
 
     // --- Update Velocity & Movement (existing code) ---
@@ -357,14 +393,11 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     }
 
     // Update Pitch Rate
-    if (pitchDown)
-      this.pitchRate -=
-        Constants.PITCH_ACCELERATION *
-        deltaTime; // Pitch nose down is negative rotation around X
+    if (pitchDown) this.pitchRate -= Constants.PITCH_ACCELERATION * deltaTime;
+    // Pitch nose down is negative rotation around X
     else if (pitchUp)
-      this.pitchRate +=
-        Constants.PITCH_ACCELERATION *
-        deltaTime; // Pitch nose up is positive rotation around X
+      this.pitchRate += Constants.PITCH_ACCELERATION * deltaTime;
+    // Pitch nose up is positive rotation around X
     else {
       // Apply angular damping only if not pitching
       this.pitchRate *= 1 - Constants.ANGULAR_DAMPING * deltaTime;
@@ -384,7 +417,6 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     // and roll around the camera's local Z axis.
     this.game.camera.rotateX(this.pitchRate * deltaTime); // Rotate around local X axis
     this.game.camera.rotateZ(this.rollRate * deltaTime); // Rotate around local Z axis
-
 
     // --- Update HUD ---
     // Crosshair: This is typically a static overlay element in the center of the HUD UI (React component).
@@ -409,11 +441,10 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       1
     );
     const normalizedLaserHeat = THREE.MathUtils.clamp(
-        (this.laserHeat / Constants.LASER_MAX_HEAT) * 100,
-        0,
-        100
+      (this.laserHeat / Constants.LASER_MAX_HEAT) * 100,
+      0,
+      100
     );
-
 
     this.game.reactSetSpeed(normalizedSpeed);
     this.game.reactSetRoll(normalizedRoll);
@@ -434,99 +465,104 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       } else {
         // Calculate direction for HUD
         // Use tempVector for worldDir
-        const worldDir = this.tempVector.subVectors(stationPos, playerPos).normalize(); 
+        const worldDir = this.tempVector
+          .subVectors(stationPos, playerPos)
+          .normalize();
 
         // Project onto camera's local coordinate system
-        const cameraInverse = this.tempQuaternion.copy(this.game.camera.quaternion).invert();
+        const cameraInverse = this.tempQuaternion
+          .copy(this.game.camera.quaternion)
+          .invert();
         // Use tempVector2 for relativeDir
-        const relativeDir = this.tempVector2.copy(worldDir).applyQuaternion(cameraInverse); 
+        const relativeDir = this.tempVector2
+          .copy(worldDir)
+          .applyQuaternion(cameraInverse);
 
         // Check if the station is generally in front of the camera
-        if (relativeDir.z < 0) {  // Station is in front
-            // Calculate how far "off-center" the station is
-            
-            // Use a *new* or *different* temp vector for cameraForward
-            const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.game.camera.quaternion); 
-            // Or: const cameraForward = this.tempVector3.set(0, 0, -1).applyQuaternion(this.game.camera.quaternion);
-            
-            // Calculate the angle between camera forward and world direction to station
-            // worldDir (in tempVector) should now be correct
-            const angleBetween = cameraForward.angleTo(worldDir); 
-            
-            // ... rest of the calculation for offCenterAmount ...
-            const currentFOV = this.game.camera.fov || 75;
-            const halfFOV = THREE.MathUtils.degToRad(currentFOV) / 2;
-            const offCenterAmount = THREE.MathUtils.clamp(angleBetween / halfFOV, 0, 1);
-            
-            // --- Logging ---
-            console.log(`Station Direction Debug: relZ=${relativeDir.z.toFixed(2)}, angle=${angleBetween.toFixed(2)}, halfFOV=${halfFOV.toFixed(2)}, offCenter=${offCenterAmount.toFixed(2)}, relX=${relativeDir.x.toFixed(2)}, relY=${relativeDir.y.toFixed(2)}`);
-            // --- End Logging ---
+        if (relativeDir.z < 0) {
+          // Station is in front
+          // Calculate how far "off-center" the station is
 
-            // Pass the projected X/Y for angle, and offCenterAmount for distance
-            this.game.reactSetStationDirection([
-                relativeDir.x, 
-                relativeDir.y,
-                offCenterAmount
-            ] as [number, number, number]);
+          // Use a *new* or *different* temp vector for cameraForward
+          const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(
+            this.game.camera.quaternion
+          );
+
+          // Calculate the angle between camera forward and world direction to station
+          // worldDir (in tempVector) should now be correct
+          const angleBetween = cameraForward.angleTo(worldDir);
+
+          // ... rest of the calculation for offCenterAmount ...
+          const currentFOV = this.game.camera.fov || 75;
+          const halfFOV = THREE.MathUtils.degToRad(currentFOV) / 2;
+          const offCenterAmount = THREE.MathUtils.clamp(
+            angleBetween / halfFOV,
+            0,
+            1
+          );
+
+          // Pass the projected X/Y for angle, and offCenterAmount for distance
+          this.game.reactSetStationDirection([
+            relativeDir.x,
+            relativeDir.y,
+            offCenterAmount,
+          ]);
         } else {
-            // Station is behind
-            console.log(`Station Direction Debug: Station behind (relZ=${relativeDir.z.toFixed(2)}). Hiding dot.`);
-            this.game.reactSetStationDirection(null);
+          // Station is behind
+          this.game.reactSetStationDirection(null);
         }
       }
     } else {
       // No station visible or loaded
-      if (!this.game.assets.spaceStation?.visible) {
-          console.log("Station Direction Debug: Station not visible. Hiding dot.");
-      } else {
-          console.log("Station Direction Debug: Camera not ready? Hiding dot.");
-      }
       this.game.reactSetStationDirection(null);
     }
 
     // --- Pirate AI ---
     const playerPos = this.game.camera.position;
-    this.game.assets.pirateShips.forEach(pirate => {
-        if (!pirate.mesh || !pirate.visible) return; // Skip inactive pirates
+    this.game.assets.pirateShips.forEach((pirate) => {
+      if (!pirate.mesh || !pirate.visible) return; // Skip inactive pirates
 
-        const piratePos = pirate.getPosition();
-        const distanceToPlayer = playerPos.distanceTo(piratePos);
+      const piratePos = pirate.getPosition();
+      const distanceToPlayer = playerPos.distanceTo(piratePos);
 
-        if (distanceToPlayer < Constants.PIRATE_ATTACK_RANGE) {
-            // --- Attack Behavior ---
+      if (distanceToPlayer < Constants.PIRATE_ATTACK_RANGE) {
+        // --- Attack Behavior ---
 
-            // 1. Turn towards player
-            const directionToPlayer = this.tempVector.subVectors(playerPos, piratePos).normalize();
-            // Ensure pirate mesh has userData.entity set if not already
-            if (!pirate.mesh.userData.entity) pirate.mesh.userData.entity = pirate;
+        // 1. Turn towards player
+        const directionToPlayer = this.tempVector
+          .subVectors(playerPos, piratePos)
+          .normalize();
+        // Ensure pirate mesh has userData.entity set if not already
+        if (!pirate.mesh.userData.entity) pirate.mesh.userData.entity = pirate;
 
-            const targetQuaternion = this.tempQuaternion.setFromUnitVectors(
-                new THREE.Vector3(0, 0, 1), // Assuming pirate model faces +Z
-                directionToPlayer
-            );
+        const targetQuaternion = this.tempQuaternion.setFromUnitVectors(
+          new THREE.Vector3(0, 0, 1), // Assuming pirate model faces +Z
+          directionToPlayer
+        );
 
-            // Smoothly rotate towards the target orientation
-            pirate.mesh.quaternion.rotateTowards(targetQuaternion, Constants.PIRATE_TURN_RATE * deltaTime);
+        // Smoothly rotate towards the target orientation
+        pirate.mesh.quaternion.rotateTowards(
+          targetQuaternion,
+          Constants.PIRATE_TURN_RATE * deltaTime
+        );
 
-            // 2. Move towards player
-            // Get the pirate's forward direction based on its current rotation
-            const forward = new THREE.Vector3(0, 0, 1);
-            forward.applyQuaternion(pirate.mesh.quaternion);
+        // 2. Move towards player
+        // Get the pirate's forward direction based on its current rotation
+        const forward = new THREE.Vector3(0, 0, 1);
+        forward.applyQuaternion(pirate.mesh.quaternion);
 
-            // Move along the forward vector
-            piratePos.addScaledVector(forward, Constants.PIRATE_SPEED * deltaTime);
-            pirate.setPosition(piratePos.x, piratePos.y, piratePos.z);
+        // Move along the forward vector
+        piratePos.addScaledVector(forward, Constants.PIRATE_SPEED * deltaTime);
+        pirate.setPosition(piratePos.x, piratePos.y, piratePos.z);
 
-            // (Future: Add firing logic here)
-            // console.log(`Pirate ${pirate.mesh.name} attacking! Dist: ${distanceToPlayer.toFixed(0)}`);
-
-        } else {
-            // --- Idle/Patrol Behavior (Optional) ---
-            // For now, pirates do nothing if player is out of range.
-            // Could add simple patrolling logic here later.
-        }
+        // (Future: Add firing logic here)
+        // console.log(`Pirate ${pirate.mesh.name} attacking! Dist: ${distanceToPlayer.toFixed(0)}`);
+      } else {
+        // --- Idle/Patrol Behavior (Optional) ---
+        // For now, pirates do nothing if player is out of range.
+        // Could add simple patrolling logic here later.
+      }
     });
-
 
     // --- Collision Detection (Placeholder) ---
     // ... (Add basic collision checks later if needed) ...
@@ -541,7 +577,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     if (event.key === ",") keyIdentifier = "Comma"; // Roll Left (Alternative)
     // Map Spacebar explicitly if needed, though event.code should be "Space"
     if (event.key === " ") keyIdentifier = "Space";
-    
+
     console.log(`Key pressed: ${keyIdentifier}`);
 
     // Handle J key specifically for hyperspace toggle
@@ -551,7 +587,6 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     }
     // Add the identified key to the set
     this.keysPressed.add(keyIdentifier);
-    console.log(`Keys pressed set: ${Array.from(this.keysPressed).join(', ')}`);
   }
 
   private handleKeyUp(event: KeyboardEvent): void {
@@ -565,7 +600,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     console.log(`Key released: ${keyIdentifier}`);
     // Remove the identified key from the set
     this.keysPressed.delete(keyIdentifier);
-    console.log(`Keys still pressed: ${Array.from(this.keysPressed).join(', ')}`);
+    console.log(
+      `Keys still pressed: ${Array.from(this.keysPressed).join(", ")}`
+    );
   }
 
   private toggleHyperspace(): void {
