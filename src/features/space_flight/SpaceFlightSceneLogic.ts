@@ -286,7 +286,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
           }
           if (hitMesh.userData.entity instanceof Ship) {
               hitTarget = hitMesh.userData.entity;
-              console.log(`Hit Pirate: ${hitTarget.mesh?.name}! Distance: ${hitDistance.toFixed(0)}`); // Keep log
+              console.log(`Hit Pirate: ${hitTarget?.mesh?.name}! Distance: ${hitDistance.toFixed(0)}`); // Keep log
               // TODO: Apply damage to hitTarget
           } else {
               console.log(`Hit something, but couldn't identify pirate. Distance: ${hitDistance.toFixed(0)}`); // Keep log
