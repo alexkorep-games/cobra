@@ -473,44 +473,32 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
         const cameraInverse = this.tempQuaternion
           .copy(this.game.camera.quaternion)
           .invert();
-        // Use tempVector2 for relativeDir
         const relativeDir = this.tempVector2
           .copy(worldDir)
           .applyQuaternion(cameraInverse);
 
-        // Check if the station is generally in front of the camera
-        if (relativeDir.z < 0) {
-          // Station is in front
-          // Calculate how far "off-center" the station is
+        const isStationInFrontOfCamera = relativeDir.z < 0;
+        const vector = isStationInFrontOfCamera
+          ? new THREE.Vector3(0, 0, -1)
+          : new THREE.Vector3(0, 0, 1);
+        const cameraLine = vector.applyQuaternion(this.game.camera.quaternion);
 
-          // Use a *new* or *different* temp vector for cameraForward
-          const cameraForward = new THREE.Vector3(0, 0, -1).applyQuaternion(
-            this.game.camera.quaternion
-          );
+        const angleBetween = cameraLine.angleTo(worldDir);
 
-          // Calculate the angle between camera forward and world direction to station
-          // worldDir (in tempVector) should now be correct
-          const angleBetween = cameraForward.angleTo(worldDir);
+        const currentFOV = this.game.camera.fov || 75;
+        const halfFOV = THREE.MathUtils.degToRad(currentFOV) / 2;
+        const offCenterAmount = THREE.MathUtils.clamp(
+          angleBetween / halfFOV,
+          0,
+          1
+        );
 
-          // ... rest of the calculation for offCenterAmount ...
-          const currentFOV = this.game.camera.fov || 75;
-          const halfFOV = THREE.MathUtils.degToRad(currentFOV) / 2;
-          const offCenterAmount = THREE.MathUtils.clamp(
-            angleBetween / halfFOV,
-            0,
-            1
-          );
-
-          // Pass the projected X/Y for angle, and offCenterAmount for distance
-          this.game.reactSetStationDirection([
-            relativeDir.x,
-            relativeDir.y,
-            offCenterAmount,
-          ]);
-        } else {
-          // Station is behind
-          this.game.reactSetStationDirection(null);
-        }
+        // Pass the projected X/Y for angle, and offCenterAmount for distance
+        this.game.reactSetStationDirection([
+          relativeDir.x,
+          relativeDir.y,
+          offCenterAmount,
+        ]);
       }
     } else {
       // No station visible or loaded
