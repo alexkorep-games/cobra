@@ -13,7 +13,7 @@ export type GameState =
   | "space_flight";
 
 // Interface for game assets
-export interface GameAssets {
+export interface GameEntities {
   titleShips: Ship[];
   planet: Planet | null;
   undockingSquares: THREE.LineLoop[];
@@ -21,31 +21,37 @@ export interface GameAssets {
   pirateShips: Ship[]; // Added for pirate NPCs
 }
 
-// Forward declaration or interface for GameManager to avoid circular dependencies if needed
-// If SceneLogic needs detailed access, define an interface here.
-export interface IGameManager {
-  assets: GameAssets;
-  currentState: GameState;
-  scene: THREE.Scene | null;
-  camera: THREE.PerspectiveCamera | null;
-  switchState: (newState: GameState) => void;
-  reactSetGameState: (state: GameState) => void;
-  reactSetCoordinates: (coords: [number, number, number]) => void;
-  reactSetSpeed: (speed: number) => void;
-  reactSetRoll: (roll: number) => void;
-  reactSetPitch: (pitch: number) => void;
-  reactSetLaserHeat: (heat: number) => void;
-  reactSetStationDirection: (direction: {
+// These functions called by GameManager to update the React components
+// like BottomHud, etc.
+export interface ReactSetters {
+  setGameState: (state: GameState) => void;
+  setCoordinates: (coords: [number, number, number]) => void;
+  setSpeed: (speed: number) => void;
+  setRoll: (roll: number) => void;
+  setPitch: (pitch: number) => void;
+  setLaserHeat: (heat: number) => void;
+  setStationDirection: (direction: {
     x: number;
     y: number;
     offCenterAmount: number;
     isInFront: boolean;
-  } | null) => void; // Updated type
-  reactSetPiratePositions: (positions: Array<{
+  } | null) => void;
+  setPiratePositions: (positions: Array<{
     relativeX: number;
     relativeZ: number;
     isInFront: boolean;
   }>) => void;
+}
+
+// Forward declaration or interface for GameManager to avoid circular dependencies if needed
+// If SceneLogic needs detailed access, define an interface here.
+export interface IGameManager {
+  assets: GameEntities;
+  currentState: GameState;
+  scene: THREE.Scene | null;
+  camera: THREE.PerspectiveCamera | null;
+  switchState: (newState: GameState) => void;
+  reactSetters: ReactSetters; // Updated to use the new ReactSetters type
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   constants: {
@@ -62,9 +68,4 @@ export interface IGameManager {
     MAX_VISUAL_PITCH_RATE: number;
   };
   // Add other methods/properties SceneLogic needs access to
-  // REMOVED Title Scene Specifics
-  // currentShipIndex: number; // MOVED to TitleSceneLogic
-  // shipDisplayTimer: number; // MOVED to TitleSceneLogic
-  // prepareNextTitleShip(): void; // MOVED to TitleSceneLogic
-  // updateTitleShipAnimation(deltaTime: number): void; // MOVED to TitleSceneLogic
 }

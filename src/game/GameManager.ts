@@ -1,7 +1,7 @@
 // src/game/GameManager.ts
 import * as THREE from "three";
 // Removed GLTFLoader import here, entities handle their own loading
-import { GameState, IGameManager, GameAssets } from "../types";
+import { GameState, IGameManager, GameEntities, ReactSetters } from "../types";
 import { SceneLogicBase } from "../features/common/SceneLogicBase";
 
 // Import Scene Logics (no change needed here)
@@ -30,39 +30,22 @@ export class GameManager implements IGameManager {
   renderer: THREE.WebGLRenderer | null = null;
   clock: THREE.Clock = new THREE.Clock();
   // Initialize assets with correct types
-  assets: GameAssets = {
+  assets: GameEntities = {
     titleShips: [],
     planet: null,
     undockingSquares: [],
     spaceStation: null,
-    pirateShips: [], // Initialize pirate ships array
+    pirateShips: [],
   };
-  // Removed assetsToLoad, assetsLoaded - now handled by Promise.all
   loadingCompleteCallback: (() => void) | null = null;
   currentState: GameState = "loading";
   sceneLogics: Partial<Record<GameState, SceneLogicBase>> = {};
   animationFrameId: number | null = null;
 
-  // Refs from React (no change)
+  // Refs from React
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
-  reactSetGameState: (state: GameState) => void;
-  reactSetCoordinates: (coords: [number, number, number]) => void;
-  reactSetSpeed: (speed: number) => void;
-  reactSetRoll: (roll: number) => void;
-  reactSetPitch: (pitch: number) => void;
-  reactSetLaserHeat: (heat: number) => void = () => {};
-  reactSetStationDirection: (direction: {
-    x: number;
-    y: number;
-    offCenterAmount: number;
-    isInFront: boolean;
-  } | null) => void; // Updated to include structured object
-  reactSetPiratePositions: (positions: Array<{
-    relativeX: number;
-    relativeZ: number;
-    isInFront: boolean;
-  }>) => void = () => {}; // New function to update pirate positions on HUD
+  reactSetters: ReactSetters; // Single property for all React setters
 
   // Constants (no change)
   constants = { ...Constants };
@@ -73,34 +56,13 @@ export class GameManager implements IGameManager {
   boundAnimate: () => void;
 
   constructor(
-    reactSetGameState: (state: GameState) => void,
+    reactSetters: ReactSetters,
     introMusicRef: React.RefObject<HTMLAudioElement>,
-    undockSoundRef: React.RefObject<HTMLAudioElement>,
-    reactSetCoordinates: (coords: [number, number, number]) => void,
-    reactSetSpeed: (speed: number) => void,
-    reactSetRoll: (roll: number) => void,
-    reactSetPitch: (pitch: number) => void,
-    reactSetStationDirection: (direction: {
-      x: number;
-      y: number;
-      offCenterAmount: number;
-      isInFront: boolean;
-    } | null) => void, // Updated type
-    reactSetPiratePositions: (positions: Array<{
-      relativeX: number;
-      relativeZ: number;
-      isInFront: boolean;
-    }>) => void = () => {}
+    undockSoundRef: React.RefObject<HTMLAudioElement>
   ) {
-    this.reactSetGameState = reactSetGameState;
+    this.reactSetters = reactSetters;
     this.introMusicRef = introMusicRef;
-    this.reactSetCoordinates = reactSetCoordinates;
     this.undockSoundRef = undockSoundRef;
-    this.reactSetSpeed = reactSetSpeed;
-    this.reactSetRoll = reactSetRoll;
-    this.reactSetPitch = reactSetPitch;
-    this.reactSetStationDirection = reactSetStationDirection;
-    this.reactSetPiratePositions = reactSetPiratePositions;
 
     this.boundHandleGlobalInput = this.handleGlobalInput.bind(this);
     this.boundOnWindowResize = this.onWindowResize.bind(this);
@@ -377,7 +339,7 @@ export class GameManager implements IGameManager {
     console.log(`Switching state from ${oldState} to ${newState}`);
     oldLogic?.exit(newState);
     this.currentState = newState;
-    this.reactSetGameState(newState); // Update React state
+    this.reactSetters.setGameState(newState); // Update React state using the reactSetters object
     newLogic?.enter(oldState);
   }
 
@@ -438,18 +400,6 @@ export class GameManager implements IGameManager {
     this.sceneLogics = {};
     this.loadingCompleteCallback = null;
     console.log("GameManager disposed.");
-  }
-
-  setReactSetters(setters: {
-    setPitch: (pitch: number) => void;
-    setLaserHeat: (heat: number) => void;
-    setStationDirection: (direction: [number, number, number] | null) => void; // Updated type
-    setCoordinates: (coords: [number, number, number]) => void;
-  }) {
-    this.reactSetPitch = setters.setPitch;
-    this.reactSetLaserHeat = setters.setLaserHeat;
-    this.reactSetStationDirection = setters.setStationDirection; // Updated type
-    this.reactSetCoordinates = setters.setCoordinates;
   }
 
 }

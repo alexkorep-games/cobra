@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
-import { GameState } from "../types";
+import { GameState, ReactSetters } from "../types";
 import { GameManager } from "../game/GameManager";
 
 // Import Scene Components
@@ -54,16 +54,22 @@ const App: React.FC = () => {
 
     console.log("Initializing GameManager...");
 
-    const gameManager = new GameManager(
+    // Create the ReactSetters object with all the state setters
+    const reactSetters: ReactSetters = {
       setGameState,
-      introMusicRef,
-      undockSoundRef,
       setCoordinates,
       setSpeed,
       setRoll,
-      setPitch,
+      setPitch, 
+      setLaserHeat: () => {}, // Not implemented in this component yet
       setStationDirection,
-      setPiratePositions // Pass the pirate positions setter
+      setPiratePositions
+    };
+
+    const gameManager = new GameManager(
+      reactSetters,
+      introMusicRef,
+      undockSoundRef
     );
 
     const handleLoadingComplete = () => {
