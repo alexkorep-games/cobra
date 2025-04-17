@@ -76,18 +76,18 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     super.enter(previousState); // Resets common visibility
 
     // Position planet far away
-    if (this.game.assets.planet && this.game.camera) {
+    if (this.gameManager.assets.planet && this.gameManager.camera) {
       this.positionObjectRandomly(
-        this.game.assets.planet,
-        this.game.camera.far * 0.8
+        this.gameManager.assets.planet,
+        this.gameManager.camera.far * 0.8
       );
-      //(this.game.assets.planet.mesh?.material as THREE.Material).needsUpdate = true;
+      //(this.gameManager.assets.planet.mesh?.material as THREE.Material).needsUpdate = true;
     }
 
     // Position station relative to the planet
-    if (this.game.assets.spaceStation && this.game.assets.planet?.mesh) {
+    if (this.gameManager.assets.spaceStation && this.gameManager.assets.planet?.mesh) {
       // Check planet mesh exists
-      const planetPos = this.game.assets.planet.getPosition(); // Use entity method
+      const planetPos = this.gameManager.assets.planet.getPosition(); // Use entity method
       const offsetDist = THREE.MathUtils.randFloat(
         Constants.STATION_PLANET_OFFSET_MIN,
         Constants.STATION_PLANET_OFFSET_MAX
@@ -97,18 +97,18 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
         .multiplyScalar(offsetDist);
       const stationPos = planetPos.add(randomOffset);
 
-      this.game.assets.spaceStation.setPosition(
+      this.gameManager.assets.spaceStation.setPosition(
         stationPos.x,
         stationPos.y,
         stationPos.z
       );
-      this.game.assets.spaceStation.setRotation(
+      this.gameManager.assets.spaceStation.setRotation(
         // Random orientation
         Math.random() * Math.PI,
         Math.random() * Math.PI,
         Math.random() * Math.PI
       );
-      this.game.assets.spaceStation.setVisible(true);
+      this.gameManager.assets.spaceStation.setVisible(true);
 
       console.log(
         `Station positioned near planet at offset: ${offsetDist.toFixed(0)}`
@@ -121,8 +121,8 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
     // Position Pirates randomly around the player's starting position
     const playerStartPosition =
-      this.game.camera?.position ?? new THREE.Vector3(0, 0, 0);
-    this.game.assets.pirateShips.forEach((pirate) => {
+      this.gameManager.camera?.position ?? new THREE.Vector3(0, 0, 0);
+    this.gameManager.assets.pirateShips.forEach((pirate) => {
       this.positionObjectRandomly(
         pirate,
         Constants.PIRATE_BASE_DISTANCE,
@@ -138,12 +138,12 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.rollRate = 0;
     this.pitchRate = 0;
     this.keysPressed.clear();
-    if (this.game.camera) {
-      this.game.camera.rotation.set(0, 0, 0);
-      this.game.camera.position.set(0, 0, 0);
+    if (this.gameManager.camera) {
+      this.gameManager.camera.rotation.set(0, 0, 0);
+      this.gameManager.camera.position.set(0, 0, 0);
       // Log camera clipping planes
       console.log(
-        `Camera Clipping Planes: Near=${this.game.camera.near}, Far=${this.game.camera.far}`
+        `Camera Clipping Planes: Near=${this.gameManager.camera.near}, Far=${this.gameManager.camera.far}`
       );
     }
     this.isHyperspaceActive = false; // Start with hyperspace off
@@ -155,7 +155,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
     // Initialize laser beam object
     if (this.laserBeam) {
-      this.game.scene?.remove(this.laserBeam);
+      this.gameManager.scene?.remove(this.laserBeam);
       this.laserBeam.geometry.dispose();
       (this.laserBeam.material as THREE.Material).dispose();
     }
@@ -178,9 +178,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.laserBeam.visible = false;
     this.laserBeam.frustumCulled = false;
     this.laserBeam.renderOrder = 999;
-    if (this.game.scene) {
+    if (this.gameManager.scene) {
       console.log("Adding laser beam to scene");
-      this.game.scene.add(this.laserBeam);
+      this.gameManager.scene.add(this.laserBeam);
     }
 
     // Make sure event listeners are properly bound
@@ -200,14 +200,14 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.isHyperspaceActive = false; // Reset hyperspace state on exit
 
     // Hide planet, station, and pirates
-    this.game.assets.planet?.setVisible(false);
-    this.game.assets.spaceStation?.setVisible(false);
-    this.game.assets.pirateShips.forEach((pirate) => pirate.setVisible(false));
+    this.gameManager.assets.planet?.setVisible(false);
+    this.gameManager.assets.spaceStation?.setVisible(false);
+    this.gameManager.assets.pirateShips.forEach((pirate) => pirate.setVisible(false));
 
     this.wantsToFire = false; // Ensure firing stops on exit
     if (this.laserBeam) {
       this.laserBeam.visible = false;
-      this.game.scene?.remove(this.laserBeam); // Remove from scene
+      this.gameManager.scene?.remove(this.laserBeam); // Remove from scene
       this.laserBeam.geometry.dispose();
       (this.laserBeam.material as THREE.Material).dispose();
       this.laserBeam = null;
@@ -215,7 +215,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
   }
 
   update(deltaTime: number): void {
-    if (!this.game.camera || !this.laserBeam) return;
+    if (!this.gameManager.camera || !this.laserBeam) return;
 
     // --- Update Timers ---
     this.laserCooldownTimer = Math.max(0, this.laserCooldownTimer - deltaTime);
@@ -263,7 +263,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       console.log("=== LASER FIRING ===");
       console.log(`LaserBeam exists: ${this.laserBeam !== null}`);
       console.log(
-        `LaserBeam in scene: ${this.game.scene?.children.includes(
+        `LaserBeam in scene: ${this.gameManager.scene?.children.includes(
           this.laserBeam!
         )}`
       );
@@ -279,10 +279,10 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
       // --- Re-enable Raycasting ---
       // Set raycaster from camera center
-      this.raycaster.setFromCamera({ x: 0, y: 0 }, this.game.camera); // Ray from screen center
+      this.raycaster.setFromCamera({ x: 0, y: 0 }, this.gameManager.camera); // Ray from screen center
 
       // Prepare list of pirate meshes to check against
-      const pirateMeshes: THREE.Object3D[] = this.game.assets.pirateShips
+      const pirateMeshes: THREE.Object3D[] = this.gameManager.assets.pirateShips
         .map((p) => p.mesh) // Get the mesh from each Ship entity
         .filter(
           (mesh): mesh is THREE.Object3D => mesh !== null && mesh.visible
@@ -325,10 +325,10 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       // --- End Re-enabled Raycasting ---
 
       // Visualize Laser Beam
-      const startPoint = this.game.camera.position.clone();
+      const startPoint = this.gameManager.camera.position.clone();
       const direction = this.tempVector
         .set(0, 0, -1)
-        .applyQuaternion(this.game.camera.quaternion);
+        .applyQuaternion(this.gameManager.camera.quaternion);
       startPoint.addScaledVector(direction, 10.0); // Offset in front of camera
       const endPoint = this.tempVector2
         .copy(startPoint)
@@ -336,7 +336,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
       // Offset for the second line (for thickness effect)
       const offset = new THREE.Vector3(0.1, 0.1, 0).applyQuaternion(
-        this.game.camera.quaternion
+        this.gameManager.camera.quaternion
       );
       const startPoint2 = startPoint.clone().add(offset);
       const endPoint2 = endPoint.clone().add(offset);
@@ -406,8 +406,8 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
     // Apply Movement and Rotation to Camera
     const moveDirection = new THREE.Vector3(0, 0, -1); // Move along camera's local Z
-    moveDirection.applyQuaternion(this.game.camera.quaternion);
-    this.game.camera.position.addScaledVector(
+    moveDirection.applyQuaternion(this.gameManager.camera.quaternion);
+    this.gameManager.camera.position.addScaledVector(
       moveDirection,
       this.velocity * deltaTime
     );
@@ -415,14 +415,14 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     // Apply rotation. Order matters (e.g., pitch then roll relative to new pitch)
     // Typically, you'd apply pitch around the camera's local X axis,
     // and roll around the camera's local Z axis.
-    this.game.camera.rotateX(this.pitchRate * deltaTime); // Rotate around local X axis
-    this.game.camera.rotateZ(this.rollRate * deltaTime); // Rotate around local Z axis
+    this.gameManager.camera.rotateX(this.pitchRate * deltaTime); // Rotate around local X axis
+    this.gameManager.camera.rotateZ(this.rollRate * deltaTime); // Rotate around local Z axis
 
     // --- Update HUD ---
     // Crosshair: This is typically a static overlay element in the center of the HUD UI (React component).
     // The raycast logic above effectively uses the center of the screen as the aiming point.
-    const { x, y, z } = this.game.camera.position;
-    this.game.reactSetCoordinates([x, y, z]);
+    const { x, y, z } = this.gameManager.camera.position;
+    this.gameManager.reactSetters.setCoordinates([x, y, z]);
 
     const normalizedSpeed = THREE.MathUtils.clamp(
       (this.velocity / Constants.MAX_SPEED) * 100,
@@ -446,22 +446,22 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       100
     );
 
-    this.game.reactSetSpeed(normalizedSpeed);
-    this.game.reactSetRoll(normalizedRoll);
-    this.game.reactSetPitch(normalizedPitch); // Pass the possibly inverted pitch for HUD
-    this.game.reactSetLaserHeat(normalizedLaserHeat); // Update laser heat on HUD
+    this.gameManager.reactSetters.setSpeed(normalizedSpeed);
+    this.gameManager.reactSetters.setRoll(normalizedRoll);
+    this.gameManager.reactSetters.setPitch(normalizedPitch); // Pass the possibly inverted pitch for HUD
+    this.gameManager.reactSetters.setLaserHeat(normalizedLaserHeat); // Update laser heat on HUD
 
     // --- Station Proximity Check & Direction ---
-    if (this.game.assets.spaceStation?.visible && this.game.camera) {
+    if (this.gameManager.assets.spaceStation?.visible && this.gameManager.camera) {
       // Check station is visible
-      const playerPos = this.game.camera.position;
-      const stationPos = this.game.assets.spaceStation.getPosition(); // Use entity method
+      const playerPos = this.gameManager.camera.position;
+      const stationPos = this.gameManager.assets.spaceStation.getPosition(); // Use entity method
       const distanceToStation = playerPos.distanceTo(stationPos);
 
       if (distanceToStation < Constants.STATION_DOCKING_RADIUS) {
         console.log("Reached space station!");
-        this.game.switchState("title"); // Go back to title screen
-        this.game.reactSetStationDirection(null); // Clear direction on docking
+        this.gameManager.switchState("title"); // Go back to title screen
+        this.gameManager.reactSetters.setStationDirection(null); // Clear direction on docking
       } else {
         // Calculate direction for HUD
         // Use tempVector for worldDir
@@ -471,7 +471,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
         // Project onto camera's local coordinate system
         const cameraInverse = this.tempQuaternion
-          .copy(this.game.camera.quaternion)
+          .copy(this.gameManager.camera.quaternion)
           .invert();
         const relativeDir = this.tempVector2
           .copy(worldDir)
@@ -481,11 +481,11 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
         const vector = isStationInFrontOfCamera
           ? new THREE.Vector3(0, 0, -1)
           : new THREE.Vector3(0, 0, 1);
-        const cameraLine = vector.applyQuaternion(this.game.camera.quaternion);
+        const cameraLine = vector.applyQuaternion(this.gameManager.camera.quaternion);
 
         const angleBetween = cameraLine.angleTo(worldDir);
 
-        const currentFOV = this.game.camera.fov || 75;
+        const currentFOV = this.gameManager.camera.fov || 75;
         const halfFOV = THREE.MathUtils.degToRad(currentFOV) / 2;
         const offCenterAmount = THREE.MathUtils.clamp(
           angleBetween / halfFOV,
@@ -494,7 +494,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
         );
 
         // Pass the projected X/Y for angle, and offCenterAmount for distance
-        this.game.reactSetStationDirection({
+        this.gameManager.reactSetters.setStationDirection({
           x: relativeDir.x,
           y: relativeDir.y,
           offCenterAmount: offCenterAmount,
@@ -503,12 +503,12 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       }
     } else {
       // No station visible or loaded
-      this.game.reactSetStationDirection(null);
+      this.gameManager.reactSetters.setStationDirection(null);
     }
 
     // --- Pirate AI ---
-    const playerPos = this.game.camera.position;
-    this.game.assets.pirateShips.forEach((pirate) => {
+    const playerPos = this.gameManager.camera.position;
+    this.gameManager.assets.pirateShips.forEach((pirate) => {
       if (!pirate.mesh || !pirate.visible) return; // Skip inactive pirates
 
       const piratePos = pirate.getPosition();
@@ -557,7 +557,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     // ... (Add basic collision checks later if needed) ...
 
     // --- Update pirate positions for radar ---
-    const piratePositions = this.game.assets.pirateShips
+    const piratePositions = this.gameManager.assets.pirateShips
       .filter(pirate => pirate.mesh && pirate.visible)
       .map(pirate => {
         const piratePos = pirate.getPosition();
@@ -568,7 +568,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
         // Project onto camera's local coordinate system
         const cameraInverse = this.tempQuaternion
-          .copy(this.game.camera.quaternion)
+          .copy(this.gameManager.camera.quaternion)
           .invert();
         const relativeDir = this.tempVector2
           .copy(worldDir)
@@ -598,7 +598,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
       });
 
     // Update radar with pirate positions
-    this.game.reactSetPiratePositions(piratePositions);
+    this.gameManager.reactSetters.setPiratePositions(piratePositions);
   }
 
   // --- Input Handlers ---
@@ -647,5 +647,16 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     } else {
       // When turning hyperspace ON, velocity will be set in the update loop
     }
+  }
+
+  private resetHud(): void {
+    // Reset HUD displays when exiting the scene
+    this.gameManager.reactSetters.setCoordinates([0, 0, 0]);
+    this.gameManager.reactSetters.setSpeed(0);
+    this.gameManager.reactSetters.setRoll(0);
+    this.gameManager.reactSetters.setPitch(0);
+    this.gameManager.reactSetters.setLaserHeat(0);
+    this.gameManager.reactSetters.setStationDirection(null);
+    this.gameManager.reactSetters.setPiratePositions([]);
   }
 }

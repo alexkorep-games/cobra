@@ -51,7 +51,7 @@ export interface IGameManager {
   scene: THREE.Scene | null;
   camera: THREE.PerspectiveCamera | null;
   switchState: (newState: GameState) => void;
-  reactSetters: ReactSetters; // Updated to use the new ReactSetters type
+  reactSetters: ReactSetters;
   introMusicRef: React.RefObject<HTMLAudioElement>;
   undockSoundRef: React.RefObject<HTMLAudioElement>;
   constants: {
