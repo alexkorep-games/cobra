@@ -421,6 +421,28 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     this.gameManager.camera.rotateX(this.pitchRate * deltaTime); // Rotate around local X axis
     this.gameManager.camera.rotateZ(this.rollRate * deltaTime); // Rotate around local Z axis
 
+    // --- Check planet collision ---
+    if (this.gameManager.assets.planet?.visible) {
+      const playerPos = this.gameManager.camera.position;
+      const planetPos = this.gameManager.assets.planet.getPosition();
+      const distanceToPlanet = playerPos.distanceTo(planetPos);
+      
+      // We need to get the planet's radius or approximate size
+      // Since we don't have a specific constant for it, we'll use an estimated value
+      // based on the model or a reasonable fraction of the camera's far plane
+      const planetRadius = this.gameManager.camera.far * 0.05; // Estimate planet radius as 5% of camera's far plane
+      const collisionBuffer = 50; // Additional buffer to account for ship size
+      
+      if (distanceToPlanet < planetRadius + collisionBuffer) {
+        console.log("COLLISION: Hit planet surface!");
+        // Play crash sound or visual effect if desired
+        
+        // Return to title screen after planet collision
+        this.gameManager.switchState("title");
+        return; // Exit update loop early after collision
+      }
+    }
+
     // --- Update HUD ---
     // Crosshair: This is typically a static overlay element in the center of the HUD UI (React component).
     // The raycast logic above effectively uses the center of the screen as the aiming point.
