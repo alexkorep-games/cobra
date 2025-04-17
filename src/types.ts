@@ -52,8 +52,9 @@ export interface IGameManager {
     MAX_VISUAL_PITCH_RATE: number;
   };
   // Add other methods/properties SceneLogic needs access to
-  currentShipIndex: number;
-  shipDisplayTimer: number;
-  prepareNextTitleShip(): void;
-  updateTitleShipAnimation(deltaTime: number): void;
+  // REMOVED Title Scene Specifics
+  // currentShipIndex: number; // MOVED to TitleSceneLogic
+  // shipDisplayTimer: number; // MOVED to TitleSceneLogic
+  // prepareNextTitleShip(): void; // MOVED to TitleSceneLogic
+  // updateTitleShipAnimation(deltaTime: number): void; // MOVED to TitleSceneLogic
 }

@@ -54,10 +54,6 @@ export class GameManager implements IGameManager {
   reactSetLaserHeat: (heat: number) => void = () => {};
   reactSetStationDirection: (angle: number | null) => void;
 
-  // Title Scene State (no change)
-  currentShipIndex: number = 0;
-  shipDisplayTimer: number = 0;
-
   // Constants (no change)
   constants = { ...Constants };
 
@@ -374,108 +370,6 @@ export class GameManager implements IGameManager {
   handleGlobalInput(event: KeyboardEvent | MouseEvent) {
     const currentLogic = this.sceneLogics[this.currentState];
     currentLogic?.handleInput(event);
-  }
-
-  // --- Title Scene Animation Helpers ---
-  // These now manipulate the Ship *entity* properties, primarily position/rotation via its mesh
-
-  prepareNextTitleShip() {
-    const shipEntity = this.assets.titleShips[this.currentShipIndex];
-    if (shipEntity?.mesh) { // Check if ship and its mesh exist
-      const startZ = this.constants.START_Z * (shipScale > 1 ? 2 : 1);
-      // Use entity methods or direct mesh access for positioning
-      shipEntity.setPosition(
-        this.constants.TARGET_POS.x,
-        this.constants.TARGET_POS.y,
-        startZ
-      );
-      shipEntity.setRotation(0, Math.PI, 0);
-      shipEntity.setVisible(true);
-    } else {
-      console.warn(
-        `Ship entity or mesh at index ${this.currentShipIndex} is missing. Attempting next.`
-      );
-      this.advanceTitleShip();
-    }
-  }
-
-  advanceTitleShip() {
-    if (this.assets.titleShips.length === 0) return; // No ships
-
-    const currentShipEntity = this.assets.titleShips[this.currentShipIndex];
-    currentShipEntity?.setVisible(false); // Hide the old one using entity method
-
-    // Find the next valid index (checking if entity and its mesh exist)
-    let nextIndex = (this.currentShipIndex + 1) % this.assets.titleShips.length;
-    let attempts = 0; // Prevent infinite loop if no valid ships
-    while (
-      (!this.assets.titleShips[nextIndex]?.mesh &&
-       attempts < this.assets.titleShips.length)
-    ) {
-      nextIndex = (nextIndex + 1) % this.assets.titleShips.length;
-      attempts++;
-    }
-
-    if (!this.assets.titleShips[nextIndex]?.mesh) {
-      console.warn("No valid title ships available to display.");
-      // Optionally hide all ships or handle error
-      this.assets.titleShips.forEach(ship => ship?.setVisible(false));
-      this.currentShipIndex = 0; // Reset index
-      this.shipDisplayTimer = 0;
-      return;
-    }
-
-    this.currentShipIndex = nextIndex;
-    this.shipDisplayTimer = 0;
-    this.prepareNextTitleShip(); // Prepare the newly selected valid ship
-  }
-
-  updateTitleShipAnimation(deltaTime: number) {
-    const currentShipEntity = this.assets.titleShips[this.currentShipIndex];
-
-    // Ensure the current entity and its mesh are valid
-    if (!currentShipEntity?.mesh) {
-      console.warn(
-        `Current ship entity or mesh invalid (index ${this.currentShipIndex}) during animation update.`
-      );
-      this.advanceTitleShip(); // Try to recover
-      return;
-    }
-
-    this.shipDisplayTimer += deltaTime;
-    const currentShipMesh = currentShipEntity.mesh; // Use the mesh for direct manipulation
-
-    // --- Animation Logic (manipulating the mesh directly) ---
-    const timer = this.shipDisplayTimer;
-    const startZ = this.constants.START_Z * (shipScale > 1 ? 2 : 1);
-    const targetZ = this.constants.TARGET_POS.z;
-
-    if (timer < this.constants.FLY_IN_DURATION) {
-      const t = Math.min(1, timer / this.constants.FLY_IN_DURATION);
-      currentShipMesh.position.z = THREE.MathUtils.lerp(startZ, targetZ, t);
-      currentShipMesh.rotation.y += 0.1 * deltaTime; // Keep rotation direct for now
-    } else if (
-      timer <
-      this.constants.FLY_IN_DURATION + this.constants.HOLD_DURATION
-    ) {
-      currentShipMesh.position.z = targetZ;
-      currentShipMesh.rotation.y += 0.5 * deltaTime;
-      currentShipMesh.rotation.x += 0.25 * deltaTime;
-    } else if (timer < this.constants.TOTAL_CYCLE_DURATION) {
-      const flyOutTimer =
-        timer - (this.constants.FLY_IN_DURATION + this.constants.HOLD_DURATION);
-      const t = Math.min(1, flyOutTimer / this.constants.FLY_OUT_DURATION);
-      currentShipMesh.position.z = THREE.MathUtils.lerp(targetZ, startZ, t);
-      currentShipMesh.rotation.y += 0.1 * deltaTime;
-    } else {
-      currentShipMesh.position.z = startZ; // Ensure it's fully out before advancing
-    }
-    // --- End Animation Logic ---
-
-    // Cycle to next ship
-    if (this.shipDisplayTimer >= this.constants.TOTAL_CYCLE_DURATION) {
-      this.advanceTitleShip(); // Advances index, resets timer, prepares next
-    }
   }
 
   dispose() {
