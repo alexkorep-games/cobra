@@ -2,11 +2,11 @@
 import React from "react";
 import "../../components/App.css";
 import { useLoadingLogic } from "./useLoadingLogic"; // Import the hook
-
-// Remove LoadingScreenProps interface
+import { useAssetLoader } from "@/hooks/useAssetLoader";
 
 const LoadingScreen: React.FC = () => {
-  const { isLoadingComplete, showContinuePrompt } = useLoadingLogic();
+  const {isLoadingComplete} = useAssetLoader(); // Call the asset loader hook
+  const { showContinuePrompt } = useLoadingLogic(isLoadingComplete);
 
   return (
     <>
