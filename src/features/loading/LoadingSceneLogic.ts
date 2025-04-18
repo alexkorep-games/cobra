@@ -22,7 +22,8 @@ export class LoadingSceneLogic extends SceneLogicBase {
         this.inputProcessed = true;
         console.log("Loader input detected, switching state...");
         //this.gameManager.switchState("title"); // Switch to title state
-        this.gameManager.switchState("space_flight"); // Switch to flight state
+        //this.gameManager.switchState("space_flight"); // Switch to flight state
+        this.gameManager.switchState("short_range_chart");
       }
     }
   }

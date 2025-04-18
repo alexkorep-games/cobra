@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { Planet } from "./game/entities/Planet";
 import { Ship } from "./game/entities/Ship";
 import { SpaceStation } from "./game/entities/SpaceStation";
+import { PlanetInfo } from "./classes/PlanetInfo";
 
 export type GameState =
   | "loading"
@@ -10,7 +11,9 @@ export type GameState =
   | "credits"
   | "stats"
   | "undocking"
-  | "space_flight";
+  | "space_flight"
+  | "short_range_chart"
+  | "planet_info";
 
 // Interface for game assets
 export interface GameEntities {
@@ -45,6 +48,8 @@ export interface ReactSetters {
     isInFront: boolean;
   } | null) => void;
   setRadarPositions: (positions: RadarPosition[]) => void;
+  setPlanetInfos: (infos: PlanetInfo[]) => void;
+  setCurrentPlanetIndex: (index: string) => void;
 }
 
 // Forward declaration or interface for GameManager to avoid circular dependencies if needed
@@ -71,5 +76,6 @@ export interface IGameManager {
     MAX_VISUAL_ROLL_RATE: number;
     MAX_VISUAL_PITCH_RATE: number;
   };
-  // Add other methods/properties SceneLogic needs access to
+  planetInfos: PlanetInfo[];
+  getCurrentPlanet: () => PlanetInfo;
 }

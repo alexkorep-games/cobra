@@ -11,6 +11,9 @@ import StatsScreen from "../features/stats/StatsScreen";
 import UndockingScreen from "../features/undocking/UndockingScreen";
 import CoordinatesDisplay from "./hud/CoordinatesDisplay";
 import SpaceFlightScreen from "../features/space_flight/SpaceFlightScreen";
+import { PlanetInfo } from "../classes/PlanetInfo";
+import { INITIAL_PLANET_INDEX } from "../constants";
+import ShortRangeChartScreen from "../features/short_range_chart/ShortRangeChartScreen";
 
 const App: React.FC = () => {
   // --- State ---
@@ -30,7 +33,11 @@ const App: React.FC = () => {
     offCenterAmount: number;
     isInFront: boolean;
   } | null>(null); // Updated to use object structure
-  const [radarPosition, setRadarPosition] = useState<PiratePosition[]>([]);
+  const [radarPositions, setRadarPositions] = useState<PiratePosition[]>([]);
+
+  // --- Planet Info State ---
+  const [planetInfos, setPlanetInfos] = useState<PlanetInfo[]>([]);
+  const [currentPlanetIndex, setCurrentPlanetIndex] = useState<string>(INITIAL_PLANET_INDEX);
 
   // --- Refs ---
   const mountRef = useRef<HTMLDivElement>(null);
@@ -64,7 +71,9 @@ const App: React.FC = () => {
       setLaserHeat,
       setAltitude,
       setStationDirection,
-      setRadarPositions: setRadarPosition
+      setRadarPositions: setRadarPositions,
+      setPlanetInfos,
+      setCurrentPlanetIndex,
     };
 
     const gameManager = new GameManager(
@@ -117,9 +126,32 @@ const App: React.FC = () => {
             pitch={pitch}
             altitude={altitude}
             stationDirection={stationDirection}
-            radarPosition={radarPosition} // Pass radar positions
+            radarPosition={radarPositions} // Pass radar positions
           />
         );
+        case "short_range_chart":
+          // Pass necessary data from GameManager or state
+          return (
+            <ShortRangeChartScreen
+              planets={planetInfos}
+              currentPlanetIndex={currentPlanetIndex}
+              selectedPlanetName={gameManagerRef.current?.selectedPlanetName ?? null} // Read directly
+              jumpRange={Constants.JUMP_RANGE}
+              setSelectedPlanetName={(name) => gameManagerRef.current?.setSelectedPlanetName(name)} // Provide a way to update GameManager
+            />
+          );
+        case "planet_info":
+          // Find the selected planet data to pass
+          const selectedPlanet = gameManagerRef.current?.getSelectedPlanet();
+          const currentPlanet = gameManagerRef.current?.getCurrentPlanet();
+          const distance = selectedPlanet && currentPlanet
+              ? calculateDistance(currentPlanet.coordinates, selectedPlanet.coordinates)
+              : 0;
+          return selectedPlanet ? (
+               <PlanetInfoScreen planet={selectedPlanet} distance={distance} />
+          ) : (
+               <div>Error: No planet selected</div> // Fallback
+          );        
 
       default:
         return null; // Or a default component/error message
