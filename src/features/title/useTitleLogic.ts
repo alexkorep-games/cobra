@@ -270,10 +270,6 @@ export function useTitleLogic(
         // Reset HUD elements if this scene modified them (usually done by GameManager on state switch)
       };
     }
-    // Dependencies for the useEffect hook:
-    // - isActive: Run setup/cleanup when activation status changes.
-    // - gameManager: Ensure gameManager instance is available.
-    // - updateTitleShipAnimation, handleInput, prepareNextTitleShip: Include stable callbacks.
   }, [
     isActive,
     gameManager,
