@@ -66,16 +66,14 @@ export class SpaceFlightSceneLogic {
     );
     entity.setVisible(true);
     console.log(
-      `${
+      `[SpaceFlightSceneLogic.positionObjectRandomly] ${
         entity.mesh.name || "Object"
-      } positioned at distance: ${distance.toFixed(
-        0
-      )} from ${relativeTo.toArray()}`
+      } positioned at (${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}), visible: ${entity.visible}`
     );
   }
 
   enter(/* previousState?: GameState */): void {
-    console.log("Entering SpaceFlightSceneLogic scene");
+    console.log("[SpaceFlightSceneLogic.enter] Entering SpaceFlight scene");
 
     // Position planet far away
     if (this.gameManager.assets.planet && this.gameManager.camera) {
@@ -83,7 +81,9 @@ export class SpaceFlightSceneLogic {
         this.gameManager.assets.planet,
         this.gameManager.camera.far * 0.8
       );
-      //(this.gameManager.assets.planet.mesh?.material as THREE.Material).needsUpdate = true;
+      console.log(`[SpaceFlightSceneLogic.enter] Planet positioned. Visible: ${this.gameManager.assets.planet.visible}`);
+    } else {
+      console.warn("[SpaceFlightSceneLogic.enter] Planet or camera missing for positioning.");
     }
 
     // Position station relative to the planet
@@ -113,27 +113,28 @@ export class SpaceFlightSceneLogic {
       this.gameManager.assets.spaceStation.setVisible(true);
 
       console.log(
-        `Station positioned near planet at offset: ${offsetDist.toFixed(0)}`
+        `[SpaceFlightSceneLogic.enter] Station positioned near planet. Visible: ${this.gameManager.assets.spaceStation.visible}`
       );
     } else {
       console.warn(
-        "Could not position station relative to planet (planet missing?)."
+        "[SpaceFlightSceneLogic.enter] Could not position station relative to planet (planet missing?)."
       );
     }
 
     // Position Pirates randomly around the player's starting position
     const playerStartPosition =
       this.gameManager.camera?.position ?? new THREE.Vector3(0, 0, 0);
-    this.gameManager.assets.pirateShips.forEach((pirate: Ship) => {
+    this.gameManager.assets.pirateShips.forEach((pirate: Ship, index: number) => {
       this.positionObjectRandomly(
         pirate,
         Constants.PIRATE_BASE_DISTANCE,
         Constants.PIRATE_POSITION_OFFSET_RANGE,
         playerStartPosition
       );
+      console.log(`[SpaceFlightSceneLogic.enter] Pirate ${index} positioned. Visible: ${pirate.visible}`);
     });
 
-    console.log("Entered Space Flight Scene.");
+    console.log("[SpaceFlightSceneLogic.enter] Entered Space Flight Scene setup complete.");
 
     // Reset player state
     this.velocity = 0;
@@ -537,15 +538,19 @@ export class SpaceFlightSceneLogic {
         );
 
         // Pass the projected X/Y for angle, and offCenterAmount for distance
-        this.gameManager.reactSetters.setStationDirection({
+        const stationDirectionData = {
           x: relativeDir.x,
           y: relativeDir.y,
           offCenterAmount: offCenterAmount,
           isInFront: isStationInFrontOfCamera
-        });
+        };
+        // Log before setting
+        // console.log("[SpaceFlightSceneLogic.update] Setting station direction:", stationDirectionData); // Uncomment if needed
+        this.gameManager.reactSetters.setStationDirection(stationDirectionData);
       }
     } else {
       // No station visible or loaded
+      // console.log("[SpaceFlightSceneLogic.update] Station not visible or loaded, clearing direction."); // Log clearing // Uncomment if needed
       this.gameManager.reactSetters.setStationDirection(null);
     }
 
@@ -639,6 +644,8 @@ export class SpaceFlightSceneLogic {
       .filter((p: RadarPosition | null): p is RadarPosition => p !== null); // Filter out null entries
 
     // Update radar with pirate positions
+    // Log before setting
+    // console.log("[SpaceFlightSceneLogic.update] Setting radar positions:", piratePositions); // Uncomment if needed
     this.gameManager.reactSetters.setRadarPositions(piratePositions);
   }
 

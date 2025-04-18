@@ -8,9 +8,11 @@ export function useTitleLogic(
   gameManager: IGameManager | null,
   isActive: boolean
 ) {
-  // Internal state for the hook
-  const [currentShipIndex, setCurrentShipIndex] = useState(0);
-  const [shipDisplayTimer, setShipDisplayTimer] = useState(0);
+  // State only for triggering React updates if needed, or could be removed if R3F handles visibility solely
+  const [currentShipIndexState, setCurrentShipIndexState] = useState(0);
+  // Refs for internal logic, avoiding effect re-runs
+  const shipDisplayTimerRef = useRef(0);
+  const currentIndexRef = useRef(0); // Ref to track index internally
   const isProcessingInput = useRef(false);
 
   // --- Helper Functions (Prepare/Advance Ship) ---
@@ -42,15 +44,13 @@ export function useTitleLogic(
         // console.log(`Prepared title ship ${index}: ${shipEntity.mesh.name}`);
       } else {
         console.warn(
-          `Title Ship entity or mesh at index ${index} is missing. Attempting next.`
+          `Title Ship entity or mesh at index ${index} is missing.`
         );
-        // Directly trigger advance logic if preparation fails.
-        // This is risky if called during initial prepare, might be better to handle in advanceTitleShip
-        // advanceTitleShip();
+        // Advancing here might be complex, let the update loop handle it
       }
     },
-    [gameManager]
-  ); // Dependency on gameManager
+    [gameManager] // Dependency on gameManager (should be stable after init)
+  );
 
   const advanceTitleShip = useCallback(() => {
     if (
@@ -62,7 +62,7 @@ export function useTitleLogic(
       return; // Stop if no ships
     }
 
-    const oldIndex = currentShipIndex;
+    const oldIndex = currentIndexRef.current; // Read from ref
     const currentShipEntity = gameManager.assets.titleShips[oldIndex];
     currentShipEntity?.setVisible(false); // Hide the old one
 
@@ -85,33 +85,35 @@ export function useTitleLogic(
       );
       // Hide all ships as a fallback
       gameManager.assets.titleShips.forEach((ship) => ship?.setVisible(false));
-      setCurrentShipIndex(0); // Reset index
-      setShipDisplayTimer(0);
+      currentIndexRef.current = 0; // Reset ref
+      setCurrentShipIndexState(0); // Reset state
+      shipDisplayTimerRef.current = 0; // Reset timer ref
       // Consider stopping the animation loop or showing an error state
       return; // Stop if no valid ships found
     }
 
     // console.log(`Advancing title ship from ${oldIndex} to ${nextIndex}`);
-    setCurrentShipIndex(nextIndex); // Update state for the new index
-    setShipDisplayTimer(0); // Reset timer state
+    currentIndexRef.current = nextIndex; // Update ref
+    setCurrentShipIndexState(nextIndex); // Update state (for potential React updates)
+    shipDisplayTimerRef.current = 0; // Reset timer ref
     prepareNextTitleShip(nextIndex); // Prepare the newly selected valid ship
-  }, [gameManager, currentShipIndex, prepareNextTitleShip]); // Dependencies
+  }, [gameManager, prepareNextTitleShip]); // Dependencies: gameManager, prepareNextTitleShip (stable)
 
   // --- Update Logic (Called by GameManager via registration) ---
   const updateTitleShipAnimation = useCallback(
     (deltaTime: number) => {
-      // This function is called by GameManager's animate loop
-      // It assumes isActive check might have already happened, but double-checking is safe
-      if (!isActive || !gameManager) return;
+      // No need to check isActive here, GameManager only calls registered update for the active state
+      if (!gameManager) return;
 
       const shipEntities = gameManager.assets.titleShips;
+      const currentShipIndex = currentIndexRef.current; // Read from ref
+
       // Ensure index is valid before accessing
       if (currentShipIndex < 0 || currentShipIndex >= shipEntities.length) {
         console.warn(
           `Invalid currentShipIndex ${currentShipIndex} during Title update.`
         );
-        // Attempt recovery by advancing (which resets index if needed)
-        advanceTitleShip();
+        advanceTitleShip(); // Attempt recovery
         return;
       }
 
@@ -120,14 +122,13 @@ export function useTitleLogic(
         console.warn(
           `Invalid ship entity/mesh during Title update (index ${currentShipIndex}). Advancing.`
         );
-        // Advance immediately if the current ship becomes invalid during the scene
-        advanceTitleShip();
+        advanceTitleShip(); // Advance immediately
         return;
       }
 
-      // Calculate new timer value *without* setting state immediately
-      // State update (setShipDisplayTimer) happens via the advanceTitleShip function or at the end
-      const newTimer = shipDisplayTimer + deltaTime;
+      // Update timer using ref
+      shipDisplayTimerRef.current += deltaTime;
+      const newTimer = shipDisplayTimerRef.current;
 
       const currentShipMesh = currentShipEntity.mesh;
       const shipScale = Constants.SHIP_SCALE;
@@ -166,57 +167,49 @@ export function useTitleLogic(
 
       // Cycle to next ship *after* applying animation for the current frame
       if (newTimer >= gameManager.constants.TOTAL_CYCLE_DURATION) {
-        // advanceTitleShip handles resetting the timer state via setShipDisplayTimer(0)
+        // advanceTitleShip handles resetting the timer ref
         advanceTitleShip();
-      } else {
-        // If not advancing, update the timer state for the next frame's calculation
-        setShipDisplayTimer(newTimer);
       }
+      // No need to set timer state here anymore
     },
-    [
-      isActive,
-      gameManager,
-      currentShipIndex,
-      shipDisplayTimer,
-      advanceTitleShip,
-    ]
-  ); // Dependencies
+    [gameManager, advanceTitleShip] // Dependencies: gameManager, advanceTitleShip (stable)
+  );
 
   // --- Input Handling ---
   const handleInput = useCallback(
     (event: KeyboardEvent | MouseEvent) => {
       // Check isActive and gameManager exist, and input hasn't been processed yet
+      // isActive check is still relevant here as listener is attached to window
       if (isActive && gameManager && !isProcessingInput.current) {
         if (event.type === "keydown" || event.type === "mousedown") {
           isProcessingInput.current = true; // Prevent double processing
           console.log("Title input detected, switching to credits...");
           gameManager.switchState("credits"); // Switch to the next state
-          // No need for setTimeout to reset isProcessingInput here, as the state switch deactivates the hook
         }
       }
     },
-    [isActive, gameManager]
-  ); // Dependencies
+    [isActive, gameManager] // Dependencies: isActive, gameManager (stable)
+  );
 
   // --- Effect for Setup, Cleanup, Registration ---
   useEffect(() => {
     // Only run setup when the hook becomes active and gameManager is available
     if (isActive && gameManager) {
-      console.log("Activating Title Logic Hook");
+      console.log("[useTitleLogic] Effect setup running."); // Log setup
       isProcessingInput.current = false; // Reset input processing flag
-      setCurrentShipIndex(0); // Reset ship index state on activation
-      setShipDisplayTimer(0); // Reset timer state on activation
+      currentIndexRef.current = 0; // Reset internal index ref
+      setCurrentShipIndexState(0); // Reset state index
+      shipDisplayTimerRef.current = 0; // Reset timer ref
 
-      // Ensure all title ships start hidden (might be redundant but safe)
+      // Ensure all title ships start hidden
       gameManager.assets.titleShips?.forEach((ship) => ship?.setVisible(false));
 
-      // Prepare the *first* valid ship (index 0)
-      // Need to ensure assets are loaded before calling this
+      // Prepare the first valid ship
       if (
         gameManager.assets.titleShips &&
         gameManager.assets.titleShips.length > 0
       ) {
-        prepareNextTitleShip(0);
+        prepareNextTitleShip(0); // Use stable callback
       } else {
         console.warn(
           "Title logic activated, but no title ships found in assets."
@@ -226,8 +219,8 @@ export function useTitleLogic(
       // Show planet
       if (gameManager.assets.planet) {
         gameManager.assets.planet.setVisible(true);
-        gameManager.assets.planet.setPosition(200, 0, -500); // Example position
-        gameManager.assets.planet.setScale(1, 1, 1); // Example scale
+        gameManager.assets.planet.setPosition(200, 0, -500);
+        gameManager.assets.planet.setScale(1, 1, 1);
       }
 
       // Play intro music
@@ -235,28 +228,27 @@ export function useTitleLogic(
         ?.play()
         .catch((e) => console.warn("Intro music play failed:", e));
 
-      // Register the update function with GameManager
-      // GameManager will call this function in its animation loop when 'title' state is active
-      gameManager.registerSceneUpdate("title", updateTitleShipAnimation);
+      // Register the update function
+      gameManager.registerSceneUpdate("title", updateTitleShipAnimation); // Use stable callback
 
-      // Add input listeners to the window
-      window.addEventListener("keydown", handleInput);
-      window.addEventListener("mousedown", handleInput);
+      // Add input listeners
+      window.addEventListener("keydown", handleInput); // Use stable callback
+      window.addEventListener("mousedown", handleInput); // Use stable callback
 
-      // Cleanup function - runs when isActive becomes false or component unmounts
+      // Cleanup function
       return () => {
-        console.log("Deactivating Title Logic Hook");
-        // Unregister the update function from GameManager
+        console.log("[useTitleLogic] Effect cleanup running."); // Log cleanup
+        // Unregister the update function
         gameManager.unregisterSceneUpdate("title");
 
         // Remove input listeners
         window.removeEventListener("keydown", handleInput);
         window.removeEventListener("mousedown", handleInput);
 
-        // Hide the currently displayed ship (use state index at time of cleanup)
-        // Check if assets still exist before accessing
+        // Hide the currently displayed ship (use ref index at time of cleanup)
+        const shipToHideIndex = currentIndexRef.current; // Read from ref
         const currentShipEntity =
-          gameManager.assets?.titleShips?.[currentShipIndex];
+          gameManager.assets?.titleShips?.[shipToHideIndex];
         currentShipEntity?.setVisible(false);
 
         // Hide the planet
@@ -267,18 +259,16 @@ export function useTitleLogic(
         if (gameManager.introMusicRef.current) {
           gameManager.introMusicRef.current.currentTime = 0;
         }
-        // Reset HUD elements if this scene modified them (usually done by GameManager on state switch)
       };
     }
   }, [
     isActive,
     gameManager,
+    // Include the stable callbacks in the dependency array
+    prepareNextTitleShip,
     updateTitleShipAnimation,
     handleInput,
-    prepareNextTitleShip,
-    currentShipIndex,
   ]);
-  // Note: currentShipIndex is included because the cleanup function uses it.
-  // It's generally okay if the value is slightly stale during cleanup,
-  // but including it ensures the effect re-runs if the index somehow changes *while* active (which shouldn't happen here).
+  // Note: We removed currentShipIndex (state) and shipDisplayTimer (state)
+  // The callbacks are now stable (or depend only on gameManager/isActive)
 }

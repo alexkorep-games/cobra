@@ -1,5 +1,5 @@
 // src/components/hud/BottomHud.tsx
-import React from "react";
+import React, { useEffect } from "react"; // Import useEffect
 import "../App.css"; // Assuming App.css contains the HUD styles
 import { RadarPosition } from "../../types";
 import * as Constants from "../../constants"; // Import constants for laser heat
@@ -29,6 +29,12 @@ const BottomHud: React.FC<BottomHudProps> = ({
   laserHeat = 0, // Default laser heat
   radarPosition = [],
 }) => {
+
+  // Log received props on change
+  useEffect(() => {
+    console.log("[BottomHud] Props received:", { stationDirection, radarPosition });
+  }, [stationDirection, radarPosition]);
+
   // Calculate marker positions (0% to 100%) based on -1 to 1 range
   // Roll: -1 (left) -> 0%, 0 (center) -> 50%, 1 (right) -> 100%
   const rollMarkerPosition = 50 + roll * 50;
@@ -137,14 +143,15 @@ const BottomHud: React.FC<BottomHudProps> = ({
           <span className="hud-label">MISSILES</span>
           <span className="hud-value"> M M M M</span> {/* TODO: Make dynamic */}
         </div>
-      </div>
+      </div> {/* Closing tag for hud-left */}
       {/* Center HUD */}
       <div className="hud-center">
         <div className="scanner-shape">
           {/* Add horizontal center line */}
           <div className="radar-center-line"></div>
           {/* Radar positions in center scanner */}
-          {radarPosition.map((position, index) => {
+          {/* Add a check for radarPosition length before mapping */}
+          {radarPosition && radarPosition.length > 0 && radarPosition.map((position, index) => {
             const { x, y, z } = position;
 
             // Calculate position within the scanner (adjust scaling/offset as needed)
@@ -219,7 +226,7 @@ const BottomHud: React.FC<BottomHudProps> = ({
             );
           })}
         </div>
-      </div>
+      </div> {/* Closing tag for hud-center */}
       {/* Right HUD */}
       <div className="hud-right">
         <div className="hud-item">
@@ -269,11 +276,12 @@ const BottomHud: React.FC<BottomHudProps> = ({
           <span style={{ border: "1px solid #00ff00", padding: "2px 5px" }}>3</span>
           {/* Direction Indicator */}
           <div className="direction-indicator-container">
-            <div className="direction-indicator-dot" style={dotStyle}></div>
+             {/* Add a check for stationDirection before rendering dot */}
+            {stationDirection && <div className="direction-indicator-dot" style={dotStyle}></div>}
           </div>
-        </div>
-      </div>
-    </div>
+        </div> {/* Closing tag for hud-item */}
+      </div> {/* Closing tag for hud-right */}
+    </div> // Closing tag for bottom-bar
   );
 };
 

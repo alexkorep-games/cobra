@@ -126,6 +126,11 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Log gameState changes
+  useEffect(() => {
+    console.log(`[App.tsx] gameState changed to: ${gameState}`);
+  }, [gameState]);
+
   // --- Invoke Scene Logic Hooks ---
   // Pass gameManagerRef.current and the active state flag
   useLoadingLogic(gameManagerRef.current, gameState === 'loading', isLoadingComplete);
@@ -218,14 +223,24 @@ const App: React.FC = () => {
             {assets?.planet && (
               <PlanetComponent
                 planet={assets.planet}
-                visible={gameState === 'space_flight'} // Example: Only visible during space flight
+                // Log visibility prop
+                visible={(() => {
+                  const isVisible = gameState === 'space_flight';
+                  // console.log(`[App.tsx] PlanetComponent visible prop: ${isVisible} (gameState: ${gameState})`); // Uncomment if needed
+                  return isVisible;
+                })()}
               />
             )}
 
             {assets?.spaceStation && (
               <SpaceStationComponent
                 station={assets.spaceStation}
-                visible={gameState === 'undocking' || gameState === 'space_flight'} // Visible during undocking and flight
+                 // Log visibility prop
+                visible={(() => {
+                  const isVisible = gameState === 'undocking' || gameState === 'space_flight';
+                  // console.log(`[App.tsx] SpaceStationComponent visible prop: ${isVisible} (gameState: ${gameState})`); // Uncomment if needed
+                  return isVisible;
+                })()}
               />
             )}
 
@@ -234,7 +249,12 @@ const App: React.FC = () => {
               <ShipComponent
                 key={`title-ship-${index}`}
                 ship={ship}
-                visible={gameState === 'title'} // Only visible during title screen
+                 // Log visibility prop
+                visible={(() => {
+                  const isVisible = gameState === 'title';
+                  // console.log(`[App.tsx] Title ShipComponent ${index} visible prop: ${isVisible} (gameState: ${gameState})`); // Uncomment if needed
+                  return isVisible;
+                })()}
               />
             ))}
 
@@ -243,7 +263,12 @@ const App: React.FC = () => {
               <ShipComponent
                 key={`pirate-ship-${index}`}
                 ship={pirate}
-                visible={gameState === 'space_flight'} // Only visible during space flight
+                 // Log visibility prop
+                visible={(() => {
+                  const isVisible = gameState === 'space_flight';
+                  // console.log(`[App.tsx] Pirate ShipComponent ${index} visible prop: ${isVisible} (gameState: ${gameState})`); // Uncomment if needed
+                  return isVisible;
+                })()}
               />
             ))}
 
