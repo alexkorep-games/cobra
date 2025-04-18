@@ -1,6 +1,6 @@
 // src/features/stats/useStatsLogic.ts
 import { useEffect, useRef, useCallback } from 'react';
-import { IGameManager, GameState } from '../../types';
+import { IGameManager, GameState } from "@/types";
 
 export function useStatsLogic(gameManager: IGameManager | null, isActive: boolean) {
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);

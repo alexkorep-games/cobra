@@ -1,28 +1,28 @@
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import "./App.css";
+import "@/App.css";
 // Use RadarPosition from types.ts
-import { GameState, RadarPosition, ReactSetters, IGameManager } from "../types"; // Added IGameManager
-import { GameManager } from "../game/GameManager";
+import { GameState, RadarPosition, ReactSetters, IGameManager } from "@/types"; // Added IGameManager
+import { GameManager } from "@/game/GameManager";
 
 // Import Scene Components
-import LoadingScreen from "../features/loading/LoadingScreen";
-import TitleScreen from "../features/title/TitleScreen";
-import CreditsScreen from "../features/credits/CreditsScreen";
-import StatsScreen from "../features/stats/StatsScreen";
-import CoordinatesDisplay from "./hud/CoordinatesDisplay";
-import SpaceFlightScreen from "../features/space_flight/SpaceFlightScreen";
-import { PlanetInfo, calculateDistance } from "../classes/PlanetInfo";
-import ShortRangeChartScreen from "../features/short_range_chart/ShortRangeChartScreen";
-import PlanetInfoScreen from "../features/planet_info/PlanetInfoScreen";
-import UndockingScreen from "../features/undocking/UndockingScreen";
+import LoadingScreen from "@/features/loading/LoadingScreen";
+import TitleScreen from "@/features/title/TitleScreen";
+import CreditsScreen from "@/features/credits/CreditsScreen";
+import StatsScreen from "@/features/stats/StatsScreen";
+import CoordinatesDisplay from "@/components/hud/CoordinatesDisplay";
+import SpaceFlightScreen from "@/features/space_flight/SpaceFlightScreen";
+import { PlanetInfo, calculateDistance } from "@/classes/PlanetInfo";
+import ShortRangeChartScreen from "@/features/short_range_chart/ShortRangeChartScreen";
+import PlanetInfoScreen from "@/features/planet_info/PlanetInfoScreen";
+import UndockingScreen from "@/features/undocking/UndockingScreen";
 
 // Import R3F Entity Components
-import ShipComponent from "./r3f/ShipComponent"; // Re-added for title screen
-import UndockingSquares from "./r3f/UndockingSquares"; // Keep for undocking state
+import ShipComponent from "@/components/r3f/ShipComponent"; // Re-added for title screen
+import UndockingSquares from "@/components/r3f/UndockingSquares"; // Keep for undocking state
 
 // Import Scene Logic Hooks
-import { useLoadingLogic } from "../features/loading/useLoadingLogic";
+import { useLoadingLogic } from "@/features/loading/useLoadingLogic";
 import { useTitleLogic } from "../features/title/useTitleLogic";
 import { useCreditsLogic } from "../features/credits/useCreditsLogic";
 import { useStatsLogic } from "../features/stats/useStatsLogic";

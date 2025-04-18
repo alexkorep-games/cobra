@@ -1,7 +1,7 @@
 // src/features/undocking/useUndockingLogic.ts
 import { useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three'; // Needed for LineLoop type
-import { IGameManager, GameState } from '../../types';
+import { IGameManager, GameState } from "@/types";
 
 const UNDOCKING_DURATION = 4000; // ms
 const SQUARE_SPEED = 20.0; // Units per second

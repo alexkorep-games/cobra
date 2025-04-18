@@ -4,8 +4,8 @@ import * as THREE from "three";
 // import { Planet } from "./game/entities/Planet";
 // import { Ship } from "./game/entities/Ship";
 // import { SpaceStation } from "./game/entities/SpaceStation";
-import { PlanetInfo } from "./classes/PlanetInfo";
-import * as Constants from "./constants";
+import { PlanetInfo } from "@/classes/PlanetInfo";
+import * as Constants from "@/constants";
 
 // Define possible game states as a string union type
 export type GameState =

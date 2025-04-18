@@ -31,6 +31,7 @@
     "jotai": "^2.12.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "three": "^0.175.0"
+    "three": "^0.175.0",
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }

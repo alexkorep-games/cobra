@@ -1,6 +1,6 @@
 // src/features/loading/useLoadingLogic.ts
 import { useEffect, useRef, useCallback } from 'react';
-import { IGameManager, GameState } from '../../types';
+import { IGameManager, GameState } from "@/types";
 
 export function useLoadingLogic(
     gameManager: IGameManager | null,

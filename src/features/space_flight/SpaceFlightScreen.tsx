@@ -1,14 +1,14 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import BottomHud from "../../components/hud/BottomHud";
-import { RadarPosition, IGameManager } from "../../types"; // Assuming IGameManager is needed for setters/state switching
-import * as Constants from "../../constants";
+import BottomHud from "@/components/hud/BottomHud";
+import { RadarPosition, IGameManager } from "@/types"; // Assuming IGameManager is needed for setters/state switching
+import * as Constants from "@/constants";
 
 // Import R3F Entity Components (now rendered here)
-import PlanetComponent from "../../components/r3f/PlanetComponent";
-import SpaceStationComponent from "../../components/r3f/SpaceStationComponent";
-import ShipComponent from "../../components/r3f/ShipComponent";
+import PlanetComponent from "@/components/r3f/PlanetComponent";
+import SpaceStationComponent from "@/components/r3f/SpaceStationComponent";
+import ShipComponent from "@/components/r3f/ShipComponent";
 
 // Define radar range constant
 const RADAR_DISTANCE = 10000;

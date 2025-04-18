@@ -1,6 +1,6 @@
 import React from "react";
-import BottomHud from "../../components/hud/BottomHud";
-import "../../components/App.css";
+import BottomHud from "@/components/hud/BottomHud";
+import "@/components/App.css";
 
 const StatsScreen: React.FC = () => {
   return (

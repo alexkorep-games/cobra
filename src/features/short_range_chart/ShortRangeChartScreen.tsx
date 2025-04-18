@@ -1,12 +1,8 @@
 // src/features/short_range_chart/ShortRangeChartScreen.tsx
 import React, { useRef, useEffect, useState } from "react";
-import {
-  PlanetInfo,
-  Coordinates,
-  calculateDistance,
-} from "../../classes/PlanetInfo";
-import BottomHud from "../../components/hud/BottomHud"; // Optional: Show HUD frame?
-import "../../components/App.css"; // Use relative path
+import { PlanetInfo, Coordinates, calculateDistance } from "@/classes/PlanetInfo";
+import BottomHud from "@/components/hud/BottomHud";
+import "@/components/App.css";
 
 interface ShortRangeChartScreenProps {
   planets: PlanetInfo[];

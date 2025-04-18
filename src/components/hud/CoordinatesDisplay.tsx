@@ -1,5 +1,5 @@
 import React from 'react';
-import '../App.css'; // Ensure styles are imported
+import "@/App.css"; // Ensure styles are imported
 
 interface CoordinatesDisplayProps {
   coordinates: [number, number, number];

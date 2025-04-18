@@ -1,8 +1,8 @@
 // src/features/title/useTitleLogic.ts
 import { useEffect, useState, useCallback, useRef } from "react";
 import * as THREE from "three";
-import { IGameManager } from "../../types"; // Ensure correct path
-import * as Constants from "../../constants"; // Ensure correct path
+import { IGameManager } from "@/types"; // Ensure correct path
+import * as Constants from "@/constants"; // Ensure correct path
 
 export function useTitleLogic(
   gameManager: IGameManager | null,
