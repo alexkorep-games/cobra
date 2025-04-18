@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import * as THREE from "three";
 import { IGameManager } from "@/types"; // Ensure correct path
 import * as Constants from "@/constants"; // Ensure correct path
+import { useGameState } from '@/features/common/useGameState';
 
 export function useTitleLogic(
   gameManager: IGameManager | null,
@@ -14,6 +15,9 @@ export function useTitleLogic(
   const shipDisplayTimerRef = useRef(0);
   const currentIndexRef = useRef(0); // Ref to track index internally
   const isProcessingInput = useRef(false);
+
+  // Replace gameManager.switchState with useGameState
+  const { setGameState } = useGameState();
 
   // --- Helper Functions (Prepare/Advance Ship) ---
   const prepareNextTitleShip = useCallback(
@@ -184,11 +188,11 @@ export function useTitleLogic(
         if (event.type === "keydown" || event.type === "mousedown") {
           isProcessingInput.current = true; // Prevent double processing
           console.log("Title input detected, switching to credits...");
-          gameManager.switchState("credits"); // Switch to the next state
+          setGameState("credits"); // Switch to the next state
         }
       }
     },
-    [isActive, gameManager] // Dependencies: isActive, gameManager (stable)
+    [isActive, gameManager, setGameState] // Dependencies: isActive, gameManager, setGameState (stable)
   );
 
   // --- Effect for Setup, Cleanup, Registration ---

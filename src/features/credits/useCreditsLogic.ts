@@ -1,10 +1,12 @@
 // src/features/credits/useCreditsLogic.ts
 import { useEffect, useRef, useCallback } from 'react';
 import { IGameManager, GameState } from '@/types';
+import { useGameState } from '@/features/common/useGameState';
 
 export function useCreditsLogic(gameManager: IGameManager | null, isActive: boolean) {
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const isProcessingInput = useRef(false);
+  const { setGameState } = useGameState();
 
   const handleInput = useCallback((event: KeyboardEvent | MouseEvent) => {
     if (isActive && gameManager && !isProcessingInput.current) {
@@ -16,7 +18,7 @@ export function useCreditsLogic(gameManager: IGameManager | null, isActive: bool
           clearTimeout(timeoutIdRef.current);
           timeoutIdRef.current = null;
         }
-        gameManager.switchState('stats');
+        setGameState('stats');
       }
     }
   }, [isActive, gameManager]);
@@ -36,7 +38,7 @@ export function useCreditsLogic(gameManager: IGameManager | null, isActive: bool
         // Check isActive again inside timeout in case state changed rapidly
         if (isActive && gameManager) {
           console.log('Credits timeout reached, switching to stats...');
-          gameManager.switchState('stats');
+          setGameState('stats');
         }
         timeoutIdRef.current = null; // Clear ref after execution
       }, 3000); // 3 second delay

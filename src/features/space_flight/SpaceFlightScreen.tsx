@@ -4,6 +4,7 @@ import * as THREE from "three";
 import BottomHud from "@/components/hud/BottomHud";
 import { RadarPosition, IGameManager } from "@/types"; // Assuming IGameManager is needed for setters/state switching
 import * as Constants from "@/constants";
+import { useGameState } from '@/features/common/useGameState';
 
 // Import R3F Entity Components (now rendered here)
 import PlanetComponent from "@/components/r3f/PlanetComponent";
@@ -47,6 +48,7 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
   gameManager,
 }) => {
   const { camera } = useThree(); // Removed unused scene
+  const { setGameState } = useGameState();
 
   // --- Refs ---
   const laserBeamRef = useRef<THREE.LineSegments>(null);
@@ -368,7 +370,7 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
     //   const collisionBuffer = 50;
     //   if (distanceToPlanet < planetRadius + collisionBuffer) {
     //     console.log("COLLISION: Hit planet surface!");
-    //     gameManager.switchState("title");
+    //     setGameState("title");
     //     return;
     //   }
     // }
@@ -406,7 +408,7 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
     //   const distanceToStation = camera.position.distanceTo(stationPos);
     //   if (distanceToStation < Constants.STATION_DOCKING_RADIUS) {
     //     console.log("Reached space station!");
-    //     gameManager.switchState("title");
+    //     setGameState("title");
     //     gameManager.reactSetters.setStationDirection(null);
     //   } else {
     //     const worldDir = tempVector.subVectors(stationPos, camera.position).normalize();

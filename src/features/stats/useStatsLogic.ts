@@ -1,10 +1,12 @@
 // src/features/stats/useStatsLogic.ts
 import { useEffect, useRef, useCallback } from 'react';
 import { IGameManager, GameState } from "@/types";
+import { useGameState } from '@/features/common/useGameState';
 
 export function useStatsLogic(gameManager: IGameManager | null, isActive: boolean) {
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const isProcessingInput = useRef(false);
+  const { setGameState } = useGameState();
 
   const handleInput = useCallback((event: KeyboardEvent | MouseEvent) => {
     if (isActive && gameManager && !isProcessingInput.current) {
@@ -16,7 +18,7 @@ export function useStatsLogic(gameManager: IGameManager | null, isActive: boolea
           clearTimeout(timeoutIdRef.current);
           timeoutIdRef.current = null;
         }
-        gameManager.switchState('undocking');
+        setGameState('undocking');
       }
     }
   }, [isActive, gameManager]);
@@ -36,7 +38,7 @@ export function useStatsLogic(gameManager: IGameManager | null, isActive: boolea
         // Check isActive again inside timeout
         if (isActive && gameManager) {
           console.log('Stats timeout reached, switching to undocking...');
-          gameManager.switchState('undocking');
+          setGameState('undocking');
         }
         timeoutIdRef.current = null; // Clear ref after execution
       }, 5000); // 5 second delay

@@ -1,6 +1,7 @@
 // src/features/loading/useLoadingLogic.ts
 import { useEffect, useRef, useCallback } from 'react';
 import { IGameManager, GameState } from "@/types";
+import { useGameState } from '@/features/common/useGameState';
 
 export function useLoadingLogic(
     gameManager: IGameManager | null,
@@ -8,6 +9,7 @@ export function useLoadingLogic(
     isLoadingComplete: boolean // Receive loading status from App component
 ) {
   const isProcessingInput = useRef(false);
+  const { setGameState } = useGameState();
 
   const handleInput = useCallback((event: KeyboardEvent | MouseEvent) => {
     // Only process input if the loading is complete and the hook is active
@@ -16,9 +18,9 @@ export function useLoadingLogic(
         isProcessingInput.current = true;
         console.log('Loader input detected (loading complete), switching state...');
         // Example: Switch to the title screen after loading
-        gameManager.switchState('title');
+        setGameState('title');
         // Or directly to another state for testing:
-        // gameManager.switchState('short_range_chart');
+        // setGameState('short_range_chart');
       }
     }
   }, [isActive, gameManager, isLoadingComplete]);

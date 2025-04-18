@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { IGameManager } from "../../types";
 import { PlanetInfo, calculateDistance } from "../../classes/PlanetInfo";
 import { JUMP_RANGE } from "../../constants";
+import { useGameState } from '@/features/common/useGameState';
 
 export function useShortRangeChartLogic(
   gameManager: IGameManager | null,
@@ -14,6 +15,8 @@ export function useShortRangeChartLogic(
   const [selectedIndexInReachable, setSelectedIndexInReachable] =
     useState<number>(0);
   const isProcessingInput = useRef(false);
+
+  const { setGameState } = useGameState();
 
   // Update reachable planets and selection when the hook becomes active or planets/current planet changes
   useEffect(() => {
@@ -106,7 +109,7 @@ export function useShortRangeChartLogic(
                 console.log(`Confirmed selection: ${selectedPlanet.name}`);
                 // Update GM's selected planet (already done by arrow keys)
                 // gameManager.setSelectedPlanetName(selectedPlanet.name);
-                gameManager.switchState("planet_info"); // Switch to planet info screen
+                setGameState("planet_info"); // Switch to planet info screen
                 processed = true;
               }
             }
@@ -114,7 +117,7 @@ export function useShortRangeChartLogic(
           case "Escape":
           case "n": // Allow 'n' to close the chart too
           case "N":
-            gameManager.switchState("space_flight"); // Go back to flight
+            setGameState("space_flight"); // Go back to flight
             processed = true;
             break;
         }

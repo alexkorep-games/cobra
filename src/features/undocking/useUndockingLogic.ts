@@ -2,12 +2,14 @@
 import { useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three'; // Needed for LineLoop type
 import { IGameManager, GameState } from "@/types";
+import { useGameState } from '@/features/common/useGameState';
 
 const UNDOCKING_DURATION = 4000; // ms
 const SQUARE_SPEED = 20.0; // Units per second
 
 export function useUndockingLogic(gameManager: IGameManager | null, isActive: boolean) {
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
+  const { setGameState } = useGameState();
 
   // --- Update Logic (Called by GameManager) ---
   const updateUndockingAnimation = useCallback((deltaTime: number) => {
@@ -49,7 +51,7 @@ export function useUndockingLogic(gameManager: IGameManager | null, isActive: bo
       timeoutIdRef.current = setTimeout(() => {
         if (isActive && gameManager) { // Check state again in timeout
           console.log('Undocking finished, switching to space flight...');
-          gameManager.switchState('space_flight');
+          setGameState('space_flight');
         }
         timeoutIdRef.current = null;
       }, UNDOCKING_DURATION);

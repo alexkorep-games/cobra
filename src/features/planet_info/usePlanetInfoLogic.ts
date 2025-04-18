@@ -1,9 +1,11 @@
 // src/features/planet_info/usePlanetInfoLogic.ts
 import { useEffect, useRef, useCallback } from 'react';
 import { IGameManager, GameState } from '../../types';
+import { useGameState } from '@/features/common/useGameState';
 
 export function usePlanetInfoLogic(gameManager: IGameManager | null, isActive: boolean) {
   const isProcessingInput = useRef(false); // Optional: Prevent double processing
+  const { setGameState } = useGameState();
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
     if (isActive && gameManager && !isProcessingInput.current) { // Check isActive and gameManager
@@ -15,13 +17,13 @@ export function usePlanetInfoLogic(gameManager: IGameManager | null, isActive: b
         case "J":
           console.log("Jump initiated (placeholder)... returning to chart.");
           // TODO: Implement actual jump logic (new state? animation?)
-          gameManager.switchState("short_range_chart"); // Go back for now
+          setGameState("short_range_chart"); // Go back for now
           processed = true;
           break;
         case "Escape":
         case "n": // Allow 'n' to close the info too
         case "N":
-          gameManager.switchState("short_range_chart"); // Go back to chart
+          setGameState("short_range_chart"); // Go back to chart
           processed = true;
           break;
       }
@@ -45,7 +47,7 @@ export function usePlanetInfoLogic(gameManager: IGameManager | null, isActive: b
         // Use requestAnimationFrame to ensure the state switch happens after the current render cycle
         requestAnimationFrame(() => {
             if (gameManager.currentState === 'planet_info') { // Double check state hasn't changed again
-                 gameManager.switchState("short_range_chart");
+                 setGameState("short_range_chart");
             }
         });
         return; // Don't add listeners if returning immediately
