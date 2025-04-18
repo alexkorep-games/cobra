@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import "@/App.css";
+import "./App.css";
 // Use RadarPosition from types.ts
 import { GameState, RadarPosition, ReactSetters, IGameManager } from "@/types"; // Added IGameManager
 import { GameManager } from "@/game/GameManager";
