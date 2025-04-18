@@ -1,39 +1,88 @@
-import React from 'react';
+import React, { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
-import { useFrame } from '@react-three/fiber';
-import { Ship } from '../../game/entities/Ship'; // Adjust path as needed
+import { useGLTF } from '@react-three/drei'; // Import useGLTF
 
 interface ShipComponentProps {
-  ship: Ship; // Pass the loaded Ship entity instance
-  visible?: boolean; // Control visibility via props
+  modelPath: string;
+  initialScale?: number;
+  wireframeColor?: THREE.ColorRepresentation;
+  position?: [number, number, number];
+  rotation?: [number, number, number]; // Use Euler array [x, y, z]
+  visible?: boolean;
+  // Add any other props needed for ship behavior, e.g., animation state
 }
 
-const ShipComponent: React.FC<ShipComponentProps> = ({ ship, visible = true }) => {
-  const meshRef = React.useRef<THREE.Group>(null!); // Ref to access the primitive's object
+const ShipComponent: React.FC<ShipComponentProps> = ({
+  modelPath,
+  initialScale = 1,
+  wireframeColor = 0xffff00,
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  visible = true,
+}) => {
+  // Load the GLTF model
+  // useGLTF.preload(modelPath); // Optional: Preload if needed elsewhere
+  const { scene } = useGLTF(modelPath); // scene is the THREE.Group containing the model
 
-  // Use useFrame for updates
-  useFrame((_, delta) => { // Changed state to _
-    if (ship && ship.mesh && meshRef.current) {
-      // Call the entity's update method (if it has any logic)
-      ship.update(delta);
+  // Memoize the wireframe material
+  const wireframeMaterial = useMemo(() => new THREE.MeshBasicMaterial({
+    color: wireframeColor,
+    wireframe: true,
+  }), [wireframeColor]);
 
-      // Sync R3F object properties with the entity's mesh properties
-      meshRef.current.position.copy(ship.mesh.position);
-      meshRef.current.rotation.copy(ship.mesh.rotation);
-      meshRef.current.scale.copy(ship.mesh.scale);
-      meshRef.current.visible = ship.visible;
+  // Apply scale and wireframe material once the scene is loaded/changed
+  useEffect(() => {
+    if (scene) {
+      scene.scale.set(initialScale, initialScale, initialScale);
+      scene.traverse((child) => {
+        if ((child as THREE.Mesh).isMesh) {
+          const mesh = child as THREE.Mesh;
+          // Dispose of original materials if necessary (useGLTF might handle some cases)
+          if (mesh.material) {
+             if (Array.isArray(mesh.material)) {
+                 mesh.material.forEach(m => m.dispose());
+             } else {
+                 mesh.material.dispose();
+             }
+          }
+          // Apply the memoized wireframe material
+          mesh.material = wireframeMaterial;
+          mesh.material.needsUpdate = true; // Ensure material update
+        }
+      });
     }
-  });
+    // Cleanup function for the material when component unmounts or deps change
+    return () => {
+        wireframeMaterial.dispose();
+    };
+  }, [scene, initialScale, wireframeMaterial]); // Re-run if scene, scale, or material changes
 
-  // Only render if the ship and its mesh exist
-  if (!ship || !ship.mesh) {
-    return null;
-  }
+  // Optional: useFrame for custom animations or logic specific to this component instance
+  // useFrame((state, delta) => {
+  //   // Example: Rotate the ship
+  //   if (groupRef.current) {
+  //     groupRef.current.rotation.y += 0.5 * delta;
+  //   }
+  // });
 
-  // Set initial visibility based on prop
-  ship.setVisible(visible);
+  // Use a ref for the group if direct manipulation is needed (e.g., in useFrame)
+  const groupRef = useRef<THREE.Group>(null!); // Ref is now typed as THREE.Group
 
-  return <primitive object={ship.mesh} ref={meshRef} visible={visible} />;
+  // Render the loaded scene using primitive
+  // Pass position, rotation, visible props directly
+  return (
+    <primitive
+      ref={groupRef} // Assign ref if needed
+      object={scene} // Use the loaded scene directly
+      position={position}
+      rotation={rotation} // R3F handles Euler array conversion
+      visible={visible}
+      // name can be set here if needed, e.g., name={modelPath.split('/').pop()?.split('.')[0]}
+    />
+  );
 };
+
+// Optional: Export useGLTF.preload if you want to preload assets globally
+// export { useGLTF };
 
 export default ShipComponent;

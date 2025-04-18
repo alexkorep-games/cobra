@@ -1,24 +1,7 @@
-// src/features/space_flight/GameManager.ts
-// Remove unused THREE import
-// import * as THREE from "three";
-// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; // Removed
-import { GameState, IGameManager, GameEntities, ReactSetters } from "../types";
-
-import { SpaceFlightSceneLogic } from "../features/space_flight/SpaceFlightSceneLogic.ts"
-// import { ShortRangeChartSceneLogic } from "../short_range_chart/ShortRangeChartSceneLogic"; // Removed
-// import { PlanetInfoScreenLogic } from "../planet_info/PlanetInfoScreenLogic"; // Removed
-
-// Import Entity Classes
-import { Planet } from "./entities/Planet"; // Corrected path
-import { Ship } from "./entities/Ship"; // Corrected path
-import { SpaceStation } from "./entities/SpaceStation"; // Corrected path
-
-// Import Constants and Planet Info generation
-import * as Constants from "../constants"; // Corrected path
-import { generatePlanets, PlanetInfo } from "../classes/PlanetInfo"; // Corrected path
-
-// Use constants for scale
-const stationScale = Constants.SHIP_SCALE * 1.5; // Make station a bit larger
+import { GameState, IGameManager, GameAssets, ReactSetters } from "../types";
+import { SpaceFlightSceneLogic } from "../features/space_flight/SpaceFlightSceneLogic";
+import * as Constants from "../constants";
+import { generatePlanets, PlanetInfo } from "../classes/PlanetInfo";
 
 export class GameManager implements IGameManager {
   // Remove Three.js core objects managed by R3F
@@ -31,11 +14,11 @@ export class GameManager implements IGameManager {
   currentPlanetName: string; // Store current planet name (which is the ID)
   selectedPlanetName: string | null = null; // Store selected planet name
 
-  // Assets remain, but they won't be added to the scene here
-  assets: GameEntities = {
+  // Update assets type
+  assets: GameAssets = {
     titleShips: [],
     planet: null,
-    undockingSquares: [], // Will need refactoring for R3F
+    undockingSquares: [],
     spaceStation: null,
     pirateShips: [],
   };
@@ -158,26 +141,7 @@ export class GameManager implements IGameManager {
   }
 
   async createAssets(cameraFarPlane: number) {
-    // Remove checks for scene/camera as they are no longer properties here
-    // if (!this.scene || !this.camera) {
-    //   throw new Error("Scene or camera not initialized");
-    // }
-
-    console.log("Starting asset loading...");
-
-    // Entities now handle their own loading via `load()` method
-    // Load shared/common assets first (optional step, entities can load individually)
-    try {
-      await Promise.all([
-        // Planet.loadCommonAssets(this.scene), // Planet likely doesn't need common assets
-        // Ship.loadCommonAssets(this.scene), // Could cache GLTFs here if many duplicates
-        // SpaceStation.loadCommonAssets(this.scene), // Could cache GLTF
-      ]);
-    } catch (error) {
-      console.error("Error loading common assets:", error);
-      // Decide if this is fatal or can continue
-      // throw error;
-    }
+    console.log("Starting asset configuration...");
 
     const shipFilePaths = [
       "assets/ships/ship-cobra.gltf",
@@ -185,129 +149,40 @@ export class GameManager implements IGameManager {
       "assets/ships/asteroid.gltf",
     ];
     const spaceStationPath = "assets/ships/spacestation.gltf";
-    const pirateShipPath = "assets/ships/ship-pirate.gltf"; // Use pirate model
+    const pirateShipPath = "assets/ships/ship-pirate.gltf";
 
-    const loadPromises: Promise<void>[] = [];
+    // Configure Planet
+    const planetRadius = cameraFarPlane * 0.05;
+    this.assets.planet = {
+      radius: planetRadius,
+      color: 0x44aa44
+    };
 
-    // --- Instantiate Planet ---
-    const planetRadius = cameraFarPlane * 0.05; // Example: 5% of far plane distance
-    // Pass null for scene, as entities shouldn't add themselves directly anymore
-    this.assets.planet = new Planet(null, planetRadius, 0x44aa44); // Greenish planet
-    loadPromises.push(
-      this.assets.planet.load().then(() => {
-        // Remove addToScene and setVisible calls
-        // if (this.scene) {
-        //   this.assets.planet?.addToScene(this.scene);
-        //   this.assets.planet?.setVisible(false);
-        // } else {
-        //   console.warn("Scene disposed before Planet could be added.");
-        // }
-        console.log("Planet loaded.");
-      })
-    );
+    // Configure Space Station
+    this.assets.spaceStation = {
+      modelPath: spaceStationPath
+    };
 
-    // --- Instantiate Space Station ---
-    this.assets.spaceStation = new SpaceStation(
-      null, // Pass null for scene
-      spaceStationPath,
-      stationScale,
-      0xffff00 // Yellow station
-    );
-    loadPromises.push(
-      this.assets.spaceStation.load().then(() => {
-        // Remove addToScene and setVisible calls
-        // if (this.scene) {
-        //   this.assets.spaceStation?.addToScene(this.scene);
-        //   this.assets.spaceStation?.setVisible(false);
-        // } else {
-        //   console.warn("Scene disposed before SpaceStation could be added.");
-        // }
-        console.log("SpaceStation loaded.");
-      })
-    );
+    // Configure Title Ships
+    this.assets.titleShips = shipFilePaths.map(path => ({
+      modelPath: path
+    }));
 
-    // --- Instantiate Title Ships ---
-    this.assets.titleShips = []; // Clear previous array if any
-    shipFilePaths.forEach((path) => {
-      const ship = new Ship(null, path, Constants.SHIP_SCALE, 0x00ffff); // Pass null for scene
-      this.assets.titleShips.push(ship);
-      loadPromises.push(
-        ship.load().then(() => {
-          // Remove addToScene and setVisible calls
-          // if (this.scene) {
-          //   ship.addToScene(this.scene);
-          //   ship.setVisible(false);
-          // } else {
-          //   console.warn(
-          //     `Scene disposed before Title Ship (${path}) could be added.`
-          //   );
-          console.log(`Title Ship ${path} loaded.`);
-        })
-      );
-    });
+    // Configure Pirate Ships
+    this.assets.pirateShips = Array(Constants.PIRATE_COUNT).fill(null).map(() => ({
+      modelPath: pirateShipPath
+    }));
 
-    // --- Instantiate Pirate Ships ---
-    this.assets.pirateShips = []; // Clear previous array if any
-    for (let i = 0; i < Constants.PIRATE_COUNT; i++) {
-      const pirate = new Ship(
-        null, // Pass null for scene
-        pirateShipPath,
-        Constants.SHIP_SCALE,
-        0xff0000
-      ); // Red pirates
-      this.assets.pirateShips.push(pirate);
-      loadPromises.push(
-        pirate.load().then(() => {
-          // Remove addToScene and setVisible calls
-          // if (this.scene) {
-          //   pirate.addToScene(this.scene);
-          //   pirate.setVisible(false);
-          // } else {
-          //   console.warn(
-          //     `Scene disposed before Pirate Ship (${i}) could be added.`
-          //   );
-          console.log(`Pirate Ship ${i} loaded.`);
-        })
-      );
-    }
-
-    // --- Undocking Squares (Needs complete refactor for R3F) ---
-    // Remove direct THREE object creation and scene addition
-    /*
-    const squareOutlineGeom = new THREE.BufferGeometry();
-    ...
-    const squareLineMat = new THREE.LineBasicMaterial(...);
+    // Undocking squares will be handled by the UndockingSquares component
     this.assets.undockingSquares = [];
-    if (this.scene) {
-      for (let i = 0; i < 20; i++) {
-        const squareLine = new THREE.LineLoop(...);
-        this.scene.add(squareLine);
-        this.assets.undockingSquares.push(squareLine);
-      }
-    } else { ... }
-    */
-    this.assets.undockingSquares = []; // Keep array, but it won't be populated here
-    console.warn("Undocking Squares creation needs refactoring for R3F.");
-    // --- End Undocking Squares ---
 
-    // --- Loading Completion ---
-    console.log(`Starting loading of ${loadPromises.length} assets...`);
-    await Promise.all(loadPromises);
-
-    // Remove scene check
-    // if (!this.scene) { ... }
-
-    console.log("All assets loaded successfully (but not added to scene).");
+    console.log("Asset configuration complete.");
     if (this.loadingCompleteCallback) {
-      this.loadingCompleteCallback(); // Notify React loading is done
+      this.loadingCompleteCallback();
     } else {
       console.warn("loadingCompleteCallback not set!");
     }
-
-    // NOTE: Initial state logic activation ('enter') is now handled by the hooks
-    // in App.tsx based on the `gameState` and `isActive` flags.
-    // The class-based 'enter' for SpaceFlightSceneLogic will be called via switchState.
-  } // End createAssets
+  }
 
   // --- Hook Update Registration (Keep for now, might adapt later) ---
   registerSceneUpdate(state: GameState, updateFn: (deltaTime: number) => void) {
@@ -337,13 +212,8 @@ export class GameManager implements IGameManager {
   // Update method - This will likely be called differently or replaced by useFrame logic
   // For now, keep the structure but it won't be called by an animation loop here.
   update(deltaTime: number) {
-    // Update Entities (Planet, Station, Pirates have their own updates)
-    this.assets.planet?.update(deltaTime);
-    this.assets.spaceStation?.update(deltaTime);
-    this.assets.pirateShips.forEach((pirate) => pirate.update(deltaTime));
-    // Title ships are updated by the TitleSceneLogic hook
-
-    // Update Current Scene Logic
+    // Remove entity update calls since components handle their own updates
+    // Update Current Scene Logic only
     const currentHookUpdateFn = this.sceneUpdateFunctions[this.currentState];
     if (currentHookUpdateFn) {
       currentHookUpdateFn(deltaTime); // Call hook's update function
@@ -354,7 +224,6 @@ export class GameManager implements IGameManager {
   }
 
   switchState(newState: GameState) {
-    // Allow switching even if no specific logic class/hook exists (e.g., simple UI screens)
     if (newState === this.currentState) {
       console.warn(`Already in state ${newState}.`);
       return;
@@ -362,17 +231,17 @@ export class GameManager implements IGameManager {
     const oldState = this.currentState;
     console.log(`Switching state from ${oldState} to ${newState}`);
 
-    // Exit logic for the old state (only relevant for class-based logic)
+    // Exit logic for the old state (without passing state)
     const oldClassLogic = this.sceneLogics[oldState];
-    oldClassLogic?.exit(newState);
+    oldClassLogic?.exit();
 
     // Update state variable and notify React (this triggers hooks)
     this.currentState = newState;
     this.reactSetters.setGameState(newState);
 
-    // Enter logic for the new state (only relevant for class-based logic)
+    // Enter logic for the new state (without passing state)
     const newClassLogic = this.sceneLogics[newState];
-    newClassLogic?.enter(oldState);
+    newClassLogic?.enter();
   }
 
   // --- Methods for React/Hooks to interact with GameManager ---
@@ -445,35 +314,7 @@ export class GameManager implements IGameManager {
     window.removeEventListener("keyup", this.boundHandleGlobalInput);
     window.removeEventListener("mousedown", this.boundHandleGlobalInput);
 
-    // Dispose Entities managed by assets
-    this.assets.planet?.dispose();
-    this.assets.spaceStation?.dispose();
-    this.assets.titleShips.forEach((ship) => ship.dispose());
-    this.assets.pirateShips.forEach((pirate) => pirate.dispose());
-
-    // Remove disposal of undocking squares THREE objects
-    /*
-    let geomDisposed = false;
-    let matDisposed = false;
-    this.assets.undockingSquares.forEach((square) => {
-      // ... disposal logic removed ...
-      // this.scene?.remove(square); // Remove scene removal
-    });
-    */
-    console.log("Entities disposed.");
-
-    // Remove renderer and controls disposal
-    // this.renderer?.dispose();
-    // this.controls?.dispose();
-
-    // Remove scene, camera, renderer, controls clearing
-    // this.scene?.clear();
-    // this.scene = null;
-    // this.camera = null;
-    // this.renderer = null;
-    // this.controls = null;
-
-    // Reset assets structure
+    // Reset assets structure - no need to dispose since components handle their own cleanup
     this.assets = {
       titleShips: [],
       planet: null,
@@ -481,6 +322,7 @@ export class GameManager implements IGameManager {
       spaceStation: null,
       pirateShips: [],
     };
+
     this.sceneLogics = {}; // Clear class-based logic store
     this.sceneUpdateFunctions = {}; // Clear hook update functions
     this.loadingCompleteCallback = null;

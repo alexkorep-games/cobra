@@ -1,39 +1,50 @@
-import React from 'react';
+import React, { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Planet } from '../../game/entities/Planet'; // Adjust path as needed
 
 interface PlanetComponentProps {
-  planet: Planet; // Pass the loaded Planet entity instance
-  visible?: boolean; // Control visibility via props
+  radius: number;
+  color?: THREE.ColorRepresentation;
+  rotationSpeed?: number;
+  position?: [number, number, number]; // Use tuple for position
+  visible?: boolean;
 }
 
-const PlanetComponent: React.FC<PlanetComponentProps> = ({ planet, visible = true }) => {
-  const meshRef = React.useRef<THREE.Mesh>(null!); // Ref to access the primitive's object
+const PlanetComponent: React.FC<PlanetComponentProps> = ({
+  radius,
+  color = 0xff0000, // Default color
+  rotationSpeed = 0.005, // Default rotation speed
+  position = [0, 0, 0], // Default position
+  visible = true,
+}) => {
+  const meshRef = useRef<THREE.Mesh>(null!); // Ref to access the mesh
+
+  // Memoize geometry and material to prevent recreation on re-renders
+  const geometry = useMemo(() => new THREE.SphereGeometry(radius, 128, 64), [radius]);
+  const material = useMemo(() => new THREE.MeshStandardMaterial({
+    color: color,
+    roughness: 0.9,
+    metalness: 0.1,
+  }), [color]);
 
   // Use useFrame for updates (like rotation)
-  useFrame((_, delta) => { // Changed state to _
-    if (planet && planet.mesh && meshRef.current) {
-      // Call the entity's update method
-      planet.update(delta);
-
-      // Sync R3F object properties with the entity's mesh properties
-      meshRef.current.position.copy(planet.mesh.position);
-      meshRef.current.rotation.copy(planet.mesh.rotation);
-      meshRef.current.scale.copy(planet.mesh.scale);
-      meshRef.current.visible = planet.visible;
+  useFrame((_, delta) => {
+    if (meshRef.current) {
+      // Apply rotation based on delta time
+      meshRef.current.rotation.y += rotationSpeed * delta;
     }
   });
 
-  // Only render if the planet and its mesh exist
-  if (!planet || !planet.mesh) {
-    return null;
-  }
-
-  // Set initial visibility based on prop
-  planet.setVisible(visible);
-
-  return <primitive object={planet.mesh} ref={meshRef} visible={visible} />;
+  return (
+    <mesh
+      ref={meshRef}
+      position={position}
+      geometry={geometry}
+      material={material}
+      visible={visible}
+      name="Planet" // Optional: Set name directly
+    />
+  );
 };
 
 export default PlanetComponent;

@@ -1,10 +1,11 @@
 // src/types.ts
 import * as THREE from "three";
-import { Planet } from "./game/entities/Planet"; // Ensure correct paths
-import { Ship } from "./game/entities/Ship";
-import { SpaceStation } from "./game/entities/SpaceStation";
+// Remove entity imports as they're no longer used
+// import { Planet } from "./game/entities/Planet";
+// import { Ship } from "./game/entities/Ship";
+// import { SpaceStation } from "./game/entities/SpaceStation";
 import { PlanetInfo } from "./classes/PlanetInfo";
-import * as Constants from "./constants"; // Import Constants
+import * as Constants from "./constants";
 
 // Define possible game states as a string union type
 export type GameState =
@@ -18,12 +19,27 @@ export type GameState =
   | "planet_info";
 
 // Interface describing the structure of loaded game assets
-export interface GameEntities {
-  titleShips: Ship[];                  // Ships shown on the title screen
-  planet: Planet | null;               // The current planet (or sun) object
-  undockingSquares: THREE.LineLoop[];  // Visual effect for undocking
-  spaceStation: SpaceStation | null;   // The space station object
-  pirateShips: Ship[];                 // Array of pirate ship NPCs
+export interface GameAssets {
+  titleShips: Array<{
+    modelPath: string;
+    position?: [number, number, number];
+    rotation?: [number, number, number];
+  }>;
+  planet: {
+    radius: number;
+    color: THREE.ColorRepresentation;
+  } | null;
+  undockingSquares: any[]; // Handled by UndockingSquares component
+  spaceStation: {
+    modelPath: string;
+    position?: [number, number, number];
+    rotation?: [number, number, number];
+  } | null;
+  pirateShips: Array<{
+    modelPath: string;
+    position?: [number, number, number];
+    rotation?: [number, number, number];
+  }>;
 }
 
 // Type describing the position of an object on the radar HUD
@@ -58,27 +74,27 @@ export interface ReactSetters {
 // Interface defining the methods and properties the scene logic (hooks or classes)
 // expects the GameManager instance to provide.
 export interface IGameManager {
-  assets: GameEntities;                     // Access to loaded game objects
-  currentState: GameState;                  // The current game state
-  constants: typeof Constants;              // Access to game constants
+  assets: GameAssets; // Update to use GameAssets instead of GameEntities
+  currentState: GameState;
+  constants: typeof Constants;
 
   // State Management
-  switchState: (newState: GameState) => void; // Function to change the game state
+  switchState: (newState: GameState) => void;
 
   // React Integration
-  reactSetters: ReactSetters;               // Setters to update React UI state
-  introMusicRef: React.RefObject<HTMLAudioElement | null>; // Ref to intro music audio element
-  undockSoundRef: React.RefObject<HTMLAudioElement | null>; // Ref to undock sound audio element
+  reactSetters: ReactSetters;
+  introMusicRef: React.RefObject<HTMLAudioElement | null>;
+  undockSoundRef: React.RefObject<HTMLAudioElement | null>;
 
   // Hook Integration
-  registerSceneUpdate: (state: GameState, updateFn: (deltaTime: number) => void) => void; // Register hook update logic
-  unregisterSceneUpdate: (state: GameState) => void; // Unregister hook update logic
+  registerSceneUpdate: (state: GameState, updateFn: (deltaTime: number) => void) => void;
+  unregisterSceneUpdate: (state: GameState) => void;
 
   // Planet Data Management
-  planetInfos: PlanetInfo[];                // List of all generated planets
-  currentPlanetName: string;                // Name of the current planet system
-  selectedPlanetName: string | null;        // Name of the currently selected target planet
-  getCurrentPlanet: () => PlanetInfo;       // Get info for the current planet
-  setSelectedPlanetName: (name: string | null) => void; // Set the selected target planet
-  getSelectedPlanet: () => PlanetInfo | undefined; // Get info for the selected planet (if any)
+  planetInfos: PlanetInfo[];
+  currentPlanetName: string;
+  selectedPlanetName: string | null;
+  getCurrentPlanet: () => PlanetInfo;
+  setSelectedPlanetName: (name: string | null) => void;
+  getSelectedPlanet: () => PlanetInfo | undefined;
 }

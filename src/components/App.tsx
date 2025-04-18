@@ -31,7 +31,7 @@ import { useStatsLogic } from "../features/stats/useStatsLogic";
 import { useUndockingLogic } from "../features/undocking/useUndockingLogic";
 import { useShortRangeChartLogic } from "../features/short_range_chart/useShortRangeChartLogic";
 import { usePlanetInfoLogic } from "../features/planet_info/usePlanetInfoLogic";
-import { INITIAL_PLANET_INDEX, JUMP_RANGE } from "../constants";
+import { JUMP_RANGE, SHIP_SCALE } from "../constants";
 
 // Helper component to run GameManager update loop
 const GameLoop: React.FC<{ gameManager: GameManager | null }> = ({ gameManager }) => {
@@ -219,56 +219,46 @@ const App: React.FC = () => {
             {/* Game Loop Runner */}
             <GameLoop gameManager={gm} />
 
-            {/* Render Entities conditionally based on gameState and asset availability */}
+            {/* Planet Component */}
             {assets?.planet && (
               <PlanetComponent
-                planet={assets.planet}
-                // Log visibility prop
-                visible={(() => {
-                  const isVisible = gameState === 'space_flight';
-                  // console.log(`[App.tsx] PlanetComponent visible prop: ${isVisible} (gameState: ${gameState})`); // Uncomment if needed
-                  return isVisible;
-                })()}
+                radius={assets.planet.radius}
+                color={assets.planet.color}
+                rotationSpeed={0.005}
+                visible={gameState === 'space_flight'}
               />
             )}
 
+            {/* Space Station Component */}
             {assets?.spaceStation && (
               <SpaceStationComponent
-                station={assets.spaceStation}
-                 // Log visibility prop
-                visible={(() => {
-                  const isVisible = gameState === 'undocking' || gameState === 'space_flight';
-                  // console.log(`[App.tsx] SpaceStationComponent visible prop: ${isVisible} (gameState: ${gameState})`); // Uncomment if needed
-                  return isVisible;
-                })()}
+                modelPath={assets.spaceStation.modelPath}
+                initialScale={SHIP_SCALE * 1.5}
+                wireframeColor={0xffff00}
+                rotationSpeed={0.02}
+                visible={gameState === 'undocking' || gameState === 'space_flight'}
               />
             )}
 
-            {/* Render Title Ships */}
+            {/* Title Ships */}
             {assets?.titleShips && assets.titleShips.map((ship, index) => (
               <ShipComponent
                 key={`title-ship-${index}`}
-                ship={ship}
-                 // Log visibility prop
-                visible={(() => {
-                  const isVisible = gameState === 'title';
-                  // console.log(`[App.tsx] Title ShipComponent ${index} visible prop: ${isVisible} (gameState: ${gameState})`); // Uncomment if needed
-                  return isVisible;
-                })()}
+                modelPath={ship.modelPath}
+                initialScale={SHIP_SCALE}
+                wireframeColor={0x00ffff}
+                visible={gameState === 'title'}
               />
             ))}
 
-            {/* Render Pirate Ships */}
+            {/* Pirate Ships */}
             {assets?.pirateShips && assets.pirateShips.map((pirate, index) => (
               <ShipComponent
                 key={`pirate-ship-${index}`}
-                ship={pirate}
-                 // Log visibility prop
-                visible={(() => {
-                  const isVisible = gameState === 'space_flight';
-                  // console.log(`[App.tsx] Pirate ShipComponent ${index} visible prop: ${isVisible} (gameState: ${gameState})`); // Uncomment if needed
-                  return isVisible;
-                })()}
+                modelPath={pirate.modelPath}
+                initialScale={SHIP_SCALE}
+                wireframeColor={0xff0000}
+                visible={gameState === 'space_flight'}
               />
             ))}
 
