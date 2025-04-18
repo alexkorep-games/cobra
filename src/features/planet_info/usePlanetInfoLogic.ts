@@ -1,36 +1,32 @@
 import { useEffect, useRef, useCallback } from "react";
-import { IGameManager } from "../../types";
 import { useGameState } from "@/features/common/useGameState";
-import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Import planet state hook
+import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Use this hook
 
-export function usePlanetInfoLogic(gameManager: IGameManager | null) {
-  const isProcessingInput = useRef(false); // Optional: Prevent double processing
+export function usePlanetInfoLogic() {
+  const isProcessingInput = useRef(false);
   const { gameState, setGameState } = useGameState();
-  const { selectedPlanetName } = usePlanetInfos(); // Get selected planet name from shared state
+  // Get selected planet name from shared state
+  const { selectedPlanetName } = usePlanetInfos();
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      // Only run if this is the active state and input not processed
-      if (
-        gameState === "planet_info" &&
-        gameManager &&
-        !isProcessingInput.current
-      ) {
+      if (gameState === "planet_info" && !isProcessingInput.current) {
         console.log(`Planet Info KeyDown: ${event.key}`);
         let processed = false;
 
-        switch (
-          event.key.toLowerCase() // Use toLowerCase for easier comparison
-        ) {
-          case "j": // Jump key (example)
-            console.log("Jump initiated (placeholder)... returning to chart.");
+        switch (event.key) {
+          case "j": // Jump key (example) - Action might change
+          case "J":
+            console.log(
+              "Jump initiated from Planet Info (placeholder)... returning to chart."
+            );
             // TODO: Implement actual jump logic (new state? animation?)
-            // Might involve updating currentPlanetName in usePlanetInfos
             setGameState("short_range_chart"); // Go back for now
             processed = true;
             break;
-          case "escape":
+          case "Escape":
           case "n": // Allow 'n' to close the info too
+          case "N":
             setGameState("short_range_chart"); // Go back to chart
             processed = true;
             break;
@@ -45,42 +41,44 @@ export function usePlanetInfoLogic(gameManager: IGameManager | null) {
         }
       }
     },
-    [gameState, gameManager, setGameState]
+    [gameState, setGameState]
   ); // Add dependencies
 
   useEffect(() => {
-    // Runs when PlanetInfoScreen mounts
-    console.log("Activating Planet Info Logic Hook");
-    isProcessingInput.current = false; // Reset on activation
+    if (gameState === "planet_info") {
+      console.log("Activating Planet Info Logic Hook");
+      isProcessingInput.current = false; // Reset on activation
 
-    // Check if a planet is actually selected in shared state
-    if (!selectedPlanetName) {
-      console.warn(
-        "No planet selected when entering Planet Info, returning to chart."
-      );
-      // Use RAF to ensure state change happens after current render cycle
-      requestAnimationFrame(() => {
-        // Check gameState again inside RAF to prevent race conditions
-        if (gameState === "planet_info") {
-          setGameState("short_range_chart");
-        }
-      });
-      return; // Don't add listeners if returning immediately
+      // Check if a planet is actually selected in shared state
+      if (!selectedPlanetName) {
+        console.warn(
+          "No planet selected when entering Planet Info, returning to chart."
+        );
+        // Use RAF to ensure state change happens after current render cycle
+        requestAnimationFrame(() => {
+          // Check gameState again inside RAF to prevent race conditions
+          if (gameState === "planet_info") {
+            setGameState("short_range_chart");
+          }
+        });
+        return; // Don't add listeners if returning immediately
+      }
+
+      console.log("Entering Planet Info Screen for:", selectedPlanetName);
+
+      // Add keydown listener
+      window.addEventListener("keydown", handleKeyDown);
+
+      // Cleanup function when PlanetInfoScreen unmounts/deactivates
+      return () => {
+        console.log("Deactivating Planet Info Logic Hook");
+        // Remove listener
+        window.removeEventListener("keydown", handleKeyDown);
+      };
     }
-
-    console.log("Entering Planet Info Screen for:", selectedPlanetName);
-
-    // Add keydown listener
-    window.addEventListener("keydown", handleKeyDown);
-
-    // Cleanup function when PlanetInfoScreen unmounts
-    return () => {
-      console.log("Deactivating Planet Info Logic Hook");
-      // Remove listener
-      window.removeEventListener("keydown", handleKeyDown);
-    };
     // Add selectedPlanetName, gameState, setGameState to dependencies
-  }, [gameManager, handleKeyDown, selectedPlanetName, gameState, setGameState]);
+  }, [gameState, handleKeyDown, selectedPlanetName, setGameState]);
 
-  // No update logic needed from GameManager's loop for this scene
+  // No update logic needed
+  // Hook doesn't need to return anything for the component if it reads from usePlanetInfos
 }

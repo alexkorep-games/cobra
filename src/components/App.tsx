@@ -1,13 +1,21 @@
-import React, { useState, useEffect, useRef, Suspense } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import React, { Suspense, useEffect } from "react";
+import { Canvas } from "@react-three/fiber";
 import "./App.css";
-import { GameState, IGameManager, RadarPosition } from "@/types"; // Adjusted imports
-import { GameManager } from "@/game/GameManager";
-import { useGameState } from "@/features/common/useGameState"; // Import global state hook
-import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Import planet state hook
-import { useHudState } from "@/features/common/useHudState"; // Import HUD state hook
-import { PLANET_COUNT, PLANET_SEED, SHIP_SCALE } from "../constants";
-import { generatePlanets } from "@/classes/PlanetInfo";
+import { GameState, RadarPosition, GameAssets } from "@/types"; // Adjusted imports
+import { useGameState } from "@/features/common/useGameState";
+import { useHudState } from "@/features/common/useHudState";
+import {
+  usePlanetInfos,
+  PlanetInfosProvider,
+} from "@/features/common/usePlanetInfos"; // Keep PlanetInfosProvider
+import {
+  generatePlanets,
+  PLANET_SEED,
+  PLANET_COUNT,
+} from "@/classes/PlanetInfo";
+import { useAssetLoader } from "@/hooks/useAssetLoader"; // Import new hook
+import { useAudioManager } from "@/hooks/useAudioManager"; // Import new hook
+import * as Constants from "@/constants"; // Keep constants
 
 // Import Scene Components
 import LoadingScreen from "@/features/loading/LoadingScreen";
@@ -23,33 +31,19 @@ import UndockingScreen from "@/features/undocking/UndockingScreen";
 // Import R3F Entity Components
 import ShipComponent from "@/components/r3f/ShipComponent";
 import UndockingSquares from "@/components/r3f/UndockingSquares";
+import PlanetComponent from "@/components/r3f/PlanetComponent"; // Import if needed globally
+import SpaceStationComponent from "@/components/r3f/SpaceStationComponent"; // Import if needed globally
 
-// Helper component to run GameManager update loop
-const GameLoop: React.FC<{ gameManager: IGameManager | null }> = ({
-  gameManager,
-}) => {
-  const { gameState } = useGameState(); // Get current state for logging/potential logic
-  useFrame((_, delta) => {
-    // Only call GM update if it exists and potentially based on state
-    // if (gameState !== 'loading') { // Example: Don't run update during initial load screen
-    //     gameManager?.update(delta);
-    // }
-    // Let GM handle its own state logic for updates for now
-    gameManager?.update(delta);
-  });
-  return null;
-};
+// Removed GameLoop component
 
-// Helper component to initialize global state (like planets)
-const GlobalStateInitializer: React.FC<{
-  gameManager: IGameManager | null;
-}> = ({ gameManager }) => {
+// Helper component to initialize global planet state
+const GlobalStateInitializer: React.FC = () => {
   const { setPlanetInfos, setCurrentPlanetName } = usePlanetInfos();
+  const { isLoadingComplete } = useAssetLoader(); // Use asset loader state as trigger
 
   useEffect(() => {
-    // Generate planets once GameManager is initialized (or based on some other trigger)
-    if (gameManager) {
-      // Ensure GM exists, though assets might load later
+    // Generate planets once assets are loaded (or based on another trigger)
+    if (isLoadingComplete) {
       console.log("Initializing global planet state...");
       const generatedPlanets = generatePlanets(PLANET_SEED, PLANET_COUNT);
       setPlanetInfos(generatedPlanets);
@@ -60,109 +54,78 @@ const GlobalStateInitializer: React.FC<{
         console.error("No planets generated!");
       }
     }
-  }, [gameManager, setPlanetInfos, setCurrentPlanetName]); // Rerun if GM instance changes
+  }, [isLoadingComplete, setPlanetInfos, setCurrentPlanetName]); // Rerun if loading completes
 
   return null;
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   // --- Global State Hooks ---
-  const { gameState, setGameState } = useGameState();
-  // Use HUD state hook, but we might only need values here for passing down if absolutely necessary
-  // Components should ideally consume the hook directly
-  const { coordinates } = useHudState(); // Example: Get coordinates if needed by CoordinatesDisplay directly here
-
-  // --- Refs ---
-  const gameManagerRef = useRef<IGameManager | null>(null);
-  const introMusicRef = useRef<HTMLAudioElement>(null);
-  const undockSoundRef = useRef<HTMLAudioElement>(null);
-
-  // --- Game Logic Initialization Effect ---
-  useEffect(() => {
-    if (gameManagerRef.current) {
-      console.log("GameManager instance already exists, skipping init.");
-      return;
-    }
-
-    console.log("Initializing GameManager...");
-
-    // Pass only necessary refs/callbacks to GameManager constructor
-    const gameManager = new GameManager(
-      introMusicRef,
-      undockSoundRef
-      // Removed setters object
-    );
-
-    const handleLoadingComplete = () => {
-      console.log("React notified that loading is complete.");
-      // If LoadingScreen uses a hook, this might become internal to the hook
-    };
-
-    gameManager.init(handleLoadingComplete);
-    gameManagerRef.current = gameManager;
-
-    return () => {
-      // Cleanup logic remains the same
-      if (gameManagerRef.current === gameManager) {
-        console.log("Cleaning up active GameManager instance.");
-        gameManagerRef.current?.dispose();
-        gameManagerRef.current = null;
-      } else if (gameManager) {
-        console.log("Cleaning up potentially orphaned GameManager instance.");
-        gameManager.dispose();
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Keep dependency array empty to run only once
-
-  useEffect(() => {
-    // Update GameManager's internal state when global gameState changes
-    if (
-      gameManagerRef.current &&
-      gameManagerRef.current.currentState !== gameState
-    ) {
-      gameManagerRef.current.switchState(gameState);
-    }
-  }, [gameState]); // React to changes in global gameState
+  const { gameState } = useGameState(); // Keep gameState
+  const { assets, isLoadingComplete } = useAssetLoader(); // Use asset loader
+  const { introMusicRef, undockSoundRef } = useAudioManager(); // Use audio manager
+  // HUD state can be used directly by HUD components or passed if needed
+  const {
+    coordinates,
+    speed,
+    roll,
+    pitch,
+    altitude,
+    laserHeat,
+    stationDirection,
+    radarPositions,
+  } = useHudState();
 
   // --- Helper Functions ---
   // Function to render the correct scene UI component based on gameState
   const renderSceneUIComponent = () => {
-    const gm = gameManagerRef.current; // Get current GM instance
-    if (!gm) return null; // Don't render scenes if GM isn't ready
-
+    // Pass necessary props like assets or audio refs if UI components need them
     switch (gameState) {
       case "loading":
-        // LoadingScreen uses its own hook now, doesn't need GM prop
+        // LoadingScreen uses its own hook now
         return <LoadingScreen />;
       case "title":
-        return <TitleScreen gameManager={gm} />; // Pass GM instance
+        // Pass assets if TitleScreen UI needs them (e.g., display ship names)
+        return <TitleScreen />;
       case "credits":
-        return <CreditsScreen gameManager={gm} />; // Pass GM instance
+        return <CreditsScreen />;
       case "stats":
-        return <StatsScreen gameManager={gm} />; // Pass GM instance
+        return <StatsScreen />;
       case "undocking":
-        return <UndockingScreen gameManager={gm} />; // Pass GM instance
+        return <UndockingScreen />;
       case "space_flight":
         // SpaceFlightScreen renders its own HUD via useHudState hook
         return null; // No separate UI overlay needed here
       case "short_range_chart":
-        return <ShortRangeChartScreen gameManager={gm} />; // Pass GM instance
+        // Pass assets if needed
+        return <ShortRangeChartScreen />;
       case "planet_info":
-        return <PlanetInfoScreen gameManager={gm} />; // Pass GM instance
+        // Pass assets if needed
+        return <PlanetInfoScreen />;
       default:
         return null;
     }
   };
 
   // --- Render ---
-  const gm = gameManagerRef.current;
-  const assets = gm?.assets;
+  // Conditional rendering based on loading state
+  if (!isLoadingComplete || !assets) {
+    // Optionally return a minimal loading indicator here,
+    // although LoadingScreen handles the primary loading UI
+    // return <div>Core Loading...</div>;
+    // Render LoadingScreen UI while assets are null/loading
+    return <LoadingScreen />;
+  }
 
   return (
     <div id="container">
       <Canvas
-        camera={{ fov: 75, near: 0.1, far: 10_000_000, position: [0, 0, 15] }}
+        camera={{
+          fov: 75,
+          near: 0.1,
+          far: Constants.CAMERA_FAR_PLANE,
+          position: [0, 0, 15],
+        }} // Use constant
         style={{
           position: "absolute",
           top: 0,
@@ -177,55 +140,84 @@ const App: React.FC = () => {
           <ambientLight intensity={0.7} />
           <directionalLight position={[5, 5, 5]} intensity={0.8} />
 
-          {/* Game Loop Runner */}
-          <GameLoop gameManager={gm} />
-
-          {/* Global State Initializer */}
-          <GlobalStateInitializer gameManager={gm} />
+          {/* Removed GameLoop component */}
+          {/* Global State Initializer (Planets) */}
+          <GlobalStateInitializer />
 
           {/* --- Conditional Rendering of R3F Scene Content --- */}
 
-          {gameState === "space_flight" && gm && (
-            // Remove HUD props, SpaceFlightScreen uses useHudState
-            <SpaceFlightScreen gameManager={gm} />
+          {/* Undocking Animation */}
+          {gameState === "undocking" && <UndockingSquares />}
+
+          {/* Space Flight Scene (includes Planet, Station, Pirates) */}
+          {/* Pass assets directly */}
+          {gameState === "space_flight" && assets && (
+            <SpaceFlightScreen
+              assets={assets}
+              // Pass HUD values needed for R3F logic (if any)
+              // speed={speed} // Example if needed by R3F physics
+            />
           )}
 
+          {/* Title Ships - Render based on assets */}
+          {/* Visibility/Positioning now handled within useTitleLogic/TitleScreen R3F part */}
           {gameState === "title" &&
             assets?.titleShips &&
             assets.titleShips.map((ship, index) => (
               <ShipComponent
                 key={`title-ship-${index}`}
                 modelPath={ship.modelPath}
-                initialScale={SHIP_SCALE}
+                initialScale={Constants.SHIP_SCALE}
                 wireframeColor={0x00ffff}
-                visible={true} // Visibility controlled by hook/GameManager internally now
-                // Position/animation handled by useTitleLogic interacting with GM assets
+                // Visibility and position/animation likely controlled by useTitleLogic state
+                // or a dedicated Title R3F component using useFrame
+                visible={false} // Start hidden, logic hook/component will manage
               />
             ))}
 
-          {gameState === "undocking" && <UndockingSquares visible={true} />}
+          {/* Title Planet - Render based on assets */}
+          {gameState === "title" && assets?.planet && (
+            <PlanetComponent
+              radius={assets.planet.radius}
+              color={assets.planet.color}
+              // Visibility and position controlled by useTitleLogic state
+              // or a dedicated Title R3F component
+              visible={false} // Start hidden
+              position={[200, 0, -500]} // Example initial position from old logic
+              scale={[1, 1, 1]}
+            />
+          )}
 
-          {/* Add other state-specific R3F components here if needed */}
+          {/* Add other global R3F components if needed */}
         </Suspense>
       </Canvas>
 
-      {/* Overlay UI */}
-      <div className="overlay" style={{ zIndex: 1, position: "relative" }}>
-        {renderSceneUIComponent()} {/* Render the UI overlay */}
+      {/* --- UI Overlay --- */}
+      <div id="ui-overlay" style={{ zIndex: 1 }}>
+        {/* Render the current scene's UI component */}
+        {renderSceneUIComponent()}
+
+        {/* Render HUD components conditionally */}
+        {gameState === "space_flight" && <CoordinatesDisplay />}
+        {/* Add other HUD elements here, potentially consuming useHudState */}
+        {/* Example: <SpeedIndicator speed={speed} /> */}
+        {/* Example: <RadarDisplay positions={radarPositions} /> */}
       </div>
 
-      {/* Audio Elements & Coordinates Display */}
-      {/* CoordinatesDisplay now uses useHudState hook */}
-      {gameState === "space_flight" && <CoordinatesDisplay />}
-      <audio ref={introMusicRef} id="introMusic" loop>
-        <source src="assets/elite_intro_music.mp3" type="audio/mpeg" />
-        Your browser does not support the audio element.
-      </audio>
-      <audio ref={undockSoundRef} id="undockSound">
-        <source src="assets/undocking_sound.mp3" type="audio/mpeg" />
-        Your browser does not support the audio element.
-      </audio>
+      {/* Audio elements (hidden) - Refs managed by useAudioManager */}
+      {/* No need to render them explicitly if refs are handled */}
     </div>
+  );
+};
+
+// Wrap AppContent with providers
+const App: React.FC = () => {
+  return (
+    <PlanetInfosProvider>
+      {" "}
+      {/* Keep PlanetInfosProvider */}
+      <AppContent />
+    </PlanetInfosProvider>
   );
 };
 

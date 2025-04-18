@@ -1,26 +1,18 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Coordinates, calculateDistance } from "@/classes/PlanetInfo";
 import BottomHud from "@/components/hud/BottomHud";
-import "@/components/App.css";
 import { useShortRangeChartLogic } from "./useShortRangeChartLogic"; // Import hook
 import { usePlanetInfos } from "../common/usePlanetInfos"; // Import shared state hook
 import { JUMP_RANGE } from "@/constants"; // Import jump range
-import { IGameManager } from "@/types";
-
-interface ShortRangeChartScreenProps {
-  gameManager: IGameManager | null; // Pass GM for hook initialization if needed
-}
 
 // Chart dimensions and scaling
 const CHART_PADDING = 30; // Px padding inside the chart area
 const MAX_COORD = 500; // Match the generation range in PlanetInfo.ts for scaling
 
-const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
-  gameManager,
-}) => {
+const ShortRangeChartScreen: React.FC = () => {
   // Call the hook to manage logic and selection state
   const { reachablePlanets, selectedIndexInReachable, handleKeyDown } =
-    useShortRangeChartLogic(gameManager);
+    useShortRangeChartLogic();
 
   // Get data from shared state hook
   const {

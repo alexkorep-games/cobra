@@ -1,17 +1,15 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import BottomHud from "@/components/hud/BottomHud";
-import { RadarPosition, IGameManager } from "@/types"; // Assuming IGameManager is needed for setters/state switching
-import * as Constants from "@/constants";
 import { useGameState } from "@/features/common/useGameState";
-import { usePlanetInfos } from "../common/usePlanetInfos"; // Import planet state hook
-import { useHudState } from "../common/useHudState"; // Import HUD state hook
+import { useHudState } from "@/features/common/useHudState"; // Import HUD state hook
+import { GameAssets, RadarPosition } from "@/types"; // Use GameAssets
+import * as Constants from "@/constants";
 
 // Import R3F Entity Components (now rendered here)
 import PlanetComponent from "@/components/r3f/PlanetComponent";
 import SpaceStationComponent from "@/components/r3f/SpaceStationComponent";
-import ShipComponent from "@/components/r3f/ShipComponent";
+import ShipComponent from "@/components/r3f/ShipComponent"; // For pirates
 
 // Define radar range constant
 const RADAR_DISTANCE = 10000;
@@ -22,597 +20,390 @@ interface PirateState {
   position: THREE.Vector3;
   quaternion: THREE.Quaternion;
   visible: boolean;
-  modelPath: string; // Assuming model path comes from GameManager assets config
-  health: number; // Add health
+  modelPath: string; // Get model path from assets prop
+  // Add other pirate-specific state if needed (e.g., health, target)
+  velocity?: THREE.Vector3; // Example: for movement
 }
 
 interface SpaceFlightScreenProps {
-  gameManager: IGameManager;
+  assets: GameAssets; // Receive asset configurations
+  // Remove HUD props like speed, roll etc. - use useHudState instead
 }
 
 const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
-  gameManager,
+  assets, // Destructure assets prop
 }) => {
   const { camera } = useThree();
   const { setGameState } = useGameState();
-  const { getCurrentPlanet } = usePlanetInfos(); // Get current planet info
   // Get HUD setters from the hook
   const {
     setCoordinates,
     setSpeed,
     setRoll,
     setPitch,
-    setLaserHeat,
     setAltitude,
+    setLaserHeat,
     setStationDirection,
     setRadarPositions,
-    // Get values needed for BottomHud rendering within this component
   } = useHudState();
 
   // --- Refs ---
   const laserBeamRef = useRef<THREE.LineSegments>(null);
   const keysPressed = useRef<Set<string>>(new Set());
-  const pirateShipRefs = useRef<Record<number, THREE.Group | null>>({}); // Use record for ID mapping
+  const pirateShipRefs = useRef<(THREE.Group | null)[]>([]); // Refs for pirate meshes
 
   // --- State ---
-  // Internal physics state, potentially redundant if GM setters update props correctly
-  const [velocity, setVelocity] = useState(0);
-  const [rollRate, setRollRate] = useState(0);
-  const [pitchRate, setPitchRate] = useState(0);
-  const [isHyperspaceActive, setIsHyperspaceActive] = useState(false);
-  const [currentLaserHeat, setCurrentLaserHeat] = useState(0);
-  const [laserCooldownTimer, setLaserCooldownTimer] = useState(0);
-  const [wantsToFire, setWantsToFire] = useState(false);
-  const [laserBeamHideTimer, setLaserBeamHideTimer] = useState(0);
+  // Player ship physics state
+  const velocity = useRef(new THREE.Vector3()); // Use ref for velocity vector
+  const rollRate = useRef(0);
+  const pitchRate = useRef(0);
 
-  // Object Positions/Rotations (Managed by R3F components or state here)
+  // Pirate states
   const [pirateStates, setPirateStates] = useState<PirateState[]>([]);
-  const [planetPosition, setPlanetPosition] = useState<THREE.Vector3>(
-    new THREE.Vector3(0, 0, -camera.far * 0.8)
-  );
-  const [stationPosition, setStationPosition] = useState<THREE.Vector3>(
-    new THREE.Vector3(1000, 1000, -5000)
-  ); // Example fixed position
 
-  // --- Temporary Objects for Calculations ---
-  const tempQuaternion = useRef(new THREE.Quaternion()).current;
+  // Laser state
+  const currentLaserHeat = useRef(0);
+  const laserCooldownTimer = useRef(0);
+  const wantsToFire = useRef(false);
+  const laserBeamHideTimer = useRef(0);
+  const laserBeamPoints = useRef([
+    new THREE.Vector3(),
+    new THREE.Vector3(0, 0, -Constants.LASER_LENGTH),
+  ]).current;
+  const laserGeometryRef = useRef<THREE.BufferGeometry>(null);
+
+  // Hyperspace state (example)
+  const [isHyperspaceActive, setIsHyperspaceActive] = useState(false);
+
+  // --- Temporary Vectors for Calculations ---
   const tempVector = useRef(new THREE.Vector3()).current;
   const tempVector2 = useRef(new THREE.Vector3()).current;
+  const tempQuaternion = useRef(new THREE.Quaternion()).current;
+  const forwardVector = useRef(new THREE.Vector3(0, 0, -1)).current;
+  const upVector = useRef(new THREE.Vector3(0, 1, 0)).current;
+  const rightVector = useRef(new THREE.Vector3(1, 0, 0)).current;
   const raycaster = useRef(new THREE.Raycaster()).current;
 
-  // --- Asset Configuration (from GameManager) ---
-  const planetAsset = gameManager.assets.planet;
-  const stationAsset = gameManager.assets.spaceStation;
-  const pirateAssetConfigs = gameManager.assets.pirateShips; // Array of { modelPath: string }
+  // --- Asset Configuration (from props) ---
+  const planetAsset = assets.planet;
+  const stationAsset = assets.spaceStation;
+  const pirateAssetConfigs = assets.pirateShips;
 
-  // --- Positioning Logic Helper ---
-  const positionObjectRandomly = useCallback(
-    (
-      baseDistance: number,
-      offsetRange: THREE.Vector2 = new THREE.Vector2(0.8, 1.2),
-      relativeTo: THREE.Vector3 = camera.position // Use camera position directly
-    ): { position: THREE.Vector3; quaternion: THREE.Quaternion } => {
-      const distance =
-        baseDistance *
-        THREE.MathUtils.lerp(offsetRange.x, offsetRange.y, Math.random());
-      const angle = Math.random() * Math.PI * 2;
-      const elevationAngle = (Math.random() - 0.5) * Math.PI;
-      const x =
-        relativeTo.x + distance * Math.sin(angle) * Math.cos(elevationAngle);
-      const y = relativeTo.y + distance * Math.sin(elevationAngle);
-      const z =
-        relativeTo.z - distance * Math.cos(angle) * Math.cos(elevationAngle);
-
-      const position = new THREE.Vector3(x, y, z);
-      const quaternion = new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(
-          Math.random() * Math.PI * 2,
-          Math.random() * Math.PI * 2,
-          Math.random() * Math.PI * 2
-        )
-      );
-      return { position, quaternion };
-    },
-    [camera.position] // Depends on camera position if used as default relativeTo
-  );
-
-  // --- Initialization (Equivalent to SpaceFlightSceneLogic.enter) ---
+  // --- Initialization ---
   useEffect(() => {
     console.log(
       "[SpaceFlightScreen.useEffect.enter] Mounting SpaceFlightScreen"
     );
 
     // Reset player state
-    setVelocity(0);
-    setRollRate(0);
-    setPitchRate(0);
+    velocity.current.set(0, 0, 0);
+    rollRate.current = 0;
+    pitchRate.current = 0;
     keysPressed.current.clear();
-    camera.rotation.set(0, 0, 0);
-    camera.position.set(0, 0, 0); // Player starts at origin
+    camera.position.set(0, 0, 0); // Reset camera position
+    camera.rotation.set(0, 0, 0); // Reset camera rotation
+    camera.quaternion.identity(); // Reset camera quaternion
+
     setIsHyperspaceActive(false);
-    setCurrentLaserHeat(0);
-    setLaserCooldownTimer(0);
-    setWantsToFire(false);
-    setLaserBeamHideTimer(0);
+    currentLaserHeat.current = 0;
+    laserCooldownTimer.current = 0;
+    wantsToFire.current = false;
+    laserBeamHideTimer.current = 0;
 
-    // Position Planet (relative to player start or absolute)
-    // Example: Place it far away based on player start
-    const planetStartPos = new THREE.Vector3(0, 0, -camera.far * 0.8);
-    setPlanetPosition(planetStartPos);
+    // Reset HUD
+    setCoordinates({ x: 0, y: 0, z: 0 });
+    setSpeed(0);
+    setRoll(0);
+    setPitch(0);
+    setAltitude(0); // Implement altitude calculation if needed
+    setLaserHeat(0);
+    setStationDirection(null);
+    setRadarPositions([]);
 
-    // Position Station (relative to planet or absolute)
-    // Example: Offset from planet
-    const stationStartPos = planetStartPos
-      .clone()
-      .add(
-        new THREE.Vector3(
-          Constants.STATION_PLANET_OFFSET_MAX,
-          Constants.STATION_PLANET_OFFSET_MAX,
-          0
-        )
-      );
-    setStationPosition(stationStartPos);
-
-    // Initialize Pirate States
+    // Initialize Pirate States using assets prop
     const initialPirates = pirateAssetConfigs.map((config, index) => {
-      const { position, quaternion } = positionObjectRandomly(
+      const pirate: PirateState = {
+        id: index,
+        position: new THREE.Vector3(),
+        quaternion: new THREE.Quaternion(),
+        visible: true, // Start visible
+        modelPath: config.modelPath, // Use path from assets
+        velocity: new THREE.Vector3(), // Initialize velocity
+      };
+      // Position Pirates randomly around the player's starting position
+      positionObjectRandomly(
+        pirate.position,
+        pirate.quaternion,
         Constants.PIRATE_BASE_DISTANCE,
         Constants.PIRATE_POSITION_OFFSET_RANGE,
-        camera.position // Relative to camera start (0,0,0)
+        camera.position // Relative to camera start (which is 0,0,0 now)
       );
       console.log(
-        `[SpaceFlightScreen.useEffect.enter] Pirate ${index} positioned at ${position
-          .toArray()
-          .map((p) => p.toFixed(0))}. Visible: true`
+        `[SpaceFlightScreen.useEffect.enter] Pirate ${index} positioned. Visible: ${pirate.visible}`
       );
-      return {
-        id: index,
-        position: position,
-        quaternion: quaternion,
-        visible: true, // Start visible
-        modelPath: config.modelPath,
-        health: 5, // Example health
-      };
+      return pirate;
     });
     setPirateStates(initialPirates);
-    pirateShipRefs.current = {}; // Reset refs map
+    pirateShipRefs.current = initialPirates.map(() => null); // Initialize refs array
 
-    // Setup laser beam geometry (will be added/removed dynamically or visibility toggled)
-
-    // --- Input Handlers ---
+    // --- Input Handlers Setup ---
     const handleKeyDown = (event: KeyboardEvent) => {
-      let keyIdentifier = event.code;
-      if (event.key === "/") keyIdentifier = "Slash";
-      else if (event.key === ".") keyIdentifier = "Period";
-      else if (event.key === ",") keyIdentifier = "Comma";
-      else if (event.key === " ") keyIdentifier = "Space";
-      else if (event.key === "j" || event.key === "J") keyIdentifier = "KeyJ";
-      else if (event.key === "n" || event.key === "N") keyIdentifier = "KeyN"; // Chart key
-
-      // Handle J key specifically for hyperspace toggle
-      if (keyIdentifier === "KeyJ") {
-        setIsHyperspaceActive((prev) => {
-          const next = !prev;
-          console.log(`Hyperspace Toggled: ${next}`);
-          if (!next) {
-            // Clamp speed immediately when turning off using HUD setter
-            // Need current speed - get from state or calculate? Assume velocity state is accurate
-            setSpeed(Math.min(velocity, Constants.MAX_SPEED));
-          }
-          return next;
-        });
-        return; // Prevent adding J to keysPressed
+      keysPressed.current.add(event.key.toLowerCase());
+      // Handle single press actions immediately if needed
+      if (event.key.toLowerCase() === "h") {
+        // Example: Hyperspace toggle
+        setIsHyperspaceActive((prev) => !prev);
+        console.log("Hyperspace toggled:", !isHyperspaceActive);
       }
-      // Handle N key for short range chart
-      if (keyIdentifier === "KeyN") {
+      if (event.key.toLowerCase() === "n") {
+        // Navigate key
+        console.log("Switching to Short Range Chart");
         setGameState("short_range_chart");
-        return; // Prevent adding N to keysPressed
       }
-
-      keysPressed.current.add(keyIdentifier);
-      if (keyIdentifier === "Space") setWantsToFire(true); // Update state for firing
+      if (event.key === " ") {
+        // Fire laser (hold)
+        wantsToFire.current = true;
+      }
     };
-
     const handleKeyUp = (event: KeyboardEvent) => {
-      let keyIdentifier = event.code;
-      if (event.key === "/") keyIdentifier = "Slash";
-      else if (event.key === ".") keyIdentifier = "Period";
-      else if (event.key === ",") keyIdentifier = "Comma";
-      else if (event.key === " ") keyIdentifier = "Space";
-      else if (event.key === "j" || event.key === "J")
-        keyIdentifier = "KeyJ"; // Ensure J is removed
-      else if (event.key === "n" || event.key === "N") keyIdentifier = "KeyN"; // Ensure N is removed
-
-      keysPressed.current.delete(keyIdentifier);
-      if (keyIdentifier === "Space") setWantsToFire(false); // Update state for firing
+      keysPressed.current.delete(event.key.toLowerCase());
+      if (event.key === " ") {
+        // Stop firing laser
+        wantsToFire.current = false;
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
-    console.log("[SpaceFlightScreen.useEffect.enter] Key listeners added");
 
-    // --- Cleanup (Equivalent to SpaceFlightSceneLogic.exit) ---
+    // Cleanup
     return () => {
       console.log(
         "[SpaceFlightScreen.useEffect.exit] Unmounting SpaceFlightScreen"
       );
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
-      keysPressed.current.clear();
-      setIsHyperspaceActive(false);
-      setWantsToFire(false);
-
-      // Reset HUD via setters (optional, as App might reset on state change anyway)
-      // Use setters from useHudState
-      setCoordinates([0, 0, 0]);
-      setSpeed(0);
-      setRoll(0);
-      setPitch(0);
-      setLaserHeat(0);
-      setAltitude(0);
-      setStationDirection(null);
-      setRadarPositions([]);
-
-      // Laser beam cleanup is handled by R3F unmounting the component
+      // Reset HUD state? Optional, depends on desired behavior when leaving flight.
+      // setSpeed(0); setRoll(0); etc.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [camera, gameManager, positionObjectRandomly, setGameState]); // Dependencies
+  }, [assets]); // Re-run if assets change (unlikely after initial load)
 
-  // --- Game Loop Logic (Equivalent to SpaceFlightSceneLogic.update) ---
-  useFrame((_, delta) => {
-    // --- Update Timers ---
-    setLaserCooldownTimer((prev) => Math.max(0, prev - delta));
-    setLaserBeamHideTimer((prev) => Math.max(0, prev - delta));
+  // --- Positioning Logic Helper ---
+  const positionObjectRandomly = useCallback(
+    (
+      position: THREE.Vector3, // Target position to modify
+      quaternion: THREE.Quaternion, // Target quaternion to modify
+      baseDistance: number,
+      offsetRange: THREE.Vector2 = new THREE.Vector2(0.8, 1.2),
+      relativeTo: THREE.Vector3 // Use camera position directly
+    ) => {
+      const distance =
+        baseDistance *
+        THREE.MathUtils.lerp(offsetRange.x, offsetRange.y, Math.random());
+      // Random direction (spherical coordinates)
+      const phi = Math.random() * Math.PI * 2; // Azimuthal angle
+      const theta = Math.acos(Math.random() * 2 - 1); // Polar angle (uniform distribution)
 
-    // --- Handle Input ---
-    let accelerate = false,
-      decelerate = false,
-      rollLeft = false,
-      rollRight = false,
-      pitchUp = false, // ArrowDown -> Pitch Nose Up
-      pitchDown = false; // ArrowUp -> Pitch Nose Down
-
-    if (keysPressed.current.has("KeyA")) accelerate = true;
-    if (keysPressed.current.has("KeyZ")) decelerate = true;
-    if (keysPressed.current.has("ArrowLeft")) rollLeft = true;
-    if (keysPressed.current.has("ArrowRight")) rollRight = true;
-    if (keysPressed.current.has("ArrowUp")) pitchDown = true;
-    if (keysPressed.current.has("ArrowDown")) pitchUp = true;
-
-    // --- Laser Cooling ---
-    let nextLaserHeat = currentLaserHeat;
-    if (!wantsToFire && currentLaserHeat > 0) {
-      nextLaserHeat = Math.max(
-        0,
-        currentLaserHeat - Constants.LASER_HEAT_DECREASE_RATE * delta
+      position.set(
+        distance * Math.sin(theta) * Math.cos(phi),
+        distance * Math.sin(theta) * Math.sin(phi),
+        distance * Math.cos(theta)
       );
-    }
+      // Add relative offset
+      position.add(relativeTo);
 
-    // --- Laser Firing ---
-    const laserBeam = laserBeamRef.current;
-    let hitTargetId: number | null = null; // Track hit ID
-    if (
-      wantsToFire &&
-      laserCooldownTimer <= 0 &&
-      nextLaserHeat < Constants.LASER_MAX_HEAT &&
-      laserBeam // Ensure laserBeamRef is populated
+      // Random orientation
+      quaternion.random(); // Set to a random rotation
+    },
+    [] // No dependencies needed
+  );
+
+  // --- Game Loop Logic (useFrame) ---
+  useFrame((state, delta) => {
+    const { camera } = state;
+    delta = Math.min(delta, 0.05); // Clamp delta time to prevent large jumps
+
+    // --- Input Processing & Physics ---
+    let currentRollRate = 0;
+    let currentPitchRate = 0;
+    let thrust = 0;
+
+    // Rotation
+    if (keysPressed.current.has("arrowleft") || keysPressed.current.has("a")) {
+      currentRollRate = Constants.ROLL_SPEED;
+    } else if (
+      keysPressed.current.has("arrowright") ||
+      keysPressed.current.has("d")
     ) {
-      setLaserCooldownTimer(Constants.LASER_COOLDOWN);
-      nextLaserHeat = Math.min(
-        Constants.LASER_MAX_HEAT,
-        nextLaserHeat + Constants.LASER_HEAT_INCREASE
-      );
-
-      // Raycasting
-      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-      // Get currently visible pirate meshes using refs
-      const visiblePirateMeshes = Object.values(pirateShipRefs.current).filter(
-        (ref) => ref?.visible
-      ) as THREE.Object3D[];
-
-      let hitDistance = Constants.LASER_RANGE;
-      if (visiblePirateMeshes.length > 0) {
-        const intersects = raycaster.intersectObjects(
-          visiblePirateMeshes,
-          true
-        ); // Recursive check
-
-        if (intersects.length > 0) {
-          const closestHit = intersects[0];
-          if (closestHit.distance <= Constants.LASER_RANGE) {
-            hitDistance = closestHit.distance;
-
-            // Find which pirate Ship corresponds to the hit mesh
-            let hitMesh = closestHit.object;
-            // Traverse up to find the group with pirateId in userData
-            while (hitMesh.parent && !(hitMesh.userData?.pirateId >= 0)) {
-              hitMesh = hitMesh.parent;
-            }
-            const foundPirateId = hitMesh.userData?.pirateId;
-            if (foundPirateId !== undefined && foundPirateId >= 0) {
-              hitTargetId = foundPirateId; // Store the ID of the hit pirate
-              console.log(
-                `Hit Pirate ID: ${hitTargetId}! Distance: ${hitDistance.toFixed(
-                  0
-                )}`
-              );
-              // Damage will be applied later when updating pirate states
-            } else {
-              console.warn(
-                "Laser hit a mesh, but couldn't find pirateId in userData.",
-                hitMesh
-              );
-            }
-          }
-        }
-      }
-
-      // Visualize Laser Beam
-      const startPoint = camera.position.clone();
-      const direction = tempVector
-        .set(0, 0, -1)
-        .applyQuaternion(camera.quaternion);
-      startPoint.addScaledVector(direction, 5.0); // Offset slightly from camera
-      const endPoint = tempVector2
-        .copy(startPoint)
-        .addScaledVector(direction, hitDistance);
-
-      // Offset for thickness simulation (doesn't really work with LineBasicMaterial)
-      const offset = new THREE.Vector3(0.1, 0.1, 0).applyQuaternion(
-        camera.quaternion
-      );
-      const startPoint2 = startPoint.clone().add(offset);
-      const endPoint2 = endPoint.clone().add(offset);
-
-      const positions = laserBeam.geometry.attributes
-        .position as THREE.BufferAttribute;
-      positions.setXYZ(0, startPoint.x, startPoint.y, startPoint.z);
-      positions.setXYZ(1, endPoint.x, endPoint.y, endPoint.z);
-      positions.setXYZ(2, startPoint2.x, startPoint2.y, startPoint2.z); // Not used by LineSegments
-      positions.setXYZ(3, endPoint2.x, endPoint2.y, endPoint2.z); // Not used by LineSegments
-      positions.needsUpdate = true;
-      laserBeam.geometry.computeBoundingSphere(); // Update bounds
-
-      laserBeam.visible = true;
-      setLaserBeamHideTimer(Constants.LASER_DURATION);
-    } else if (laserBeam && laserBeamHideTimer <= 0 && laserBeam.visible) {
-      laserBeam.visible = false;
+      currentRollRate = -Constants.ROLL_SPEED;
     }
-    // Update laser heat state after calculations
-    setCurrentLaserHeat(nextLaserHeat);
-
-    // --- Update Velocity & Movement ---
-    let currentVelocity = velocity;
-    if (accelerate) currentVelocity += Constants.ACCELERATION * delta;
-    else if (decelerate) currentVelocity -= Constants.ACCELERATION * delta;
-    else {
-      currentVelocity *= 1 - Constants.LINEAR_DAMPING * delta;
-      if (Math.abs(currentVelocity) < 0.01) currentVelocity = 0;
+    if (keysPressed.current.has("arrowup") || keysPressed.current.has("w")) {
+      currentPitchRate = Constants.PITCH_SPEED;
+    } else if (
+      keysPressed.current.has("arrowdown") ||
+      keysPressed.current.has("s")
+    ) {
+      currentPitchRate = -Constants.PITCH_SPEED;
     }
 
-    currentVelocity = isHyperspaceActive
-      ? Constants.HYPERSPACE_SPEED
-      : THREE.MathUtils.clamp(
-          currentVelocity,
-          Constants.MIN_SPEED,
-          Constants.MAX_SPEED
-        );
-    setVelocity(currentVelocity); // Update internal state
-
-    // Update Roll Rate
-    let currentRollRate = rollRate;
-    if (rollLeft) currentRollRate += Constants.ROLL_ACCELERATION * delta;
-    else if (rollRight) currentRollRate -= Constants.ROLL_ACCELERATION * delta;
-    else {
-      currentRollRate *= 1 - Constants.ANGULAR_DAMPING * delta;
-      if (Math.abs(currentRollRate) < 0.01) currentRollRate = 0;
-    }
-    setRollRate(currentRollRate); // Update internal state
-
-    // Update Pitch Rate
-    let currentPitchRate = pitchRate;
-    if (pitchDown) currentPitchRate -= Constants.PITCH_ACCELERATION * delta;
-    else if (pitchUp) currentPitchRate += Constants.PITCH_ACCELERATION * delta;
-    else {
-      currentPitchRate *= 1 - Constants.ANGULAR_DAMPING * delta;
-      if (Math.abs(currentPitchRate) < 0.01) currentPitchRate = 0;
-    }
-    setPitchRate(currentPitchRate); // Update internal state
-
-    // Apply Movement and Rotation to Camera
-    const moveDirection = tempVector
-      .set(0, 0, -1)
-      .applyQuaternion(camera.quaternion);
-    camera.position.addScaledVector(moveDirection, currentVelocity * delta);
-    camera.rotateX(currentPitchRate * delta); // Pitch around camera's X-axis
-    camera.rotateZ(currentRollRate * delta); // Roll around camera's Z-axis
-
-    // --- Check planet collision ---
-    if (planetAsset) {
-      const distanceToPlanet = camera.position.distanceTo(planetPosition);
-      const planetRadius = planetAsset.radius;
-      const collisionBuffer = 50; // Small buffer
-      if (distanceToPlanet < planetRadius + collisionBuffer) {
-        console.log("COLLISION: Hit planet surface!");
-        // TODO: Add explosion effect?
-        setGameState("title"); // Return to title screen on collision
-        return; // Stop further updates this frame
-      }
+    // Thrust
+    if (keysPressed.current.has("shift") || keysPressed.current.has("z")) {
+      // Assuming 'z' or Shift for thrust
+      thrust = Constants.THRUST_POWER;
     }
 
-    // --- Update HUD State ---
-    // Use setters from useHudState
-    setCoordinates([
-      camera.position.x,
-      camera.position.y,
-      camera.position.z,
-    ]);
-    setSpeed(
-      isHyperspaceActive
-        ? Constants.HYPERSPACE_SPEED // Show max/hyperspace speed indicator
-        : (velocity / Constants.MAX_SPEED) * 100 // Percentage of max speed
+    // Apply damping to rotation rates
+    rollRate.current = THREE.MathUtils.lerp(
+      rollRate.current,
+      currentRollRate,
+      delta * Constants.ROTATION_DAMPING
     );
-    // Normalize roll/pitch rates for HUD (-1 to 1 range approx)
-    setRoll(THREE.MathUtils.clamp(camera.rotation.z / Math.PI, -1, 1)); // Z-axis rotation for roll
-    setPitch(THREE.MathUtils.clamp(camera.rotation.x / (Math.PI * 0.5), -1, 1)); // X-axis rotation for pitch
-    setLaserHeat((currentLaserHeat / Constants.LASER_MAX_HEAT) * 100); // Percentage
-    setAltitude(calculateAltitude()); // Use calculated altitude
-    setStationDirection(calculateStationDirection()); // Use calculated direction
+    pitchRate.current = THREE.MathUtils.lerp(
+      pitchRate.current,
+      currentPitchRate,
+      delta * Constants.ROTATION_DAMPING
+    );
 
-    // --- Calculate altitude (distance to planet surface) ---
-    let normalizedAltitude = 0;
-    if (planetAsset) {
-      const distanceToPlanetCenter = camera.position.distanceTo(planetPosition);
-      const altitudeRaw = distanceToPlanetCenter - planetAsset.radius;
-      const MAX_ALTITUDE_DISPLAY = 50000; // Max distance shown on gauge
-      normalizedAltitude = THREE.MathUtils.clamp(
-        (altitudeRaw / MAX_ALTITUDE_DISPLAY) * 100,
+    // Apply rotation to camera quaternion
+    tempQuaternion.setFromAxisAngle(forwardVector, rollRate.current * delta);
+    camera.quaternion.multiplyQuaternions(tempQuaternion, camera.quaternion);
+    tempQuaternion.setFromAxisAngle(rightVector, pitchRate.current * delta);
+    camera.quaternion.multiplyQuaternions(tempQuaternion, camera.quaternion);
+    camera.quaternion.normalize(); // Normalize after multiplication
+
+    // Apply thrust
+    forwardVector.set(0, 0, -1).applyQuaternion(camera.quaternion); // Get current forward direction
+    tempVector.copy(forwardVector).multiplyScalar(thrust * delta);
+    velocity.current.add(tempVector);
+
+    // Apply drag/friction
+    velocity.current.multiplyScalar(1 - Constants.DRAG_COEFFICIENT * delta);
+
+    // Update camera position
+    camera.position.addScaledVector(velocity.current, delta);
+
+    // --- Laser Logic ---
+    laserCooldownTimer.current = Math.max(
+      0,
+      laserCooldownTimer.current - delta
+    );
+    laserBeamHideTimer.current = Math.max(
+      0,
+      laserBeamHideTimer.current - delta
+    );
+
+    let fireLaser = false;
+    if (
+      wantsToFire.current &&
+      currentLaserHeat.current < Constants.MAX_LASER_HEAT &&
+      laserCooldownTimer.current <= 0
+    ) {
+      fireLaser = true;
+      currentLaserHeat.current += Constants.LASER_HEAT_INCREASE * delta;
+      laserCooldownTimer.current = Constants.LASER_COOLDOWN; // Reset cooldown
+      laserBeamHideTimer.current = Constants.LASER_BEAM_DURATION; // Show beam
+    } else {
+      // Cool down laser
+      currentLaserHeat.current = Math.max(
         0,
-        100
+        currentLaserHeat.current - Constants.LASER_COOL_RATE * delta
       );
     }
-    gameManager.reactSetters.setAltitude(normalizedAltitude);
 
-    // --- Station Proximity Check & Direction ---
-    if (stationAsset) {
-      const distanceToStation = camera.position.distanceTo(stationPosition);
-      if (distanceToStation < Constants.STATION_DOCKING_RADIUS) {
-        console.log("Reached space station!");
-        // TODO: Play docking sequence/sound?
-        setGameState("title"); // Return to title for now
-        gameManager.reactSetters.setStationDirection(null);
-      } else {
-        // Calculate relative direction for HUD indicator
-        const worldDirToStation = tempVector
-          .subVectors(stationPosition, camera.position)
-          .normalize();
-        const cameraInverse = tempQuaternion.copy(camera.quaternion).invert();
-        const relativeDir = tempVector2
-          .copy(worldDirToStation)
-          .applyQuaternion(cameraInverse);
-        const isStationInFrontOfCamera = relativeDir.z < 0;
-
-        // Calculate angle off center
-        // Use the actual direction vector, not just the forward vector
-        const angleBetween = new THREE.Vector3(0, 0, -1).angleTo(relativeDir); // Angle from camera forward
-        const halfFOV = THREE.MathUtils.degToRad(camera.fov) / 2;
-        const offCenterAmount = THREE.MathUtils.clamp(
-          angleBetween / halfFOV,
-          0,
-          1
-        );
-
-        const stationDirectionData = {
-          x: relativeDir.x,
-          y: relativeDir.y,
-          offCenterAmount: offCenterAmount,
-          isInFront: isStationInFrontOfCamera,
-        };
-        gameManager.reactSetters.setStationDirection(stationDirectionData);
+    // Update laser beam visibility and position/orientation
+    if (laserBeamRef.current) {
+      laserBeamRef.current.visible = laserBeamHideTimer.current > 0;
+      if (laserBeamRef.current.visible) {
+        // Position beam slightly in front of camera and align with camera forward
+        laserBeamRef.current.position
+          .copy(camera.position)
+          .addScaledVector(forwardVector, 2); // Adjust offset as needed
+        laserBeamRef.current.quaternion.copy(camera.quaternion);
       }
-    } else {
-      gameManager.reactSetters.setStationDirection(null);
     }
 
-    // --- Pirate AI ---
-    const playerPos = camera.position;
+    // --- Pirate Logic (Example: Simple movement) ---
     const updatedPirateStates = pirateStates.map((pirate) => {
-      if (!pirate.visible) return pirate; // Skip inactive
+      // Simple AI: Move towards player slowly
+      tempVector.copy(camera.position).sub(pirate.position).normalize();
+      pirate.velocity?.lerp(
+        tempVector.multiplyScalar(Constants.PIRATE_MAX_SPEED),
+        delta * 0.5
+      ); // Smoothly change velocity towards player
+      if (pirate.velocity) {
+        pirate.position.addScaledVector(pirate.velocity, delta);
+      }
+      // Make pirates look towards player (optional)
+      tempVector2.copy(pirate.position).add(tempVector); // Look target
+      tempQuaternion.setFromRotationMatrix(
+        new THREE.Matrix4().lookAt(pirate.position, camera.position, upVector)
+      );
+      pirate.quaternion.slerp(tempQuaternion, delta * 1.0); // Smoothly rotate
 
-      let { health, position, quaternion, ...rest } = pirate; // Destructure
+      return { ...pirate }; // Return updated state
+    });
+    setPirateStates(updatedPirateStates); // Update state for re-render
 
-      // Apply damage from laser hit this frame
-      if (hitTargetId === pirate.id) {
-        health -= 1; // Decrease health
-        console.log(`Pirate ${pirate.id} health: ${health}`);
-        if (health <= 0) {
-          console.log(`Pirate ${pirate.id} destroyed!`);
-          // TODO: Add explosion effect at pirate.position
-          return { ...pirate, visible: false, health: 0 }; // Mark as destroyed
+    // --- HUD Updates ---
+    const speedValue = velocity.current.length();
+    const rollValue = camera.rotation.z; // Get roll from Euler angles (might need adjustment based on order)
+    const pitchValue = camera.rotation.x; // Get pitch from Euler angles
+
+    setSpeed(speedValue);
+    setRoll(rollValue * (180 / Math.PI)); // Convert to degrees for HUD
+    setPitch(pitchValue * (180 / Math.PI)); // Convert to degrees for HUD
+    setLaserHeat(currentLaserHeat.current / Constants.MAX_LASER_HEAT); // Normalize heat 0-1
+    setCoordinates({
+      x: camera.position.x,
+      y: camera.position.y,
+      z: camera.position.z,
+    });
+    // setAltitude(...) // Calculate altitude based on nearest planet/station if needed
+
+    // --- Radar Calculation ---
+    const radarPositionsData: RadarPosition[] = [];
+    const cameraMatrix = camera.matrixWorldInverse; // Matrix to transform world to camera space
+
+    // Station Radar
+    // TODO: Need station position. Assume fixed or get from state if dynamic.
+    const stationWorldPosition = new THREE.Vector3(1000, 1000, -5000); // Example fixed position
+    tempVector.copy(stationWorldPosition).applyMatrix4(cameraMatrix); // To camera space
+    if (tempVector.length() < RADAR_DISTANCE) {
+      const distance = tempVector.length();
+      tempVector.normalize();
+      radarPositionsData.push({
+        x: tempVector.x,
+        y: tempVector.y,
+        z: tempVector.z,
+      }); // z indicates front/back
+      // Update station direction HUD element
+      setStationDirection({
+        x: tempVector.x,
+        y: tempVector.y,
+        offCenterAmount: Math.sqrt(tempVector.x ** 2 + tempVector.y ** 2),
+        isInFront: tempVector.z < 0,
+      });
+    } else {
+      setStationDirection(null); // Station out of range
+    }
+
+    // Pirate Radar
+    pirateStates.forEach((pirate) => {
+      if (pirate.visible) {
+        tempVector.copy(pirate.position).applyMatrix4(cameraMatrix); // To camera space
+        if (tempVector.length() < RADAR_DISTANCE) {
+          tempVector.normalize();
+          radarPositionsData.push({
+            x: tempVector.x,
+            y: tempVector.y,
+            z: tempVector.z,
+          });
         }
       }
-
-      const distanceToPlayer = playerPos.distanceTo(position);
-      let newPosition = position.clone();
-      let newQuaternion = quaternion.clone();
-
-      if (distanceToPlayer < Constants.PIRATE_ATTACK_RANGE) {
-        // Attack Behavior
-        // 1. Turn towards player
-        const directionToPlayer = tempVector
-          .subVectors(playerPos, newPosition)
-          .normalize();
-        // Calculate target quaternion assuming model's forward is +Z
-        const targetQuaternion = tempQuaternion.setFromUnitVectors(
-          new THREE.Vector3(0, 0, 1),
-          directionToPlayer
-        );
-        // Slerp towards target rotation
-        newQuaternion.rotateTowards(
-          targetQuaternion,
-          Constants.PIRATE_TURN_RATE * delta
-        );
-
-        // 2. Move towards player (based on new orientation)
-        const forward = tempVector2.set(0, 0, 1).applyQuaternion(newQuaternion);
-        newPosition.addScaledVector(forward, Constants.PIRATE_SPEED * delta);
-      } else {
-        // Idle/Patrol Behavior (Optional - e.g., slow drift)
-        const randomDrift = tempVector
-          .set(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5)
-          .normalize();
-        newPosition.addScaledVector(
-          randomDrift,
-          Constants.PIRATE_SPEED * 0.1 * delta
-        ); // Slow drift
-        // Optional slow random rotation
-        const randomRotation = new THREE.Euler(
-          0,
-          (Math.random() - 0.5) * 0.1 * delta,
-          0
-        );
-        newQuaternion.multiply(tempQuaternion.setFromEuler(randomRotation));
-      }
-
-      return {
-        ...rest,
-        health,
-        position: newPosition,
-        quaternion: newQuaternion,
-        visible: true,
-      }; // Return updated state
     });
-    setPirateStates(updatedPirateStates); // Update state triggering re-render of pirates
-
-    // --- Update pirate positions for radar ---
-    const currentRadarPositions: RadarPosition[] = updatedPirateStates
-      .filter((pirate) => pirate.visible) // Only show visible pirates
-      .map((pirate) => {
-        const piratePos = pirate.position;
-        const distance = playerPos.distanceTo(piratePos);
-
-        if (distance > RADAR_DISTANCE) return null; // Outside radar range
-
-        const worldDir = tempVector
-          .subVectors(piratePos, playerPos)
-          .normalize();
-        const cameraInverse = tempQuaternion.copy(camera.quaternion).invert();
-        const relativeDir = tempVector2
-          .copy(worldDir)
-          .applyQuaternion(cameraInverse);
-
-        // Clamp values to -1 to 1 range for HUD display
-        return {
-          x: THREE.MathUtils.clamp(relativeDir.x, -1, 1),
-          y: THREE.MathUtils.clamp(relativeDir.y, -1, 1),
-          z: THREE.MathUtils.clamp(relativeDir.z, -1, 1),
-        };
-      })
-      .filter((p): p is RadarPosition => p !== null); // Filter out null entries
-
-    // Use setter from useHudState
-    setRadarPositions(currentRadarPositions);
-  }); // End useFrame
+    setRadarPositions(radarPositionsData);
+  });
 
   // --- Render ---
   return (
@@ -625,81 +416,55 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
           radius={planetAsset.radius}
           color={planetAsset.color}
           rotationSpeed={0.005}
-          position={planetPosition.toArray()} // Use state for position
-          visible={true}
+          // Position needs to be determined, e.g., far away initially or based on system layout
+          position={[0, 0, -Constants.CAMERA_FAR_PLANE * 0.8]} // Example initial position
+          visible={true} // Always visible in this screen? Or based on distance?
         />
       )}
 
       {/* Space Station */}
+      {/* TODO: Determine station position dynamically or use fixed */}
       {stationAsset && (
         <SpaceStationComponent
           modelPath={stationAsset.modelPath}
           initialScale={Constants.SHIP_SCALE * 1.5}
           wireframeColor={0xffff00}
           rotationSpeed={0.02}
-          position={stationPosition.toArray()} // Use state for position
-          visible={true}
+          position={[1000, 1000, -5000]} // Example fixed position
+          visible={true} // Or based on distance?
         />
       )}
 
-      {/* Pirate Ships */}
-      {pirateStates.map((pirate) => (
+      {/* Pirates */}
+      {pirateStates.map((pirate, index) => (
         <ShipComponent
-          key={`pirate-ship-${pirate.id}`}
-          // Assign ref using the pirate's ID as the key
-          ref={(el: THREE.Group | null) =>
-            (pirateShipRefs.current[pirate.id] = el)
-          }
+          key={pirate.id}
+          ref={(el) => (pirateShipRefs.current[index] = el)} // Assign ref
           modelPath={pirate.modelPath}
           initialScale={Constants.SHIP_SCALE}
           wireframeColor={0xff0000} // Red for pirates
-          position={pirate.position} // Pass Vector3 directly
-          quaternion={pirate.quaternion} // Pass Quaternion directly
-          visible={pirate.visible} // Use state for visibility
-          userData={{ pirateId: pirate.id }} // Add ID for raycasting hit detection
+          visible={pirate.visible}
+          position={pirate.position} // Pass state position
+          quaternion={pirate.quaternion} // Pass state quaternion
         />
       ))}
 
       {/* Laser Beam */}
-      <lineSegments
-        ref={laserBeamRef}
-        frustumCulled={false}
-        renderOrder={999}
-        visible={false}
-      >
-        <bufferGeometry attach="geometry">
-          {/* Use 2 points for a line segment */}
+      <lineSegments ref={laserBeamRef} visible={false}>
+        <bufferGeometry ref={laserGeometryRef} attach="geometry">
           <bufferAttribute
             attach="attributes-position"
-            args={[
-              new Float32Array([0, 0, 0, 0, 0, -1]), // Initial dummy points array (2 points)
-              3, // itemSize
-            ]}
-            count={2} // 2 points
+            count={laserBeamPoints.length}
+            array={
+              new Float32Array(laserBeamPoints.flatMap((p) => p.toArray()))
+            }
+            itemSize={3}
           />
         </bufferGeometry>
-        <lineBasicMaterial
-          attach="material"
-          color={Constants.LASER_COLOR}
-          linewidth={3} // Note: linewidth > 1 might not work reliably
-          transparent={true}
-          opacity={1}
-        />
+        <lineBasicMaterial attach="material" color={0x00ff00} linewidth={2} />
       </lineSegments>
 
-      {/* --- HUD Overlay (Rendered via React DOM, using props from App) --- */}
-      <div className="top-bar">
-        <span id="bounty-text"> BOUNTY: 5.0 Cr </span> {/* Placeholder */}
-        <span id="view-text" style={{ marginLeft: "20px" }}>
-          {" "}
-          Front View{" "}
-        </span>
-      </div>
-
-      <div className="center-text" style={{ visibility: "hidden" }}></div>
-
-      {/* Bottom HUD - Now rendered here, using values from useHudState */}
-      <BottomHud />
+      {/* Add other effects like stars, hyperspace tunnel etc. */}
     </>
   );
 };

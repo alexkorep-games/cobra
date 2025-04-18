@@ -1,125 +1,118 @@
-import { useEffect, useState, useRef, useCallback } from "react";
-import { IGameManager } from "../../types";
-import { PlanetInfo, calculateDistance } from "../../classes/PlanetInfo";
-import { JUMP_RANGE } from "../../constants";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useGameState } from "@/features/common/useGameState";
-import { usePlanetInfos } from "../common/usePlanetInfos"; // Import planet state hook
+import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Use this hook
+import { PlanetInfo, calculateDistance } from "@/classes/PlanetInfo";
+import { JUMP_RANGE } from "@/constants";
 
-export function useShortRangeChartLogic(gameManager: IGameManager | null) {
+export function useShortRangeChartLogic() {
+  const [reachablePlanets, setReachablePlanets] = useState<PlanetInfo[]>([]);
+  const [selectedIndexInReachable, setSelectedIndexInReachable] = useState(0);
+  const isProcessingInput = useRef(false);
+
   const { gameState, setGameState } = useGameState();
+  // Use usePlanetInfos hook to get planet data and selection state
   const {
     planetInfos,
     currentPlanetName,
     selectedPlanetName,
     setSelectedPlanetName,
-    getCurrentPlanet,
   } = usePlanetInfos();
 
-  // State to manage the list of *just* the reachable planets and the current selection index *within that list*
-  const [reachablePlanets, setReachablePlanets] = useState<PlanetInfo[]>([]);
-  const [selectedIndexInReachable, setSelectedIndexInReachable] =
-    useState<number>(0);
-  const isProcessingInput = useRef(false);
-
-  // Update reachable planets and selection index when planets, current planet, or selection changes
+  // Update reachable planets and selection when the hook becomes active or planets/current planet changes
   useEffect(() => {
-    console.log("Recalculating reachable planets for Short Range Chart");
-    const currentPlanet = getCurrentPlanet();
+    if (gameState === "short_range_chart") {
+      console.log("Updating reachable planets for Short Range Chart");
+      const currentPlanet = planetInfos.find(
+        (p) => p.name === currentPlanetName
+      );
 
-    if (!currentPlanet) {
-      console.warn("Current planet not found in useShortRangeChartLogic!");
-      setReachablePlanets([]);
-      return;
+      if (!currentPlanet) {
+        console.error("Current planet not found in PlanetInfos state!");
+        setReachablePlanets([]);
+        setSelectedIndexInReachable(0); // Reset index
+        setSelectedPlanetName(null); // Clear selection
+        return;
+      }
+
+      const nearby = planetInfos
+        .filter((p) => p.name !== currentPlanet.name) // Exclude current
+        .map((p) => ({
+          planet: p,
+          distance: calculateDistance(currentPlanet.coordinates, p.coordinates),
+        }))
+        .filter((pd) => pd.distance <= JUMP_RANGE) // Filter by jump range
+        .sort((a, b) => a.distance - b.distance) // Sort by distance
+        .map((pd) => pd.planet); // Get just the planet objects
+
+      setReachablePlanets(nearby);
+
+      // Try to maintain selection or default to first/none
+      const currentSelectedName = selectedPlanetName; // Use state from usePlanetInfos
+      const foundIndex = nearby.findIndex(
+        (p) => p.name === currentSelectedName
+      );
+
+      if (foundIndex !== -1) {
+        setSelectedIndexInReachable(foundIndex);
+        // No need to set selectedPlanetName here, it's already correct
+      } else if (nearby.length > 0) {
+        // If previous selection is not reachable, select the first reachable one
+        setSelectedIndexInReachable(0);
+        setSelectedPlanetName(nearby[0].name); // Update shared state
+      } else {
+        // No reachable planets
+        setSelectedIndexInReachable(0); // Reset index
+        setSelectedPlanetName(null); // Clear selection in shared state
+      }
+      isProcessingInput.current = false; // Reset input processing flag
     }
-
-    const nearby = planetInfos
-      .filter((p) => p.name !== currentPlanet.name) // Exclude current
-      .map((p) => ({
-        planet: p,
-        distance: calculateDistance(currentPlanet.coordinates, p.coordinates),
-      }))
-      .filter((pd) => pd.distance <= JUMP_RANGE) // Filter by jump range
-      .sort((a, b) => a.distance - b.distance) // Sort by distance
-      .map((pd) => pd.planet); // Get just the planet objects
-
-    setReachablePlanets(nearby);
-
-    // Try to find the currently selected planet within the new reachable list
-    const foundIndex = nearby.findIndex((p) => p.name === selectedPlanetName);
-
-    if (foundIndex !== -1) {
-      setSelectedIndexInReachable(foundIndex);
-    } else if (nearby.length > 0) {
-      // If previous selection is not reachable (or no selection), select the first reachable one
-      setSelectedIndexInReachable(0);
-      setSelectedPlanetName(nearby[0].name); // Update shared state
-    } else {
-      // No reachable planets
-      setSelectedIndexInReachable(0); // Reset index
-      setSelectedPlanetName(null); // Clear selection in shared state
-    }
-    isProcessingInput.current = false; // Reset input processing flag
   }, [
+    gameState,
     planetInfos,
     currentPlanetName,
     selectedPlanetName,
     setSelectedPlanetName,
-    getCurrentPlanet,
-  ]); // Dependencies
+  ]); // Re-calculate when active or relevant planet info changes
 
   // --- Input Handling ---
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
-      // Check if the Short Range Chart is the active state
-      if (
-        gameState === "short_range_chart" &&
-        gameManager &&
-        !isProcessingInput.current
-      ) {
-        if (
-          reachablePlanets.length === 0 &&
-          event.key !== "Escape" &&
-          event.key.toLowerCase() !== "n" // Check lowercase 'n'
-        ) {
-          // Only allow exit keys if no planets are selectable
-          return;
-        }
-
-        console.log(`Short Range Chart KeyDown: ${event.key}`);
+      if (gameState === "short_range_chart" && !isProcessingInput.current) {
         let processed = false;
         let newIndex = selectedIndexInReachable;
 
         switch (event.key) {
           case "ArrowUp":
-          case "ArrowLeft":
-            if (reachablePlanets.length > 0) {
-              newIndex =
-                (selectedIndexInReachable - 1 + reachablePlanets.length) %
-                reachablePlanets.length;
-              processed = true;
-            }
+          case "w":
+          case "W":
+            newIndex = Math.max(0, selectedIndexInReachable - 1);
+            processed = true;
             break;
           case "ArrowDown":
-          case "ArrowRight":
-            if (reachablePlanets.length > 0) {
-              newIndex =
-                (selectedIndexInReachable + 1) % reachablePlanets.length;
-              processed = true;
-            }
+          case "s":
+          case "S":
+            newIndex = Math.min(
+              reachablePlanets.length - 1,
+              selectedIndexInReachable + 1
+            );
+            processed = true;
             break;
           case "Enter":
-            if (reachablePlanets.length > 0 && selectedPlanetName) {
-              // Check if a planet is actually selected
-              console.log(`Confirmed selection: ${selectedPlanetName}`);
-              setGameState("planet_info"); // Switch to planet info screen
-              processed = true;
+          case " ": // Spacebar
+          case "j": // Jump/Select key
+          case "J":
+            if (reachablePlanets.length > 0 && selectedIndexInReachable >= 0) {
+              const selectedPlanet = reachablePlanets[selectedIndexInReachable];
+              if (selectedPlanet) {
+                console.log(`Confirmed selection: ${selectedPlanet.name}`);
+                // Selection is already set in shared state by arrow keys
+                setGameState("planet_info"); // Switch to planet info screen
+                processed = true;
+              }
             }
             break;
           case "Escape":
-            setGameState("space_flight"); // Go back to flight
-            processed = true;
-            break;
-          case "n": // Allow 'n' (case-insensitive) to close the chart too
+          case "n": // Allow 'n' to close the chart too
           case "N":
             setGameState("space_flight"); // Go back to flight
             processed = true;
@@ -132,41 +125,44 @@ export function useShortRangeChartLogic(gameManager: IGameManager | null) {
             isProcessingInput.current = false;
           }, 50); // Short debounce
 
+          // Update local index and shared selected planet name if index changed
           if (
             newIndex !== selectedIndexInReachable &&
             reachablePlanets[newIndex]
           ) {
             setSelectedIndexInReachable(newIndex);
-            setSelectedPlanetName(reachablePlanets[newIndex].name); // Update selection in shared state
-          } else if (
-            event.key === "Escape" ||
-            event.key.toLowerCase() === "n" ||
-            event.key === "Enter"
-          ) {
-            // Don't clear selection if just navigating away
-            if (event.key !== "Enter") {
-              // Optional: Clear selection when exiting via Esc/N? Debatable UX.
-              // setSelectedPlanetName(null);
-            }
+            setSelectedPlanetName(reachablePlanets[newIndex].name); // Update shared state
           }
         }
       }
     },
     [
       gameState,
-      gameManager,
       reachablePlanets,
       selectedIndexInReachable,
-      selectedPlanetName,
       setGameState,
       setSelectedPlanetName,
     ] // Dependencies
   );
 
-  // Return values/functions needed by the component
-  return {
-    reachablePlanets,
-    selectedIndexInReachable,
-    handleKeyDown, // Export handler so component can attach it
-  };
+  // Effect for adding/removing input listener
+  useEffect(() => {
+    if (gameState === "short_range_chart") {
+      console.log("Activating Short Range Chart Logic Hook");
+      // Add listener
+      window.addEventListener("keydown", handleKeyDown);
+
+      // Cleanup function
+      return () => {
+        console.log("Deactivating Short Range Chart Logic Hook");
+        // Remove listener
+        window.removeEventListener("keydown", handleKeyDown);
+        // Optional: Clear selection when leaving? Depends on UX.
+        // setSelectedPlanetName(null);
+      };
+    }
+  }, [gameState, handleKeyDown]); // Rerun if dependencies change
+
+  // Return state needed by the ShortRangeChartScreen component
+  return { reachablePlanets, selectedIndexInReachable };
 }

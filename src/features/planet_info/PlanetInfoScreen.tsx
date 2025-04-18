@@ -1,21 +1,12 @@
 import React from "react";
-import {
-  getTechLevelNumber,
-  calculateDistance,
-} from "../../classes/PlanetInfo";
-import BottomHud from "../../components/hud/BottomHud";
-import "../../components/App.css"; // Import shared styles
-import { usePlanetInfoLogic } from "./usePlanetInfoLogic"; // Import the hook
+import { getTechLevelNumber, calculateDistance } from "@/classes/PlanetInfo";
+import BottomHud from "@/components/hud/BottomHud";
+import { usePlanetInfoLogic } from "@/features/planet_info/usePlanetInfoLogic"; // Import the hook
 import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Import shared state hook
-import { IGameManager } from "@/types";
 
-interface PlanetInfoScreenProps {
-  gameManager: IGameManager | null; // Pass GM for hook initialization if needed
-}
-
-const PlanetInfoScreen: React.FC<PlanetInfoScreenProps> = ({ gameManager }) => {
+const PlanetInfoScreen: React.FC = () => {
   // Call the hook to handle logic and state transitions
-  usePlanetInfoLogic(gameManager);
+  usePlanetInfoLogic();
 
   // Get planet data from the shared state hook
   const { getCurrentPlanet, getSelectedPlanet } = usePlanetInfos();

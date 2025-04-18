@@ -1,240 +1,252 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import * as THREE from "three";
-import { IGameManager } from "@/types"; // Ensure correct path
-import * as Constants from "@/constants"; // Ensure correct path
+import { GameAssets } from "@/types"; // Use GameAssets
+import * as Constants from "@/constants";
 import { useGameState } from "@/features/common/useGameState";
+import { useFrame } from "@react-three/fiber"; // Import useFrame if animation logic stays here
 
-// Define a simpler structure for title ship state managed by GM
-interface TitleShipAsset {
-  modelPath: string;
-  // No direct THREE objects here, R3F handles those
-  // We need temporary state within the hook/GM update logic if needed
-  mesh?: THREE.Object3D; // Optional reference for direct manipulation if absolutely needed
-  visible?: boolean; // Track visibility if needed outside R3F
-  position?: THREE.Vector3;
-  rotation?: THREE.Euler;
+// Define state for title ship visuals (position, rotation, visibility)
+// This state could be managed here and passed to ShipComponent/PlanetComponent instances in App.tsx
+// Or, a dedicated TitleR3F component could consume this hook and use useFrame.
+interface TitleVisualState {
+  ships: {
+    visible: boolean;
+    position: [number, number, number];
+    rotation: [number, number, number];
+  }[];
+  planet: {
+    visible: boolean;
+    position: [number, number, number];
+    scale: [number, number, number];
+  };
 }
 
-export function useTitleLogic(gameManager: IGameManager | null) {
-  // Refs for internal logic, avoiding effect re-runs
+// Pass assets config and audio ref
+export function useTitleLogic(
+  assets: GameAssets | null,
+  introMusicRef: React.RefObject<HTMLAudioElement | null>
+) {
   const shipDisplayTimerRef = useRef(0);
-  const currentIndexRef = useRef(0); // Ref to track index internally
+  const currentIndexRef = useRef(0);
   const isProcessingInput = useRef(false);
-
-  // Get global state and setter
   const { gameState, setGameState } = useGameState();
 
-  // --- Helper Functions (Prepare/Advance Ship) ---
-  // These helpers might become less critical if R3F handles visibility/position via props,
-  // but we might still need to manage the *index* and *timer*.
-  // The GM update function will directly manipulate positions/visibility now.
+  // State to hold calculated visual properties for R3F components
+  // Initialize based on potential number of ships, default to hidden/initial state
+  const [visualState, setVisualState] = useState<TitleVisualState | null>(null);
+
+  // Initialize visual state when assets are available
+  useEffect(() => {
+    if (assets) {
+      setVisualState({
+        ships: assets.titleShips.map(() => ({
+          visible: false,
+          position: [
+            Constants.TARGET_POS.x,
+            Constants.TARGET_POS.y,
+            Constants.START_Z,
+          ],
+          rotation: [0, Math.PI, 0],
+        })),
+        planet: {
+          visible: false,
+          position: [200, 0, -500], // Default position
+          scale: [1, 1, 1],
+        },
+      });
+      currentIndexRef.current = 0; // Reset index when assets load/change
+      shipDisplayTimerRef.current = 0; // Reset timer
+    }
+  }, [assets]);
 
   const advanceTitleShip = useCallback(() => {
-    if (
-      !gameManager ||
-      !gameManager.assets.titleShips ||
-      gameManager.assets.titleShips.length === 0
-    ) {
+    if (!assets || assets.titleShips.length === 0) {
       console.warn("Cannot advance title ship: No ships available.");
       return;
     }
-
     const oldIndex = currentIndexRef.current;
-    let nextIndex = (oldIndex + 1) % gameManager.assets.titleShips.length;
-
-    // Basic advance logic - the update function will handle positioning/visibility
+    let nextIndex = (oldIndex + 1) % assets.titleShips.length;
     console.log(`Advancing title ship index from ${oldIndex} to ${nextIndex}`);
     currentIndexRef.current = nextIndex;
     shipDisplayTimerRef.current = 0; // Reset timer for the new ship
-  }, [gameManager]);
+  }, [assets]);
 
-  // --- Update Logic (Called by GameManager via registration) ---
-  const updateTitleShipAnimation = useCallback(
-    (deltaTime: number) => {
-      // No need to check gameState here, GM only calls registered update
-      if (
-        !gameManager ||
-        !gameManager.assets.titleShips ||
-        gameManager.assets.titleShips.length === 0
-      )
-        return;
+  // --- Animation Logic (using internal update loop) ---
+  // This function calculates the visual state based on time.
+  // It needs to be called every frame when the title screen is active.
+  // We can use a simple interval or requestAnimationFrame loop managed internally,
+  // or rely on App.tsx/TitleScreen R3F component calling this via useFrame.
+  // Let's keep it internal for now using requestAnimationFrame.
+  const animationFrameRef = useRef<number>();
 
-      const shipAssets = gameManager.assets.titleShips; // Asset config { modelPath: string }
-      const currentShipIndex = currentIndexRef.current;
+  const updateAnimation = useCallback(() => {
+    if (gameState !== "title" || !assets || !visualState) {
+      return; // Only run when active and assets/state ready
+    }
 
-      // Update timer
-      shipDisplayTimerRef.current += deltaTime;
-      const timer = shipDisplayTimerRef.current;
+    const deltaTime = 1 / 60; // Approximate delta time if not using useFrame
+    shipDisplayTimerRef.current += deltaTime;
+    const timer = shipDisplayTimerRef.current;
+    const currentShipIndex = currentIndexRef.current;
+    const numShips = assets.titleShips.length;
 
-      // Update ALL ship positions/visibilities based on the *current index* and *timer*
-      shipAssets.forEach((shipAsset, index) => {
-        // Find the corresponding mesh in the scene if needed (less ideal)
-        // Or assume App.tsx's conditional rendering handles visibility mostly
-        // and we just update positions here directly on the GM's stored refs (if we store them)
-        // --> Let's simplify: App.tsx renders *all* potential title ships.
-        // --> This hook's update function tells the GM *which* ship (by index) *should* be visible
-        // --> And calculates its position/rotation. The GM applies this.
-        // --> This requires GM to hold references to the R3F-managed meshes/groups.
+    const newShipsState = visualState.ships.map((shipState, index) => {
+      let targetVisible = false;
+      let targetPosition = new THREE.Vector3(...shipState.position); // Use current position
+      let targetRotationY = shipState.rotation[1]; // Use current rotation
 
-        // Alternative: The hook calculates position/rotation/visibility *state*
-        // and App.tsx reads this state (e.g., from context/atoms) and passes it as props
-        // to the ShipComponent instances. This avoids GM needing direct mesh refs. Let's try this.
+      if (index === currentShipIndex) {
+        // Logic from old updateTitleShipAnimation
+        const startZ = Constants.START_Z * (Constants.SHIP_SCALE > 1 ? 2 : 1);
+        const targetZ = Constants.TARGET_POS.z;
+        const flyInDuration = Constants.FLY_IN_DURATION;
+        const holdDuration = Constants.HOLD_DURATION;
+        const flyOutDuration = Constants.FLY_OUT_DURATION;
+        const totalCycle = flyInDuration + holdDuration + flyOutDuration;
 
-        // Calculate desired state for *this* ship (index)
-        let targetPosition = new THREE.Vector3();
-        let targetRotationY = Math.PI; // Face camera initially
-        let targetVisible = false;
+        let currentZ = startZ; // Default to start
 
-        if (index === currentShipIndex) {
-          targetVisible = true; // This ship should be visible
-          const shipScale = Constants.SHIP_SCALE;
-          const startZ = Constants.START_Z * (shipScale > 1 ? 2 : 1);
-          const targetZ = Constants.TARGET_POS.z;
-          let currentZ = startZ; // Default to start
-
-          if (timer < Constants.FLY_IN_DURATION) {
-            const t = Math.min(1, timer / Constants.FLY_IN_DURATION);
-            currentZ = THREE.MathUtils.lerp(startZ, targetZ, t);
-            targetRotationY += 0.1 * timer; // Simple rotation during fly-in based on total time
-          } else if (
-            timer <
-            Constants.FLY_IN_DURATION + Constants.HOLD_DURATION
-          ) {
-            currentZ = targetZ; // Hold position
-            // More complex rotation during hold
-            targetRotationY +=
-              0.1 * Constants.FLY_IN_DURATION +
-              0.5 * (timer - Constants.FLY_IN_DURATION);
-            // Add X rotation (example)
-            // targetRotationX = 0.25 * (timer - Constants.FLY_IN_DURATION);
-          } else if (timer < Constants.TOTAL_CYCLE_DURATION) {
-            const flyOutTimer =
-              timer - (Constants.FLY_IN_DURATION + Constants.HOLD_DURATION);
-            const t = Math.min(1, flyOutTimer / Constants.FLY_OUT_DURATION);
-            currentZ = THREE.MathUtils.lerp(targetZ, startZ, t);
-            // Add rotation based on total time elapsed in fly-out
-            targetRotationY +=
-              0.1 * Constants.FLY_IN_DURATION +
-              0.5 * Constants.HOLD_DURATION +
-              0.1 * flyOutTimer;
-          } else {
-            // Timer exceeded cycle, should be hidden or reset by advanceTitleShip
-            targetVisible = false;
-            currentZ = startZ; // Ensure it's reset
-          }
-          targetPosition.set(
-            Constants.TARGET_POS.x,
-            Constants.TARGET_POS.y,
-            currentZ
-          );
-          // TODO: Need to store/apply these calculated values (position, rotation, visibility)
-          // How? Maybe update GM's internal representation of asset state?
-          // Let's assume GameManager has a method to update asset state for now.
-          if (gameManager.updateAssetVisualState) {
-            gameManager.updateAssetVisualState("titleShip", index, {
-              position: targetPosition.toArray() as [number, number, number],
-              rotation: [0, targetRotationY, 0], // Example rotation
-              visible: targetVisible,
-            });
-          }
+        if (timer < flyInDuration) {
+          // Fly In
+          targetVisible = true;
+          const t = Math.min(1, timer / flyInDuration);
+          currentZ = THREE.MathUtils.lerp(startZ, targetZ, t);
+          targetRotationY = Math.PI + t * Math.PI * 4; // Spin in
+        } else if (timer < flyInDuration + holdDuration) {
+          // Hold
+          targetVisible = true;
+          currentZ = targetZ;
+          targetRotationY += 0.5 * deltaTime; // Slow rotation
+        } else if (timer < totalCycle) {
+          // Fly Out
+          targetVisible = true;
+          const flyOutTimer = timer - (flyInDuration + holdDuration);
+          const t = Math.min(1, flyOutTimer / flyOutDuration);
+          currentZ = THREE.MathUtils.lerp(targetZ, startZ, t);
+          targetRotationY += 2.0 * deltaTime; // Faster rotation
         } else {
-          // This ship is not the current one, ensure it's hidden
-          if (gameManager.updateAssetVisualState) {
-            gameManager.updateAssetVisualState("titleShip", index, {
-              visible: false,
-            });
-          }
+          // Cycle ended for this ship (advanceTitleShip will handle index/timer reset)
+          targetVisible = false;
+          currentZ = startZ;
         }
-      });
-
-      // Cycle to next ship if timer exceeds duration
-      if (timer >= Constants.TOTAL_CYCLE_DURATION) {
-        advanceTitleShip(); // Handles resetting the timer ref
+        targetPosition.set(
+          Constants.TARGET_POS.x,
+          Constants.TARGET_POS.y,
+          currentZ
+        );
+      } else {
+        // Not the current ship, ensure it's hidden and reset
+        targetVisible = false;
+        targetPosition.set(
+          Constants.TARGET_POS.x,
+          Constants.TARGET_POS.y,
+          Constants.START_Z
+        );
+        targetRotationY = Math.PI;
       }
-    },
-    [gameManager, advanceTitleShip] // Dependencies
-  );
+
+      return {
+        visible: targetVisible,
+        position: targetPosition.toArray() as [number, number, number],
+        rotation: [0, targetRotationY, 0] as [number, number, number],
+      };
+    });
+
+    // Update planet visibility
+    const newPlanetState = {
+      ...visualState.planet,
+      visible: true, // Planet is always visible during title sequence
+    };
+
+    setVisualState({ ships: newShipsState, planet: newPlanetState });
+
+    // Cycle ship if timer exceeds duration
+    if (timer >= Constants.TOTAL_CYCLE_DURATION) {
+      advanceTitleShip();
+    }
+
+    // Request next frame
+    animationFrameRef.current = requestAnimationFrame(updateAnimation);
+  }, [assets, gameState, advanceTitleShip, visualState]);
 
   // --- Input Handling ---
   const handleInput = useCallback(
     (event: KeyboardEvent | MouseEvent) => {
-      // Check if this is the active state
-      if (gameState === "title" && gameManager && !isProcessingInput.current) {
+      if (gameState === "title" && !isProcessingInput.current) {
         if (event.type === "keydown" || event.type === "mousedown") {
-          isProcessingInput.current = true; // Prevent double processing
+          isProcessingInput.current = true;
           console.log("Title input detected, switching to credits...");
-          setGameState("credits"); // Switch to the next state
-          // Reset flag shortly after
+          setGameState("credits");
           setTimeout(() => {
             isProcessingInput.current = false;
           }, 100);
         }
       }
     },
-    [gameState, gameManager, setGameState] // Dependencies
+    [gameState, setGameState] // Dependencies
   );
 
-  // --- Effect for Setup, Cleanup, Registration ---
+  // --- Effect for Setup, Cleanup, Input Listeners, Animation Loop ---
   useEffect(() => {
-    // Only run setup when the hook's component mounts (i.e., gameState is 'title')
-    if (gameManager) {
-      console.log("[useTitleLogic] Effect setup running.");
-      isProcessingInput.current = false; // Reset input processing flag
-      currentIndexRef.current = 0; // Reset internal index ref
-      shipDisplayTimerRef.current = 0; // Reset timer ref
-
-      // Initial setup of ship visibility/position is handled by first run of update function
-      // Ensure planet is setup (might need direct GM method or state update)
-      // Example: using hypothetical GM method
-      if (gameManager.updateAssetVisualState) {
-        gameManager.updateAssetVisualState("planet", 0, {
-          // Assuming planet has index 0 or similar ID
-          visible: true,
-          position: [200, 0, -500],
-          scale: [1, 1, 1],
-        });
-      }
+    if (gameState === "title") {
+      console.log("[useTitleLogic] Activating.");
+      isProcessingInput.current = false;
+      currentIndexRef.current = 0; // Reset index
+      shipDisplayTimerRef.current = 0; // Reset timer
 
       // Play intro music
-      gameManager.introMusicRef.current
+      introMusicRef.current
         ?.play()
         .catch((e) => console.warn("Intro music play failed:", e));
-
-      // Register the update function
-      gameManager.registerSceneUpdate("title", updateTitleShipAnimation);
 
       // Add input listeners
       window.addEventListener("keydown", handleInput);
       window.addEventListener("mousedown", handleInput);
 
-      // Cleanup function when TitleScreen unmounts
-      return () => {
-        console.log("[useTitleLogic] Effect cleanup running.");
-        // Unregister the update function
-        gameManager.unregisterSceneUpdate("title");
+      // Start animation loop
+      animationFrameRef.current = requestAnimationFrame(updateAnimation);
 
+      // Cleanup function
+      return () => {
+        console.log("[useTitleLogic] Deactivating.");
         // Remove input listeners
         window.removeEventListener("keydown", handleInput);
         window.removeEventListener("mousedown", handleInput);
 
-        // Hide the currently displayed ship and planet via GM method
-        const shipToHideIndex = currentIndexRef.current;
-        if (gameManager.updateAssetVisualState) {
-          gameManager.updateAssetVisualState("titleShip", shipToHideIndex, {
-            visible: false,
-          });
-          gameManager.updateAssetVisualState("planet", 0, { visible: false });
+        // Stop music and reset time
+        introMusicRef.current?.pause();
+        if (introMusicRef.current) {
+          introMusicRef.current.currentTime = 0;
         }
 
-        // Stop music and reset time
-        gameManager.introMusicRef.current?.pause();
-        if (gameManager.introMusicRef.current) {
-          gameManager.introMusicRef.current.currentTime = 0;
+        // Cancel animation frame
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+
+        // Reset visual state to hidden when leaving title screen
+        if (assets) {
+          setVisualState({
+            ships: assets.titleShips.map(() => ({
+              visible: false,
+              position: [
+                Constants.TARGET_POS.x,
+                Constants.TARGET_POS.y,
+                Constants.START_Z,
+              ],
+              rotation: [0, Math.PI, 0],
+            })),
+            planet: {
+              visible: false,
+              position: [200, 0, -500],
+              scale: [1, 1, 1],
+            },
+          });
         }
       };
     }
-    // Dependencies for setup/cleanup effect
-  }, [gameManager, updateTitleShipAnimation, handleInput]);
+  }, [gameState, assets, introMusicRef, handleInput, updateAnimation]); // Dependencies
 
-  // Hook doesn't need to return anything for the component itself
+  // Return the calculated visual state for R3F components to use
+  return { visualState };
 }

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import * as Constants from "@/constants";
+import { PlanetInfo } from "@/classes/PlanetInfo"; // Keep if used by usePlanetInfos
 
 // Define possible game states as a string union type
 export type GameState =
@@ -12,23 +13,27 @@ export type GameState =
   | "short_range_chart"
   | "planet_info";
 
+// Interface describing the structure of loaded game assets (configuration)
+// Remains largely the same
 export interface GameAssets {
-  titleShips: Array<{ modelPath: string }>; // Just model path
+  titleShips: Array<{
+    modelPath: string;
+    position?: [number, number, number]; // Optional initial config
+    rotation?: [number, number, number]; // Optional initial config
+  }>;
   planet: {
     radius: number;
     color: THREE.ColorRepresentation;
-    // Add initial position/rotation config if needed by components
-    // initialPosition?: [number, number, number];
   } | null;
-  undockingSquares: any[]; // Config may be empty if fully managed by component
+  undockingSquares: any[]; // Config might be empty or define parameters
   spaceStation: {
     modelPath: string;
-    // Add initial position/rotation config if needed
-    // initialPosition?: [number, number, number];
+    position?: [number, number, number]; // Optional initial config
+    rotation?: [number, number, number]; // Optional initial config
   } | null;
   pirateShips: Array<{
     modelPath: string;
-    // Add initial config if needed (e.g., base health)
+    // Add other config if needed (e.g., initial behavior patterns)
   }>;
 }
 
@@ -38,39 +43,3 @@ export type RadarPosition = {
   y: number; // -1 (below) to +1 (above) relative direction
   z: number; // -1 (front) to +1 (behind) relative direction
 };
-
-// Interface defining the methods and properties the scene logic (hooks or classes)
-// expects the GameManager instance to provide. Simplified.
-export interface IGameManager {
-  assets: GameAssets; // Holds configuration, not live objects
-  currentState: GameState;
-  constants: typeof Constants;
-  loadingCompleteCallback: (() => void) | null; // Callback for loading complete signal
-
-  // Lifecycle methods
-  init: (loadingCallback: () => void) => Promise<void>;
-  update: (deltaTime: number) => void;
-  dispose: () => void;
-
-  // State Management (triggered by React based on global state)
-  switchState: (newState: GameState) => void;
-
-  // React Integration (Audio Refs only)
-  introMusicRef: React.RefObject<HTMLAudioElement | null>;
-  undockSoundRef: React.RefObject<HTMLAudioElement | null>;
-
-  // Hook Integration (Registering update loops)
-  registerSceneUpdate: (
-    state: GameState,
-    updateFn: (deltaTime: number) => void
-  ) => void;
-  unregisterSceneUpdate: (state: GameState) => void;
-
-  // Optional: Methods for hooks to update/get internal visual state cache (less preferred)
-  updateAssetVisualState?: (
-    assetType: string,
-    index: number,
-    state: any
-  ) => void;
-  getAssetVisualState?: (assetType: string, index: number) => any | undefined;
-}
