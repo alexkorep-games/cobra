@@ -1,88 +1,109 @@
-import React, { useRef, useEffect, useMemo } from 'react';
-import * as THREE from 'three';
-import { useGLTF } from '@react-three/drei'; // Import useGLTF
+import React, { useRef, useEffect, useMemo } from "react";
+import * as THREE from "three";
+import { useGLTF } from "@react-three/drei"; // Import useGLTF
 
 interface ShipComponentProps {
   modelPath: string;
   initialScale?: number;
   wireframeColor?: THREE.ColorRepresentation;
-  position?: [number, number, number];
-  rotation?: [number, number, number]; // Use Euler array [x, y, z]
+  position?: [number, number, number] | THREE.Vector3; // Allow Vector3
+  rotation?: [number, number, number] | THREE.Euler; // Allow Euler
+  quaternion?: THREE.Quaternion; // Allow Quaternion
   visible?: boolean;
+  userData?: { [key: string]: any }; // Allow userData for things like IDs
   // Add any other props needed for ship behavior, e.g., animation state
 }
 
-const ShipComponent: React.FC<ShipComponentProps> = ({
-  modelPath,
-  initialScale = 1,
-  wireframeColor = 0xffff00,
-  position = [0, 0, 0],
-  rotation = [0, 0, 0],
-  visible = true,
-}) => {
-  // Load the GLTF model
-  // useGLTF.preload(modelPath); // Optional: Preload if needed elsewhere
-  const { scene } = useGLTF(modelPath); // scene is the THREE.Group containing the model
+const ShipComponent = React.forwardRef<THREE.Group, ShipComponentProps>(
+  (
+    {
+      modelPath,
+      initialScale = 1,
+      wireframeColor = 0xffff00,
+      position = [0, 0, 0],
+      rotation, // Optional Euler array [x, y, z]
+      quaternion, // Optional Quaternion
+      visible = true,
+      userData,
+    },
+    forwardedRef
+  ) => {
+    // Load the GLTF model
+    const { scene } = useGLTF(modelPath); // scene is the THREE.Group containing the model
 
-  // Memoize the wireframe material
-  const wireframeMaterial = useMemo(() => new THREE.MeshBasicMaterial({
-    color: wireframeColor,
-    wireframe: true,
-  }), [wireframeColor]);
+    // Memoize the wireframe material
+    const wireframeMaterial = useMemo(
+      () =>
+        new THREE.MeshBasicMaterial({
+          color: wireframeColor,
+          wireframe: true,
+        }),
+      [wireframeColor]
+    );
 
-  // Apply scale and wireframe material once the scene is loaded/changed
-  useEffect(() => {
-    if (scene) {
-      scene.scale.set(initialScale, initialScale, initialScale);
-      scene.traverse((child) => {
-        if ((child as THREE.Mesh).isMesh) {
-          const mesh = child as THREE.Mesh;
-          // Dispose of original materials if necessary (useGLTF might handle some cases)
-          if (mesh.material) {
-             if (Array.isArray(mesh.material)) {
-                 mesh.material.forEach(m => m.dispose());
-             } else {
-                 mesh.material.dispose();
-             }
+    // Apply scale and wireframe material once the scene is loaded/changed
+    useEffect(() => {
+      if (scene) {
+        scene.scale.set(initialScale, initialScale, initialScale);
+        scene.traverse((child) => {
+          if ((child as THREE.Mesh).isMesh) {
+            const mesh = child as THREE.Mesh;
+            // Dispose of original materials if necessary (useGLTF might handle some cases)
+            if (mesh.material) {
+              if (Array.isArray(mesh.material)) {
+                mesh.material.forEach((m) => m.dispose());
+              } else {
+                mesh.material.dispose();
+              }
+            }
+            // Apply the memoized wireframe material
+            mesh.material = wireframeMaterial;
+            mesh.material.needsUpdate = true; // Ensure material update
           }
-          // Apply the memoized wireframe material
-          mesh.material = wireframeMaterial;
-          mesh.material.needsUpdate = true; // Ensure material update
+        });
+        if (userData) {
+          Object.assign(scene.userData, userData);
         }
-      });
-    }
-    // Cleanup function for the material when component unmounts or deps change
-    return () => {
+      }
+      // Cleanup function for the material when component unmounts or deps change
+      return () => {
         wireframeMaterial.dispose();
+      };
+    }, [scene, initialScale, wireframeMaterial, userData]); // Re-run if scene, scale, material, or userData changes
+
+    // Use a default ref if none is forwarded
+    const internalRef = useRef<THREE.Group>(null!);
+    const groupRef = forwardedRef || internalRef;
+
+    // Prepare props for primitive, handling different position/rotation types
+    const primitiveProps: any = {
+      ref: groupRef,
+      object: scene,
+      visible: visible,
     };
-  }, [scene, initialScale, wireframeMaterial]); // Re-run if scene, scale, or material changes
 
-  // Optional: useFrame for custom animations or logic specific to this component instance
-  // useFrame((state, delta) => {
-  //   // Example: Rotate the ship
-  //   if (groupRef.current) {
-  //     groupRef.current.rotation.y += 0.5 * delta;
-  //   }
-  // });
+    if (position instanceof THREE.Vector3) {
+      primitiveProps.position = position;
+    } else {
+      primitiveProps.position = position; // Assume array [x,y,z]
+    }
 
-  // Use a ref for the group if direct manipulation is needed (e.g., in useFrame)
-  const groupRef = useRef<THREE.Group>(null!); // Ref is now typed as THREE.Group
+    if (quaternion instanceof THREE.Quaternion) {
+      primitiveProps.quaternion = quaternion;
+    } else if (rotation instanceof THREE.Euler) {
+      primitiveProps.rotation = rotation;
+    } else if (Array.isArray(rotation)) {
+      primitiveProps.rotation = rotation; // Assume Euler array [x,y,z]
+    }
 
-  // Render the loaded scene using primitive
-  // Pass position, rotation, visible props directly
-  return (
-    <primitive
-      ref={groupRef} // Assign ref if needed
-      object={scene} // Use the loaded scene directly
-      position={position}
-      rotation={rotation} // R3F handles Euler array conversion
-      visible={visible}
-      // name can be set here if needed, e.g., name={modelPath.split('/').pop()?.split('.')[0]}
-    />
-  );
-};
+    // Render the loaded scene using primitive
+    return <primitive {...primitiveProps} />;
+  }
+);
+
+ShipComponent.displayName = "ShipComponent"; // Add display name for React DevTools
 
 // Optional: Export useGLTF.preload if you want to preload assets globally
-// export { useGLTF };
+export { useGLTF };
 
 export default ShipComponent;

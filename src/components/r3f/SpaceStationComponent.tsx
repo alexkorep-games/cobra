@@ -2,17 +2,14 @@ import React, { useRef, useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF } from '@react-three/drei'; // Import useGLTF
-// Remove import of the old entity class
-// import { SpaceStation } from '../../game/entities/SpaceStation';
 
 interface SpaceStationComponentProps {
-  // Replace entity instance with necessary props
   modelPath: string;
   initialScale?: number;
   wireframeColor?: THREE.ColorRepresentation;
   rotationSpeed?: number;
-  position?: [number, number, number];
-  rotation?: [number, number, number]; // Use Euler array [x, y, z]
+  position?: THREE.Vector3;
+  rotation?: THREE.Euler;
   visible?: boolean;
 }
 
@@ -69,17 +66,28 @@ const SpaceStationComponent: React.FC<SpaceStationComponentProps> = ({
     }
   });
 
+   // Prepare props for primitive, handling different position/rotation types
+   const primitiveProps: any = {
+     ref: groupRef,
+     object: scene,
+     visible: visible,
+     name: "SpaceStation"
+   };
+
+   if (position instanceof THREE.Vector3) {
+     primitiveProps.position = position;
+   } else {
+     primitiveProps.position = position; // Assume array [x,y,z]
+   }
+
+   if (rotation instanceof THREE.Euler) {
+     primitiveProps.rotation = rotation;
+   } else if (Array.isArray(rotation)) {
+     primitiveProps.rotation = rotation; // Assume Euler array [x,y,z]
+   }
+
   // Render the loaded scene using primitive
-  return (
-    <primitive
-      ref={groupRef}
-      object={scene}
-      position={position}
-      rotation={rotation} // R3F handles Euler array conversion
-      visible={visible}
-      name="SpaceStation" // Set name directly
-    />
-  );
+  return <primitive {...primitiveProps} />;
 };
 
 export default SpaceStationComponent;

@@ -1,4 +1,3 @@
-// src/constants.ts
 import * as THREE from "three";
 
 export const SHIP_DISPLAY_DURATION = 10.0; // Seconds

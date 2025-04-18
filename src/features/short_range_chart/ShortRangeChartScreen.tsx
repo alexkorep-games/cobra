@@ -1,15 +1,14 @@
-// src/features/short_range_chart/ShortRangeChartScreen.tsx
 import React, { useRef, useEffect, useState } from "react";
-import { PlanetInfo, Coordinates, calculateDistance } from "@/classes/PlanetInfo";
+import { Coordinates, calculateDistance } from "@/classes/PlanetInfo";
 import BottomHud from "@/components/hud/BottomHud";
 import "@/components/App.css";
+import { useShortRangeChartLogic } from "./useShortRangeChartLogic"; // Import hook
+import { usePlanetInfos } from "../common/usePlanetInfos"; // Import shared state hook
+import { JUMP_RANGE } from "@/constants"; // Import jump range
+import { IGameManager } from "@/types";
 
 interface ShortRangeChartScreenProps {
-  planets: PlanetInfo[];
-  currentPlanetIndex: string; // Changed to index (which is planet name in this case)
-  selectedPlanetName: string | null;
-  jumpRange: number;
-  setSelectedPlanetName: (name: string | null) => void; // Callback to update GameManager
+  gameManager: IGameManager | null; // Pass GM for hook initialization if needed
 }
 
 // Chart dimensions and scaling
@@ -17,17 +16,25 @@ const CHART_PADDING = 30; // Px padding inside the chart area
 const MAX_COORD = 500; // Match the generation range in PlanetInfo.ts for scaling
 
 const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
-  planets,
-  currentPlanetIndex, // This is the name of the current planet
-  selectedPlanetName,
-  jumpRange,
-  setSelectedPlanetName,
+  gameManager,
 }) => {
+  // Call the hook to manage logic and selection state
+  const { reachablePlanets, selectedIndexInReachable, handleKeyDown } =
+    useShortRangeChartLogic(gameManager);
+
+  // Get data from shared state hook
+  const {
+    planetInfos,
+    currentPlanetName,
+    selectedPlanetName,
+    setSelectedPlanetName,
+    getCurrentPlanet,
+  } = usePlanetInfos();
+
   const chartAreaRef = useRef<HTMLDivElement>(null);
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
 
-  const currentPlanetName = currentPlanetIndex; // Alias for clarity
-  const currentPlanet = planets.find((p) => p.name === currentPlanetName);
+  const currentPlanet = getCurrentPlanet();
 
   useEffect(() => {
     const updateSize = () => {
@@ -43,20 +50,29 @@ const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
     return () => window.removeEventListener("resize", updateSize);
   }, []);
 
+  // Add keydown listener managed by the hook
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [handleKeyDown]);
+
   if (!currentPlanet) {
-    return <div>Error: Current planet '{currentPlanetName}' not found.</div>;
+    return (
+      <div>
+        Error: Current planet '{currentPlanetName}' not found or loading...
+      </div>
+    );
   }
 
   // Calculate scaling factors
   const availableWidth = chartSize.width - CHART_PADDING * 2;
   const availableHeight = chartSize.height - CHART_PADDING * 2;
-  // Calculate scale based on the MAX_COORD range (-MAX_COORD to +MAX_COORD => diameter is MAX_COORD*2)
   const scaleX = availableWidth / (MAX_COORD * 2);
   const scaleY = availableHeight / (MAX_COORD * 2);
-  const scale = Math.min(scaleX, scaleY); // Use uniform scaling
-
-  // Calculate circle size based on jump range (which is radius) and scale
-  const circleDiameter = jumpRange * 2 * scale;
+  const scale = Math.min(scaleX, scaleY);
+  const circleDiameter = JUMP_RANGE * 2 * scale;
 
   // Function to convert planet coordinates to chart position (percentage)
   const getChartPosition = (
@@ -64,15 +80,10 @@ const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
   ): { left: string; top: string } => {
     const chartCenterX = chartSize.width / 2;
     const chartCenterY = chartSize.height / 2;
-
-    // Position relative to the *current* planet at the center
     const dx = planetCoords.x - currentPlanet.coordinates.x;
     const dy = planetCoords.y - currentPlanet.coordinates.y;
-
     const posX = chartCenterX + dx * scale;
-    const posY = chartCenterY - dy * scale; // Y is inverted in screen coordinates
-
-    // Clamp to prevent markers going slightly outside due to size/centering
+    const posY = chartCenterY - dy * scale;
     const clampedX = Math.max(
       CHART_PADDING / 2,
       Math.min(chartSize.width - CHART_PADDING / 2, posX)
@@ -81,27 +92,27 @@ const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
       CHART_PADDING / 2,
       Math.min(chartSize.height - CHART_PADDING / 2, posY)
     );
-
-    // Return percentage values
     return {
       left: `${(clampedX / chartSize.width) * 100}%`,
       top: `${(clampedY / chartSize.height) * 100}%`,
     };
   };
 
-  const sortedPlanets = [...planets] // Create a copy
-    .filter((p) => p.name !== currentPlanet.name) // Exclude current
+  // Get all planets excluding current, calculate distance, sort
+  const sortedPlanets = planetInfos
+    .filter((p) => p.name !== currentPlanet.name)
     .map((p) => ({
       planet: p,
       distance: calculateDistance(currentPlanet.coordinates, p.coordinates),
     }))
-    .sort((a, b) => a.distance - b.distance); // Sort by distance
+    .sort((a, b) => a.distance - b.distance);
 
-  const reachablePlanets = sortedPlanets.filter(
-    (pd) => pd.distance <= jumpRange
+  // Separate into reachable and unreachable based on distance
+  const displayReachablePlanets = sortedPlanets.filter(
+    (pd) => pd.distance <= JUMP_RANGE
   );
-  const unreachablePlanets = sortedPlanets.filter(
-    (pd) => pd.distance > jumpRange
+  const displayUnreachablePlanets = sortedPlanets.filter(
+    (pd) => pd.distance > JUMP_RANGE
   );
 
   return (
@@ -109,7 +120,7 @@ const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
       <div className="short-range-chart-container">
         <div className="chart-title">SHORT RANGE CHART</div>
         <div className="chart-area" ref={chartAreaRef}>
-          {chartSize.width > 0 && currentPlanet && ( // Ensure currentPlanet is valid
+          {chartSize.width > 0 && currentPlanet && (
             <>
               {/* Jump Range Circle */}
               <div
@@ -124,30 +135,23 @@ const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
               <div className="chart-crosshair"></div>
               <div
                 className="planet-marker current-location"
-                style={{ left: "50%", top: "50%" }} // Always center current location
+                style={{ left: "50%", top: "50%" }}
               >
-                {/* Label for current planet */}
                 <span
                   className="planet-label"
-                  style={{ marginLeft: "15px", color: "#00ff00" }} // Green label, offset from center
+                  style={{ marginLeft: "15px", color: "#00ff00" }}
                 >
                   {currentPlanet.name}
                 </span>
               </div>
 
-              {/* Planet Markers - Render Reachable first, then Unreachable */}
-              {reachablePlanets.concat(unreachablePlanets).map(({ planet, distance }) => {
-                  const isInRange = distance <= jumpRange;
-                  const isSelected = planet.name === selectedPlanetName;
+              {/* Planet Markers */}
+              {displayReachablePlanets
+                .concat(displayUnreachablePlanets)
+                .map(({ planet, distance }) => {
+                  const isInRange = distance <= JUMP_RANGE;
+                  const isSelected = planet.name === selectedPlanetName; // Check against shared state
                   const pos = getChartPosition(planet.coordinates);
-
-                  // Optional: Skip rendering planets visually too far outside the chart area
-                  // This requires checking if pos.left/top are way outside 0-100%
-                  // const leftNum = parseFloat(pos.left);
-                  // const topNum = parseFloat(pos.top);
-                  // if (leftNum < -10 || leftNum > 110 || topNum < -10 || topNum > 110) {
-                  //     return null; // Skip rendering far-off planets
-                  // }
 
                   return (
                     <div
@@ -157,12 +161,12 @@ const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
                       } ${isSelected ? "selected" : ""}`}
                       style={{ left: pos.left, top: pos.top }}
                       onClick={() => {
+                        // Only allow clicking reachable planets
                         if (isInRange) {
-                          setSelectedPlanetName(planet.name);
+                          setSelectedPlanetName(planet.name); // Update shared state
                           // Optional: Immediately switch to planet info on click?
-                          // gameManagerRef.current?.switchState("planet_info");
+                          // handleKeyDown({ key: 'Enter' } as KeyboardEvent); // Simulate Enter press
                         } else {
-                          // Optionally provide feedback for clicking out-of-range planets
                           console.log(`${planet.name} is out of range.`);
                         }
                       }}
@@ -178,10 +182,10 @@ const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
         <div className="chart-info-bar">
           <span>Current System: {currentPlanet.name}</span>
           <span>Target: {selectedPlanetName ?? "NONE"}</span>
-          <span>Fuel: {jumpRange.toFixed(1)} LY</span>
+          <span>Fuel: {JUMP_RANGE.toFixed(1)} LY</span>
         </div>
       </div>
-      <BottomHud /> {/* Render base HUD */}
+      <BottomHud />
     </>
   );
 };

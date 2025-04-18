@@ -1,3 +1,4 @@
+/* src/components/hud/BottomHud.tsx */
 // src/components/hud/BottomHud.tsx
 import React, { useEffect } from "react"; // Import useEffect
 import "../App.css"; // Assuming App.css contains the HUD styles
@@ -29,12 +30,6 @@ const BottomHud: React.FC<BottomHudProps> = ({
   laserHeat = 0, // Default laser heat
   radarPosition = [],
 }) => {
-
-  // Log received props on change
-  useEffect(() => {
-    console.log("[BottomHud] Props received:", { stationDirection, radarPosition });
-  }, [stationDirection, radarPosition]);
-
   // Calculate marker positions (0% to 100%) based on -1 to 1 range
   // Roll: -1 (left) -> 0%, 0 (center) -> 50%, 1 (right) -> 100%
   const rollMarkerPosition = 50 + roll * 50;
@@ -118,13 +113,18 @@ const BottomHud: React.FC<BottomHudProps> = ({
         <div className="hud-item">
           <span className="hud-label">LASER TEMP</span>
           <div className="hud-bar">
-             {/* Change fill color dynamically based on heat */}
+            {/* Change fill color dynamically based on heat */}
             <div
               id="laser-temp-fill"
-              className={`hud-bar-fill ${laserHeat >= Constants.LASER_MAX_HEAT * 0.9 ? 'red' : ''}`} // Red if near max heat
+              className={`hud-bar-fill ${
+                laserHeat >= Constants.LASER_MAX_HEAT * 0.9 ? "red" : ""
+              }`} // Red if near max heat
               style={{
                 width: `${Math.max(0, Math.min(100, laserHeat))}%`,
-                backgroundColor: laserHeat >= Constants.LASER_MAX_HEAT * 0.9 ? '#ff0000' : '#00ff00' // Dynamic color
+                backgroundColor:
+                  laserHeat >= Constants.LASER_MAX_HEAT * 0.9
+                    ? "#ff0000"
+                    : "#00ff00", // Dynamic color
               }}
             ></div>
           </div>
@@ -143,7 +143,8 @@ const BottomHud: React.FC<BottomHudProps> = ({
           <span className="hud-label">MISSILES</span>
           <span className="hud-value"> M M M M</span> {/* TODO: Make dynamic */}
         </div>
-      </div> {/* Closing tag for hud-left */}
+      </div>
+      {/* Closing tag for hud-left */}
       {/* Center HUD */}
       <div className="hud-center">
         <div className="scanner-shape">
@@ -151,82 +152,89 @@ const BottomHud: React.FC<BottomHudProps> = ({
           <div className="radar-center-line"></div>
           {/* Radar positions in center scanner */}
           {/* Add a check for radarPosition length before mapping */}
-          {radarPosition && radarPosition.length > 0 && radarPosition.map((position, index) => {
-            const { x, y, z } = position;
+          {radarPosition &&
+            radarPosition.length > 0 &&
+            radarPosition.map((position, index) => {
+              const { x, y, z } = position;
 
-            // Calculate position within the scanner (adjust scaling/offset as needed)
-            // x: Convert from -1...1 to scanner width percentage (e.g., 5% to 95%)
-            const xPos = 50 + x * 40; // Scale factor 40 for horizontal
+              // Calculate position within the scanner (adjust scaling/offset as needed)
+              // x: Convert from -1...1 to scanner width percentage (e.g., 5% to 95%)
+              const xPos = 50 + x * 40; // Scale factor 40 for horizontal
 
-            // z: Convert from -1..1 to scanner height (5% to 95%)
-            // z=-1 (front) -> 5%, z=0 (center) -> 50%, z=1 (behind) -> 95%
-            const zPos = 50 + z * 40; // Scale factor 40 for vertical
+              // z: Convert from -1..1 to scanner height (5% to 95%)
+              // z=-1 (front) -> 5%, z=0 (center) -> 50%, z=1 (behind) -> 95%
+              const zPos = 50 + z * 40; // Scale factor 40 for vertical
 
-            // y: Determine line length and direction. Max length (e.g., 15% of height)
-            const yLength = Math.abs(y) * 15; // Scale factor 15 for vertical line
+              // y: Determine line length and direction. Max length (e.g., 15% of height)
+              const yLength = Math.abs(y) * 15; // Scale factor 15 for vertical line
 
-            let topStyle: number;
-            let heightStyle: string;
-            let borderStyle: string | undefined = "2px solid #00ff00"; // Default line style
-            const isTopSerif = y > 0; // True if line goes DOWN from zPos (serif at top)
+              let topStyle: number;
+              let heightStyle: string;
+              let borderStyle: string | undefined = "2px solid #00ff00"; // Default line style
+              const isTopSerif = y > 0; // True if line goes DOWN from zPos (serif at top)
 
-            if (y === 0) {
-              // Centered vertically, minimal height for serifs, no line
-              const serifHeightPx = 2; // Height needed for serifs
-              topStyle = zPos - (serifHeightPx / 2); // Adjust top to center visually
-              heightStyle = `${serifHeightPx}px`;
-              borderStyle = "none"; // No vertical line
-            } else if (y > 0) {
-              // Line goes down from zPos (target is above)
-              topStyle = zPos; // Start line at zPos
-              heightStyle = `${yLength}%`;
-            } else { // y < 0
-              // Line goes up from zPos (target is below)
-              topStyle = zPos - yLength; // Start line above zPos
-              heightStyle = `${yLength}%`;
-            }
+              if (y === 0) {
+                // Centered vertically, minimal height for serifs, no line
+                const serifHeightPx = 2; // Height needed for serifs
+                topStyle = zPos - serifHeightPx / 2; // Adjust top to center visually
+                heightStyle = `${serifHeightPx}px`;
+                borderStyle = "none"; // No vertical line
+              } else if (y > 0) {
+                // Line goes down from zPos (target is above)
+                topStyle = zPos; // Start line at zPos
+                heightStyle = `${yLength}%`;
+              } else {
+                // y < 0
+                // Line goes up from zPos (target is below)
+                topStyle = zPos - yLength; // Start line above zPos
+                heightStyle = `${yLength}%`;
+              }
 
-            // Clamp positions to prevent going outside scanner bounds (e.g., 5% to 95%)
-            const clampedLeft = Math.max(5, Math.min(95, xPos));
-            // Clamp top, considering the line's height to ensure it doesn't extend beyond bounds
-            let clampedTop = Math.max(5, topStyle);
-            let finalHeight = parseFloat(heightStyle.replace('%','').replace('px',''));
-            if (heightStyle.endsWith('%')) {
+              // Clamp positions to prevent going outside scanner bounds (e.g., 5% to 95%)
+              const clampedLeft = Math.max(5, Math.min(95, xPos));
+              // Clamp top, considering the line's height to ensure it doesn't extend beyond bounds
+              let clampedTop = Math.max(5, topStyle);
+              let finalHeight = parseFloat(
+                heightStyle.replace("%", "").replace("px", "")
+              );
+              if (heightStyle.endsWith("%")) {
                 if (clampedTop + finalHeight > 95) {
-                    finalHeight = 95 - clampedTop; // Adjust height if bottom exceeds limit
+                  finalHeight = 95 - clampedTop; // Adjust height if bottom exceeds limit
                 }
                 heightStyle = `${Math.max(1, finalHeight)}%`; // Ensure minimum height 1%
-            } else { // Pixel height (for y=0 case)
-                 if (clampedTop + finalHeight > 95) {
-                     // If even the small pixel height exceeds, adjust top upwards
-                     clampedTop = 95 - finalHeight;
-                 }
-                 heightStyle = `${Math.max(1, finalHeight)}px`; // Ensure minimum height 1px
-            }
-             clampedTop = Math.max(5, clampedTop); // Re-clamp top after height adjustments
+              } else {
+                // Pixel height (for y=0 case)
+                if (clampedTop + finalHeight > 95) {
+                  // If even the small pixel height exceeds, adjust top upwards
+                  clampedTop = 95 - finalHeight;
+                }
+                heightStyle = `${Math.max(1, finalHeight)}px`; // Ensure minimum height 1px
+              }
+              clampedTop = Math.max(5, clampedTop); // Re-clamp top after height adjustments
 
-            return (
-              <div
-                key={`radar-${index}`}
-                className="pirate-radar-line"
-                style={{
-                  left: `${clampedLeft}%`,
-                  top: `${clampedTop}%`,
-                  height: heightStyle,
-                  borderLeft: borderStyle,
-                }}
-              >
-                {/* Top serif means line goes down (y>0), bottom serif means line goes up (y<0) */}
-                {isTopSerif ? (
-                  <div className="pirate-radar-serif top-serif"></div>
-                ) : (
-                  <div className="pirate-radar-serif bottom-serif"></div>
-                )}
-              </div>
-            );
-          })}
+              return (
+                <div
+                  key={`radar-${index}`}
+                  className="pirate-radar-line"
+                  style={{
+                    left: `${clampedLeft}%`,
+                    top: `${clampedTop}%`,
+                    height: heightStyle,
+                    borderLeft: borderStyle,
+                  }}
+                >
+                  {/* Top serif means line goes down (y>0), bottom serif means line goes up (y<0) */}
+                  {isTopSerif ? (
+                    <div className="pirate-radar-serif top-serif"></div>
+                  ) : (
+                    <div className="pirate-radar-serif bottom-serif"></div>
+                  )}
+                </div>
+              );
+            })}
         </div>
-      </div> {/* Closing tag for hud-center */}
+      </div>
+      {/* Closing tag for hud-center */}
       {/* Right HUD */}
       <div className="hud-right">
         <div className="hud-item">
@@ -271,16 +279,32 @@ const BottomHud: React.FC<BottomHudProps> = ({
           style={{ justifyContent: "center", marginTop: "5px" }}
         >
           {/* Placeholder boxes */}
-          <span style={{ border: "1px solid #00ff00", padding: "2px 5px" }}>1</span>
-          <span style={{ border: "1px solid #00ff00", padding: "2px 5px", margin: "0 5px" }}>2</span>
-          <span style={{ border: "1px solid #00ff00", padding: "2px 5px" }}>3</span>
+          <span style={{ border: "1px solid #00ff00", padding: "2px 5px" }}>
+            1
+          </span>
+          <span
+            style={{
+              border: "1px solid #00ff00",
+              padding: "2px 5px",
+              margin: "0 5px",
+            }}
+          >
+            2
+          </span>
+          <span style={{ border: "1px solid #00ff00", padding: "2px 5px" }}>
+            3
+          </span>
           {/* Direction Indicator */}
           <div className="direction-indicator-container">
-             {/* Add a check for stationDirection before rendering dot */}
-            {stationDirection && <div className="direction-indicator-dot" style={dotStyle}></div>}
+            {/* Add a check for stationDirection before rendering dot */}
+            {stationDirection && (
+              <div className="direction-indicator-dot" style={dotStyle}></div>
+            )}
           </div>
-        </div> {/* Closing tag for hud-item */}
-      </div> {/* Closing tag for hud-right */}
+        </div>{" "}
+        {/* Closing tag for hud-item */}
+      </div>{" "}
+      {/* Closing tag for hud-right */}
     </div> // Closing tag for bottom-bar
   );
 };

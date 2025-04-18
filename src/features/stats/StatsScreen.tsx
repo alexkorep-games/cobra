@@ -1,8 +1,17 @@
 import React from "react";
 import BottomHud from "@/components/hud/BottomHud";
 import "@/components/App.css";
+import { useStatsLogic } from "./useStatsLogic"; // Import hook
+import { IGameManager } from "@/types";
 
-const StatsScreen: React.FC = () => {
+interface StatsScreenProps {
+  gameManager: IGameManager | null; // Pass GM for hook initialization if needed
+}
+
+const StatsScreen: React.FC<StatsScreenProps> = ({ gameManager }) => {
+  // Call the hook
+  useStatsLogic(gameManager);
+
   return (
     <>
       <div className="top-bar">

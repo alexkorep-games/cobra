@@ -1,46 +1,26 @@
-// src/features/undocking/useUndockingLogic.ts
-import { useEffect, useRef, useCallback } from 'react';
-import * as THREE from 'three'; // Needed for LineLoop type
-import { IGameManager, GameState } from "@/types";
-import { useGameState } from '@/features/common/useGameState';
+import { useEffect, useRef, useCallback } from "react";
+import { IGameManager } from "@/types";
+import { useGameState } from "@/features/common/useGameState";
 
 const UNDOCKING_DURATION = 4000; // ms
-const SQUARE_SPEED = 20.0; // Units per second
+// Removed SQUARE_SPEED, animation handled by UndockingSquares component
 
-export function useUndockingLogic(gameManager: IGameManager | null, isActive: boolean) {
+export function useUndockingLogic(gameManager: IGameManager | null) {
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
-  const { setGameState } = useGameState();
+  const { gameState, setGameState } = useGameState();
 
-  // --- Update Logic (Called by GameManager) ---
-  const updateUndockingAnimation = useCallback((deltaTime: number) => {
-    if (!isActive || !gameManager) return; // Should not happen if registered correctly
+  // No update logic needed here anymore, R3F component handles its animation
 
-    const speed = SQUARE_SPEED;
-    // Access undocking squares directly from GameManager assets
-    gameManager.assets.undockingSquares.forEach((square: THREE.LineLoop) => {
-       if (square.visible) { // Only move visible squares
-           square.position.z += speed * deltaTime;
-           // Optional: Hide squares that move too far past the camera
-           if (square.position.z > 10) { // Adjust threshold as needed
-               square.visible = false;
-           }
-       }
-    });
-  }, [isActive, gameManager]); // Dependencies
-
-  // --- Effect for Setup, Cleanup, Registration ---
+  // --- Effect for Setup, Cleanup ---
   useEffect(() => {
-    if (isActive && gameManager) {
-      console.log('Activating Undocking Logic Hook');
-
-      // Reset square positions and visibility
-      gameManager.assets.undockingSquares.forEach((square, i) => {
-        square.position.z = -i * 5; // Reset initial position
-        square.visible = true;     // Make visible
-      });
+    // Runs when UndockingScreen mounts
+    if (gameManager) {
+      console.log("Activating Undocking Logic Hook");
 
       // Play undocking sound
-      gameManager.undockSoundRef.current?.play().catch(e => console.warn("Undock sound play failed:", e));
+      gameManager.undockSoundRef.current
+        ?.play()
+        .catch((e) => console.warn("Undock sound play failed:", e));
 
       // Clear previous timeout
       if (timeoutIdRef.current) {
@@ -49,21 +29,19 @@ export function useUndockingLogic(gameManager: IGameManager | null, isActive: bo
 
       // Set timeout to switch to space flight
       timeoutIdRef.current = setTimeout(() => {
-        if (isActive && gameManager) { // Check state again in timeout
-          console.log('Undocking finished, switching to space flight...');
-          setGameState('space_flight');
+        // Check state again in timeout
+        if (gameState === "undocking" && gameManager) {
+          console.log("Undocking finished, switching to space flight...");
+          setGameState("space_flight");
         }
         timeoutIdRef.current = null;
       }, UNDOCKING_DURATION);
 
-      // Register update function with GameManager
-      gameManager.registerSceneUpdate('undocking', updateUndockingAnimation);
+      // No update function registration needed
 
-      // Cleanup function
+      // Cleanup function when UndockingScreen unmounts
       return () => {
-        console.log('Deactivating Undocking Logic Hook');
-        // Unregister update function
-        gameManager.unregisterSceneUpdate('undocking');
+        console.log("Deactivating Undocking Logic Hook");
 
         // Clear timeout
         if (timeoutIdRef.current) {
@@ -71,17 +49,17 @@ export function useUndockingLogic(gameManager: IGameManager | null, isActive: bo
           timeoutIdRef.current = null;
         }
 
-        // Hide squares
-        gameManager.assets.undockingSquares.forEach(s => (s.visible = false));
-
         // Stop and reset sound
         if (gameManager.undockSoundRef.current) {
           gameManager.undockSoundRef.current.pause();
           gameManager.undockSoundRef.current.currentTime = 0;
         }
+        // R3F component will hide itself based on gameState in App.tsx
       };
     }
-  }, [isActive, gameManager, updateUndockingAnimation]); // Add dependencies
+    // Effect dependencies
+  }, [gameManager, gameState, setGameState]); // Added gameState, setGameState
 
   // No input handling needed for this scene
+  // Hook doesn't need to return anything for the component
 }

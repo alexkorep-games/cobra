@@ -1,8 +1,11 @@
 import React from "react";
 import BottomHud from "../../components/hud/BottomHud";
 import "../../components/App.css";
+import { useCreditsLogic } from "./useCreditsLogic";
+
 
 const CreditsScreen: React.FC = () => {
+  useCreditsLogic();
   return (
     <>
       <div className="top-bar">
