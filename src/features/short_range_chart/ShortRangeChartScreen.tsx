@@ -185,6 +185,7 @@ const ShortRangeChartScreen: React.FC<ShortRangeChartScreenProps> = ({
           <span>Fuel: {JUMP_RANGE.toFixed(1)} LY</span>
         </div>
       </div>
+      {/* Render BottomHud without props */}
       <BottomHud />
     </>
   );

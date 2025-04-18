@@ -106,6 +106,7 @@ const PlanetInfoScreen: React.FC<PlanetInfoScreenProps> = ({ gameManager }) => {
           Press J to Jump, ESC or N to return to chart
         </div>
       </div>
+      {/* Render BottomHud without props */}
       <BottomHud />
     </>
   );

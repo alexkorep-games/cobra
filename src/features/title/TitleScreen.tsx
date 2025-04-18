@@ -23,6 +23,7 @@ const TitleScreen: React.FC<TitleScreenProps> = ({ gameManager }) => {
       <div id="press-key-text" className="center-text">
         Press any key to start game
       </div>
+      {/* Render BottomHud without props */}
       <BottomHud />
     </>
   );

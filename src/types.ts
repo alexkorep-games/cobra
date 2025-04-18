@@ -39,29 +39,6 @@ export type RadarPosition = {
   z: number; // -1 (front) to +1 (behind) relative direction
 };
 
-// Interface defining the callback functions provided by React (App.tsx)
-// to the GameManager for updating the UI state. Simplified.
-export interface ReactSetters {
-  setGameState: (state: GameState) => void; // Update the current game state view
-  setCoordinates: (coords: [number, number, number]) => void; // Update player coordinates display
-  setSpeed: (speed: number) => void; // Update speed display (0-100)
-  setRoll: (roll: number) => void; // Update roll indicator (-1 to 1)
-  setPitch: (pitch: number) => void; // Update pitch indicator (-1 to 1)
-  setLaserHeat: (heat: number) => void; // Update laser heat display (0-100)
-  setAltitude: (altitude: number) => void; // Update altitude display (0-100)
-  setStationDirection: (
-    direction: {
-      // Update station direction indicator
-      x: number;
-      y: number;
-      offCenterAmount: number;
-      isInFront: boolean;
-    } | null
-  ) => void;
-  setRadarPositions: (positions: RadarPosition[]) => void; // Update radar contacts
-  // Removed planet-related setters
-}
-
 // Interface defining the methods and properties the scene logic (hooks or classes)
 // expects the GameManager instance to provide. Simplified.
 export interface IGameManager {
@@ -78,8 +55,7 @@ export interface IGameManager {
   // State Management (triggered by React based on global state)
   switchState: (newState: GameState) => void;
 
-  // React Integration (Setters and Audio Refs)
-  reactSetters: ReactSetters;
+  // React Integration (Audio Refs only)
   introMusicRef: React.RefObject<HTMLAudioElement | null>;
   undockSoundRef: React.RefObject<HTMLAudioElement | null>;
 

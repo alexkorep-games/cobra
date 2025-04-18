@@ -1,11 +1,17 @@
 import React from "react";
 import BottomHud from "../../components/hud/BottomHud";
 import "../../components/App.css";
-import { useCreditsLogic } from "./useCreditsLogic";
+import { useCreditsLogic } from "./useCreditsLogic"; // Import hook
+import { IGameManager } from "@/types";
 
+interface CreditsScreenProps {
+  gameManager: IGameManager | null; // Pass GM for hook initialization
+}
 
-const CreditsScreen: React.FC = () => {
-  useCreditsLogic();
+const CreditsScreen: React.FC<CreditsScreenProps> = ({ gameManager }) => {
+  // Call the hook
+  useCreditsLogic(gameManager);
+
   return (
     <>
       <div className="top-bar">
@@ -14,7 +20,8 @@ const CreditsScreen: React.FC = () => {
       <div id="credits-text" className="center-text small">
         Game Copyright: 2025 Alexey Korepanov
       </div>
-      <BottomHud /> {/* Show basic HUD frame */}
+      {/* Render BottomHud without props */}
+      <BottomHud />
     </>
   );
 };

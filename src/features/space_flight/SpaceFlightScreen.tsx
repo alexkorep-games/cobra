@@ -6,6 +6,7 @@ import { RadarPosition, IGameManager } from "@/types"; // Assuming IGameManager 
 import * as Constants from "@/constants";
 import { useGameState } from "@/features/common/useGameState";
 import { usePlanetInfos } from "../common/usePlanetInfos"; // Import planet state hook
+import { useHudState } from "../common/useHudState"; // Import HUD state hook
 
 // Import R3F Entity Components (now rendered here)
 import PlanetComponent from "@/components/r3f/PlanetComponent";
@@ -27,35 +28,26 @@ interface PirateState {
 
 interface SpaceFlightScreenProps {
   gameManager: IGameManager;
-  // Receive HUD state from App.tsx as props
-  speed: number;
-  roll: number;
-  pitch: number;
-  laserHeat: number;
-  altitude: number;
-  stationDirection: {
-    x: number;
-    y: number;
-    offCenterAmount: number;
-    isInFront: boolean;
-  } | null;
-  radarPosition: RadarPosition[];
 }
 
 const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
   gameManager,
-  // Destructure HUD props
-  speed,
-  roll,
-  pitch,
-  laserHeat,
-  altitude,
-  stationDirection,
-  radarPosition,
 }) => {
   const { camera } = useThree();
   const { setGameState } = useGameState();
   const { getCurrentPlanet } = usePlanetInfos(); // Get current planet info
+  // Get HUD setters from the hook
+  const {
+    setCoordinates,
+    setSpeed,
+    setRoll,
+    setPitch,
+    setLaserHeat,
+    setAltitude,
+    setStationDirection,
+    setRadarPositions,
+    // Get values needed for BottomHud rendering within this component
+  } = useHudState();
 
   // --- Refs ---
   const laserBeamRef = useRef<THREE.LineSegments>(null);
@@ -203,13 +195,9 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
           const next = !prev;
           console.log(`Hyperspace Toggled: ${next}`);
           if (!next) {
-            // Clamp speed immediately when turning off using GM setter
-            const currentSpeed = gameManager.reactSetters.setSpeed
-              ? velocity
-              : 0; // Need way to get current speed if not prop
-            gameManager.reactSetters.setSpeed(
-              Math.min(currentSpeed, Constants.MAX_SPEED)
-            );
+            // Clamp speed immediately when turning off using HUD setter
+            // Need current speed - get from state or calculate? Assume velocity state is accurate
+            setSpeed(Math.min(velocity, Constants.MAX_SPEED));
           }
           return next;
         });
@@ -254,15 +242,16 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
       setIsHyperspaceActive(false);
       setWantsToFire(false);
 
-      // Reset HUD via GameManager setters (optional, as App might reset on state change anyway)
-      gameManager.reactSetters.setCoordinates([0, 0, 0]);
-      gameManager.reactSetters.setSpeed(0);
-      gameManager.reactSetters.setRoll(0);
-      gameManager.reactSetters.setPitch(0);
-      gameManager.reactSetters.setLaserHeat(0);
-      gameManager.reactSetters.setAltitude(0);
-      gameManager.reactSetters.setStationDirection(null);
-      gameManager.reactSetters.setRadarPositions([]);
+      // Reset HUD via setters (optional, as App might reset on state change anyway)
+      // Use setters from useHudState
+      setCoordinates([0, 0, 0]);
+      setSpeed(0);
+      setRoll(0);
+      setPitch(0);
+      setLaserHeat(0);
+      setAltitude(0);
+      setStationDirection(null);
+      setRadarPositions([]);
 
       // Laser beam cleanup is handled by R3F unmounting the component
     };
@@ -451,36 +440,24 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
       }
     }
 
-    // --- Update HUD via GameManager Setters ---
-    const { x, y, z } = camera.position;
-    gameManager.reactSetters.setCoordinates([x, y, z]);
-
-    const normalizedSpeed = THREE.MathUtils.clamp(
-      (currentVelocity / Constants.MAX_SPEED) * 100,
-      0,
-      100
+    // --- Update HUD State ---
+    // Use setters from useHudState
+    setCoordinates([
+      camera.position.x,
+      camera.position.y,
+      camera.position.z,
+    ]);
+    setSpeed(
+      isHyperspaceActive
+        ? Constants.HYPERSPACE_SPEED // Show max/hyperspace speed indicator
+        : (velocity / Constants.MAX_SPEED) * 100 // Percentage of max speed
     );
-    // Normalize roll/pitch based on *rate*, not absolute rotation
-    const normalizedRoll = THREE.MathUtils.clamp(
-      currentRollRate / Constants.MAX_VISUAL_ROLL_RATE,
-      -1,
-      1
-    );
-    const normalizedPitch = THREE.MathUtils.clamp(
-      currentPitchRate / Constants.MAX_VISUAL_PITCH_RATE,
-      -1,
-      1
-    );
-    const normalizedLaserHeat = THREE.MathUtils.clamp(
-      (nextLaserHeat / Constants.LASER_MAX_HEAT) * 100,
-      0,
-      100
-    ); // Use nextLaserHeat
-
-    gameManager.reactSetters.setSpeed(normalizedSpeed);
-    gameManager.reactSetters.setRoll(normalizedRoll);
-    gameManager.reactSetters.setPitch(normalizedPitch);
-    gameManager.reactSetters.setLaserHeat(normalizedLaserHeat);
+    // Normalize roll/pitch rates for HUD (-1 to 1 range approx)
+    setRoll(THREE.MathUtils.clamp(camera.rotation.z / Math.PI, -1, 1)); // Z-axis rotation for roll
+    setPitch(THREE.MathUtils.clamp(camera.rotation.x / (Math.PI * 0.5), -1, 1)); // X-axis rotation for pitch
+    setLaserHeat((currentLaserHeat / Constants.LASER_MAX_HEAT) * 100); // Percentage
+    setAltitude(calculateAltitude()); // Use calculated altitude
+    setStationDirection(calculateStationDirection()); // Use calculated direction
 
     // --- Calculate altitude (distance to planet surface) ---
     let normalizedAltitude = 0;
@@ -633,7 +610,8 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
       })
       .filter((p): p is RadarPosition => p !== null); // Filter out null entries
 
-    gameManager.reactSetters.setRadarPositions(currentRadarPositions);
+    // Use setter from useHudState
+    setRadarPositions(currentRadarPositions);
   }); // End useFrame
 
   // --- Render ---
@@ -720,16 +698,8 @@ const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
 
       <div className="center-text" style={{ visibility: "hidden" }}></div>
 
-      <BottomHud
-        // Pass props received from App component
-        speed={speed}
-        roll={roll}
-        pitch={pitch}
-        laserHeat={laserHeat}
-        altitude={altitude}
-        stationDirection={stationDirection}
-        radarPosition={radarPosition}
-      />
+      {/* Bottom HUD - Now rendered here, using values from useHudState */}
+      <BottomHud />
     </>
   );
 };

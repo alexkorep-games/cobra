@@ -1,78 +1,72 @@
 /* src/features/loading/useLoadingLogic.ts */
-// src/features/loading/useLoadingLogic.ts
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { IGameManager } from "@/types";
+// Removed IGameManager import
 import { useGameState } from '@/features/common/useGameState';
 
+// Remove gameManager parameter
 export function useLoadingLogic() {
   const isProcessingInput = useRef(false);
-  const { gameState, setGameState } = useGameState();
-  const [isLoadingComplete, setIsLoadingComplete] = useState(false);
+  const { setGameState } = useGameState();
+  // Internal state to track loading and prompt visibility
+  const [isLoadingComplete, setIsLoadingComplete] = useState(false); // Assume false initially
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
 
-  // Callback for GameManager to signal loading completion
-  const handleGmLoadingComplete = useCallback(() => {
-    console.log("useLoadingLogic notified that loading is complete.");
-    setIsLoadingComplete(true);
-    // Optionally add a slight delay before showing the prompt for better UX
-    setTimeout(() => setShowContinuePrompt(true), 100);
-  }, []);
-
-  // Effect to re-run init if gameManager instance changes (e.g., during HMR)
-  // And to pass the completion callback to GameManager
+  // Simulate loading completion (replace with actual logic)
+  // This effect now runs internally, not triggered by App.tsx prop change
   useEffect(() => {
-     if (gameManager) {
-         console.log("GameManager available, setting loading complete callback.")
-         // Ensure the callback is attached or re-attached
-         gameManager.loadingCompleteCallback = handleGmLoadingComplete;
-         // If GM is already initialized and loading was complete before this hook ran,
-         // check its status or trigger callback immediately.
-         // For simplicity, we assume GM calls the callback only once upon completion.
-     }
-  }, [gameManager, handleGmLoadingComplete])
+    // Reset state on mount (or when hook logic dictates)
+    setIsLoadingComplete(false);
+    setShowContinuePrompt(false);
+    isProcessingInput.current = false;
+
+    console.log("[useLoadingLogic] Simulating asset loading...");
+    const loadingTimer = setTimeout(() => {
+      console.log("[useLoadingLogic] Loading complete.");
+      setIsLoadingComplete(true);
+    }, 2000); // Simulate 2 seconds loading
+
+    return () => clearTimeout(loadingTimer);
+  }, []); // Run once on mount
+
+  // Effect to show "Press Key" prompt slightly after loading finishes
+  useEffect(() => {
+    if (isLoadingComplete) {
+      const promptTimer = setTimeout(() => {
+        setShowContinuePrompt(true);
+        console.log("[useLoadingLogic] Showing continue prompt.");
+      }, 100); // Short delay
+      return () => clearTimeout(promptTimer);
+    }
+  }, [isLoadingComplete]); // Run when isLoadingComplete changes
 
   const handleInput = useCallback((event: KeyboardEvent | MouseEvent) => {
-    // Only process input if loading is complete and the hook is active (component is mounted)
-    if (gameState === 'loading' && gameManager && isLoadingComplete && !isProcessingInput.current) {
-      if (event.type === 'keydown' || event.type === 'mousedown') {
+    // Only process input if loading is complete and prompt is shown
+    if (isLoadingComplete && showContinuePrompt && !isProcessingInput.current) {
+      if (event.type === "keydown" || event.type === "mousedown") {
         isProcessingInput.current = true;
-        console.log('Loader input detected (loading complete), switching state...');
-        setGameState('title');
-        // Reset flag shortly after
-        setTimeout(() => { isProcessingInput.current = false; }, 100);
+        console.log("Loading input detected, switching to title...");
+        setGameState("title");
+        // No need for timeout to reset isProcessingInput, as the component/hook will unmount
       }
     }
-  }, [gameState, gameManager, isLoadingComplete, setGameState]); // Add setGameState dependency
+  }, [isLoadingComplete, showContinuePrompt, setGameState]); // Dependencies
 
+  // Effect to add/remove input listeners
   useEffect(() => {
-    // This effect runs when the LoadingScreen mounts
-    console.log('Activating Loading Logic Hook');
-    isProcessingInput.current = false; // Reset input flag on activation
+    // Add listeners only when the prompt is ready
+    if (isLoadingComplete && showContinuePrompt) {
+      window.addEventListener("keydown", handleInput);
+      window.addEventListener("mousedown", handleInput);
+      console.log("[useLoadingLogic] Input listeners added.");
 
-    // Reset prompt state on mount (in case of re-mounts)
-    setShowContinuePrompt(isLoadingComplete); // Show prompt immediately if already complete
+      return () => {
+        window.removeEventListener("keydown", handleInput);
+        window.removeEventListener("mousedown", handleInput);
+        console.log("[useLoadingLogic] Input listeners removed.");
+      };
+    }
+  }, [isLoadingComplete, showContinuePrompt, handleInput]); // Add/remove based on state
 
-    // Add input listeners immediately, but handleInput callback checks isLoadingComplete
-    window.addEventListener('keydown', handleInput);
-    window.addEventListener('mousedown', handleInput);
-
-    // Cleanup function when LoadingScreen unmounts
-    return () => {
-      console.log('Deactivating Loading Logic Hook');
-      // Remove listeners
-      window.removeEventListener('keydown', handleInput);
-      window.removeEventListener('mousedown', handleInput);
-      // Crucially, remove the callback from GM if it exists to prevent memory leaks
-      // or calls to unmounted components, *if* the GM persists longer than the hook.
-      // If GM is recreated with App, this might be less critical.
-      if (gameManager && gameManager.loadingCompleteCallback === handleGmLoadingComplete) {
-          gameManager.loadingCompleteCallback = null;
-          console.log("Removed loading complete callback from GameManager.")
-      }
-    };
-    // Effect dependencies
-  }, [gameManager, handleInput, isLoadingComplete, handleGmLoadingComplete]);
-
-  // Return state needed by the component
+  // Return state needed by the LoadingScreen component
   return { isLoadingComplete, showContinuePrompt };
 }

@@ -42,7 +42,8 @@ const StatsScreen: React.FC<StatsScreenProps> = ({ gameManager }) => {
         </p>{" "}
         <p>Missile (3)</p> <p>Pulse Laser (Fore)</p>
       </div>
-      <BottomHud /> {/* Show basic HUD frame */}
+      {/* Render BottomHud without props */}
+      <BottomHud />
     </>
   );
 };

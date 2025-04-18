@@ -1,35 +1,24 @@
 /* src/components/hud/BottomHud.tsx */
-// src/components/hud/BottomHud.tsx
-import React, { useEffect } from "react"; // Import useEffect
+import React from "react"; // Removed useEffect
 import "../App.css"; // Assuming App.css contains the HUD styles
-import { RadarPosition } from "../../types";
+// Removed RadarPosition import, types come from hook
 import * as Constants from "../../constants"; // Import constants for laser heat
+import { useHudState } from "@/features/common/useHudState"; // Import the hook
 
-interface BottomHudProps {
-  speed?: number; // Optional for scenes other than flight, expected 0-100
-  roll?: number; // Optional, range -1 to 1 (-1 left, 1 right)
-  pitch?: number; // Optional, range -1 to 1 (-1 dive, 1 climb)
-  altitude?: number; // Optional, range 0-100 for normalized altitude display
-  stationDirection?: {
-    x: number;
-    y: number;
-    offCenterAmount: number;
-    isInFront: boolean;
-  } | null; // Updated to use object structure
-  laserHeat?: number; // Add laser heat prop (0-100)
-  // Update radarPosition structure for x, y, z coordinates
-  radarPosition?: RadarPosition[];
-}
+// Remove BottomHudProps interface
 
-const BottomHud: React.FC<BottomHudProps> = ({
-  speed = 0,
-  roll = 0,
-  pitch = 0,
-  altitude = 0,
-  stationDirection = null,
-  laserHeat = 0, // Default laser heat
-  radarPosition = [],
-}) => {
+const BottomHud: React.FC = () => {
+  // Get values from the hook
+  const {
+    speed = 0, // Provide defaults
+    roll = 0,
+    pitch = 0,
+    altitude = 0,
+    stationDirection = null,
+    laserHeat = 0,
+    radarPosition = [], // Renamed from radarPositions in hook for consistency here
+  } = useHudState();
+
   // Calculate marker positions (0% to 100%) based on -1 to 1 range
   // Roll: -1 (left) -> 0%, 0 (center) -> 50%, 1 (right) -> 100%
   const rollMarkerPosition = 50 + roll * 50;
@@ -120,7 +109,7 @@ const BottomHud: React.FC<BottomHudProps> = ({
                 laserHeat >= Constants.LASER_MAX_HEAT * 0.9 ? "red" : ""
               }`} // Red if near max heat
               style={{
-                width: `${Math.max(0, Math.min(100, laserHeat))}%`,
+                width: `${Math.max(0, Math.min(100, laserHeat))}%`, // Already percentage
                 backgroundColor:
                   laserHeat >= Constants.LASER_MAX_HEAT * 0.9
                     ? "#ff0000"
@@ -135,7 +124,7 @@ const BottomHud: React.FC<BottomHudProps> = ({
             <div
               id="altitude-fill"
               className="hud-bar-fill"
-              style={{ width: `${Math.max(0, Math.min(100, altitude))}%` }}
+              style={{ width: `${Math.max(0, Math.min(100, altitude))}%` }} // Clamp altitude 0-100
             ></div>
           </div>
         </div>

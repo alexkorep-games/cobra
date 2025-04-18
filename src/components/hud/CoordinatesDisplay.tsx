@@ -1,10 +1,9 @@
 import React from 'react';
+import { useHudState } from '@/features/common/useHudState'; // Import the hook
 
-interface CoordinatesDisplayProps {
-  coordinates: [number, number, number];
-}
-
-const CoordinatesDisplay: React.FC<CoordinatesDisplayProps> = ({ coordinates }) => {
+const CoordinatesDisplay: React.FC = () => {
+  // Get coordinates from the hook
+  const { coordinates } = useHudState();
   const [x, y, z] = coordinates;
 
   return (

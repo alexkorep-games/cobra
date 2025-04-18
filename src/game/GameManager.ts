@@ -1,4 +1,5 @@
-import { GameState, IGameManager, GameAssets, ReactSetters } from "../types"; // Adjusted imports
+import * as THREE from "three";
+import { GameState, IGameManager, GameAssets, RadarPosition } from "../types"; // Adjusted imports
 import * as Constants from "../constants";
 
 // Define internal visual state structure (example)
@@ -31,7 +32,6 @@ export class GameManager implements IGameManager {
   > = {};
 
   // React integration points
-  reactSetters: ReactSetters; // Store the setters object
   introMusicRef: React.RefObject<HTMLAudioElement | null>;
   undockSoundRef: React.RefObject<HTMLAudioElement | null>;
 
@@ -45,18 +45,17 @@ export class GameManager implements IGameManager {
   // No longer needs bound handleGlobalInput if hooks manage input
 
   constructor(
-    reactSetters: ReactSetters, // Receive setters object
     introMusicRef: React.RefObject<HTMLAudioElement | null>,
     undockSoundRef: React.RefObject<HTMLAudioElement | null>
   ) {
-    if (!reactSetters || !introMusicRef || !undockSoundRef) {
-      throw new Error("ReactSetters and Audio refs must be provided");
+    if (!introMusicRef || !undockSoundRef) {
+      throw new Error("Audio refs must be provided");
     }
-    this.reactSetters = reactSetters; // Store setters
+
     this.introMusicRef = introMusicRef;
     this.undockSoundRef = undockSoundRef;
 
-    console.log("GameManager initialized with ReactSetters.");
+    console.log("GameManager initialized with audio refs.");
   }
 
   async init(loadingCallback: () => void) {

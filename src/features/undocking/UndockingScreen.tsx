@@ -23,7 +23,8 @@ const UndockingScreen: React.FC<UndockingScreenProps> = ({ gameManager }) => {
       <div id="leaving-text" className="center-text small">
         Leaving Space Station
       </div>
-      <BottomHud /> {/* Show basic HUD frame */}
+      {/* Render BottomHud without props */}
+      <BottomHud />
     </>
   );
 };

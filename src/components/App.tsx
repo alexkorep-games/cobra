@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import "./App.css";
-import { GameState, ReactSetters, IGameManager, RadarPosition } from "@/types"; // Adjusted imports
+import { GameState, IGameManager, RadarPosition } from "@/types"; // Adjusted imports
 import { GameManager } from "@/game/GameManager";
 import { useGameState } from "@/features/common/useGameState"; // Import global state hook
 import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Import planet state hook
+import { useHudState } from "@/features/common/useHudState"; // Import HUD state hook
 import { PLANET_COUNT, PLANET_SEED, SHIP_SCALE } from "../constants";
 import { generatePlanets } from "@/classes/PlanetInfo";
 
@@ -65,25 +66,11 @@ const GlobalStateInitializer: React.FC<{
 };
 
 const App: React.FC = () => {
-  // --- Global State Hook ---
+  // --- Global State Hooks ---
   const { gameState, setGameState } = useGameState();
-
-  // --- Local State (UI/HUD related, still managed by GM via setters) ---
-  const [coordinates, setCoordinates] = useState<[number, number, number]>([
-    0, 0, 0,
-  ]);
-  const [speed, setSpeed] = useState<number>(0);
-  const [roll, setRoll] = useState<number>(0);
-  const [pitch, setPitch] = useState<number>(0);
-  const [laserHeat, setLaserHeat] = useState<number>(0);
-  const [altitude, setAltitude] = useState<number>(0);
-  const [stationDirection, setStationDirection] = useState<{
-    x: number;
-    y: number;
-    offCenterAmount: number;
-    isInFront: boolean;
-  } | null>(null);
-  const [radarPositions, setRadarPositions] = useState<RadarPosition[]>([]);
+  // Use HUD state hook, but we might only need values here for passing down if absolutely necessary
+  // Components should ideally consume the hook directly
+  const { coordinates } = useHudState(); // Example: Get coordinates if needed by CoordinatesDisplay directly here
 
   // --- Refs ---
   const gameManagerRef = useRef<IGameManager | null>(null);
@@ -99,29 +86,16 @@ const App: React.FC = () => {
 
     console.log("Initializing GameManager...");
 
-    // Reduced ReactSetters
-    const reactSetters: ReactSetters = {
-      setGameState, // Pass the global state setter
-      setCoordinates,
-      setSpeed,
-      setRoll,
-      setPitch,
-      setLaserHeat,
-      setAltitude,
-      setStationDirection,
-      setRadarPositions,
-      // Removed planet-related setters
-    };
-
+    // Pass only necessary refs/callbacks to GameManager constructor
     const gameManager = new GameManager(
-      reactSetters, // Pass the setters object
       introMusicRef,
       undockSoundRef
+      // Removed setters object
     );
 
     const handleLoadingComplete = () => {
       console.log("React notified that loading is complete.");
-      // Loading completion logic is now handled within useLoadingLogic
+      // If LoadingScreen uses a hook, this might become internal to the hook
     };
 
     gameManager.init(handleLoadingComplete);
@@ -159,7 +133,8 @@ const App: React.FC = () => {
 
     switch (gameState) {
       case "loading":
-        return <LoadingScreen gameManager={gm} />; // Pass GM instance
+        // LoadingScreen uses its own hook now, doesn't need GM prop
+        return <LoadingScreen />;
       case "title":
         return <TitleScreen gameManager={gm} />; // Pass GM instance
       case "credits":
@@ -169,7 +144,7 @@ const App: React.FC = () => {
       case "undocking":
         return <UndockingScreen gameManager={gm} />; // Pass GM instance
       case "space_flight":
-        // SpaceFlightScreen renders its own HUD
+        // SpaceFlightScreen renders its own HUD via useHudState hook
         return null; // No separate UI overlay needed here
       case "short_range_chart":
         return <ShortRangeChartScreen gameManager={gm} />; // Pass GM instance
@@ -211,17 +186,8 @@ const App: React.FC = () => {
           {/* --- Conditional Rendering of R3F Scene Content --- */}
 
           {gameState === "space_flight" && gm && (
-            <SpaceFlightScreen
-              gameManager={gm} // Pass GameManager instance
-              // Pass direct state needed for HUD if SpaceFlightScreen doesn't manage it all
-              speed={speed} // Pass current speed state
-              roll={roll} // Pass current roll state
-              pitch={pitch} // Pass current pitch state
-              altitude={altitude} // Pass current altitude state
-              laserHeat={laserHeat} // Pass current laserHeat state
-              stationDirection={stationDirection} // Pass current stationDirection state
-              radarPosition={radarPositions} // Pass current radarPositions state
-            />
+            // Remove HUD props, SpaceFlightScreen uses useHudState
+            <SpaceFlightScreen gameManager={gm} />
           )}
 
           {gameState === "title" &&
@@ -237,7 +203,7 @@ const App: React.FC = () => {
               />
             ))}
 
-          {gameState === "undocking" && <UndockingSquares />}
+          {gameState === "undocking" && <UndockingSquares visible={true} />}
 
           {/* Add other state-specific R3F components here if needed */}
         </Suspense>
@@ -249,9 +215,8 @@ const App: React.FC = () => {
       </div>
 
       {/* Audio Elements & Coordinates Display */}
-      {gameState === "space_flight" && (
-        <CoordinatesDisplay coordinates={coordinates} />
-      )}
+      {/* CoordinatesDisplay now uses useHudState hook */}
+      {gameState === "space_flight" && <CoordinatesDisplay />}
       <audio ref={introMusicRef} id="introMusic" loop>
         <source src="assets/elite_intro_music.mp3" type="audio/mpeg" />
         Your browser does not support the audio element.
