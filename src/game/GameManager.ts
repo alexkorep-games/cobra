@@ -1,12 +1,7 @@
-import { GameState, IGameManager, GameAssets, ReactSetters } from "../types";
+import { GameState, IGameManager, GameAssets } from "../types";
 import * as Constants from "../constants";
-import { generatePlanets, PlanetInfo } from "../classes/PlanetInfo";
 
 export class GameManager implements IGameManager {
-  planetInfos: PlanetInfo[];
-  currentPlanetName: string;
-  selectedPlanetName: string | null = null;
-
   assets: GameAssets = {
     titleShips: [],
     planet: null,
@@ -23,38 +18,24 @@ export class GameManager implements IGameManager {
 
   introMusicRef: React.RefObject<HTMLAudioElement | null>;
   undockSoundRef: React.RefObject<HTMLAudioElement | null>;
-  reactSetters: ReactSetters;
 
   constants = { ...Constants };
   boundHandleGlobalInput: (event: KeyboardEvent | MouseEvent) => void;
 
+  // Updated constructor to remove state initialization
   constructor(
-    reactSetters: ReactSetters,
     introMusicRef: React.RefObject<HTMLAudioElement | null>,
     undockSoundRef: React.RefObject<HTMLAudioElement | null>
   ) {
     if (!introMusicRef || !undockSoundRef) {
       throw new Error("Audio refs must be provided");
     }
-    this.reactSetters = reactSetters;
     this.introMusicRef = introMusicRef;
     this.undockSoundRef = undockSoundRef;
 
     this.boundHandleGlobalInput = this.handleGlobalInput.bind(this);
 
-    this.planetInfos = generatePlanets(
-      Constants.PLANET_SEED,
-      Constants.PLANET_COUNT
-    );
-    const initialPlanet = this.planetInfos[Constants.INITIAL_PLANET_INDEX];
-    this.currentPlanetName = initialPlanet?.name ?? this.planetInfos[0]?.name ?? "Unknown";
-
-    console.log(
-      `Generated ${this.planetInfos.length} planets. Starting at: ${this.currentPlanetName}`
-    );
-
-    this.reactSetters.setPlanetInfos(this.planetInfos);
-    this.reactSetters.setCurrentPlanetIndex(this.currentPlanetName);
+    console.log("GameManager initialized without state management.");
   }
 
   async init(loadingCallback: () => void) {
@@ -139,39 +120,6 @@ export class GameManager implements IGameManager {
     console.log(`Switching state from ${oldState} to ${newState}`);
 
     this.currentState = newState;
-    this.reactSetters.setGameState(newState);
-  }
-
-  setSelectedPlanetName(name: string | null): void {
-    if (this.selectedPlanetName !== name) {
-      console.log(`GameManager: Setting selected planet to ${name}`);
-      this.selectedPlanetName = name;
-      this.reactSetters.setSelectedPlanetName(name);
-    }
-  }
-
-  getCurrentPlanet(): PlanetInfo {
-    const current = this.planetInfos.find(
-      (p) => p.name === this.currentPlanetName
-    );
-    if (!current) {
-      console.error(
-        `Could not find current planet: ${this.currentPlanetName}! Falling back.`
-      );
-      return (
-        this.planetInfos[0] ||
-        ({
-          name: "Error Planet",
-          coordinates: { x: 0, y: 0 },
-        } as PlanetInfo)
-      );
-    }
-    return current;
-  }
-
-  getSelectedPlanet(): PlanetInfo | undefined {
-    if (!this.selectedPlanetName) return undefined;
-    return this.planetInfos.find((p) => p.name === this.selectedPlanetName);
   }
 
   handleGlobalInput(event: KeyboardEvent | MouseEvent) {
@@ -197,9 +145,6 @@ export class GameManager implements IGameManager {
 
     this.sceneUpdateFunctions = {};
     this.loadingCompleteCallback = null;
-    this.planetInfos = [];
-    this.currentPlanetName = "";
-    this.selectedPlanetName = null;
 
     console.log("GameManager disposed.");
   }

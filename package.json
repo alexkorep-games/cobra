@@ -28,6 +28,7 @@
     "@react-three/drei": "^10.0.6",
     "@react-three/fiber": "^9.1.2",
     "gh-pages": "^6.3.0",
+    "jotai": "^2.12.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "three": "^0.175.0"
