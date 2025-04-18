@@ -2,9 +2,6 @@ import { useState, useEffect } from "react";
 import { GameAssets } from "@/types";
 import * as Constants from "@/constants";
 
-// Define default camera far plane (can be adjusted or passed in)
-const DEFAULT_CAMERA_FAR_PLANE = 10_000_000;
-
 export function useAssetLoader() {
   const [assets, setAssets] = useState<GameAssets | null>(null);
   const [isLoadingComplete, setIsLoadingComplete] = useState(false);
@@ -29,7 +26,7 @@ export function useAssetLoader() {
       ];
       const spaceStationPath = "assets/ships/spacestation.gltf";
       const pirateShipPath = "assets/ships/ship-pirate.gltf";
-      const planetRadius = DEFAULT_CAMERA_FAR_PLANE * 0.05; // Example radius
+      const planetRadius = Constants.CAMERA_FAR_PLANE * 0.05; // Example radius
 
       const configuredAssets: GameAssets = {
         planet: {

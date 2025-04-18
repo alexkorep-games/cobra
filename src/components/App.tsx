@@ -1,18 +1,10 @@
 import React, { Suspense, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import "./App.css";
-import { GameState, RadarPosition, GameAssets } from "@/types"; // Adjusted imports
 import { useGameState } from "@/features/common/useGameState";
 import { useHudState } from "@/features/common/useHudState";
-import {
-  usePlanetInfos,
-  PlanetInfosProvider,
-} from "@/features/common/usePlanetInfos"; // Keep PlanetInfosProvider
-import {
-  generatePlanets,
-  PLANET_SEED,
-  PLANET_COUNT,
-} from "@/classes/PlanetInfo";
+import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Keep PlanetInfosProvider
+import { generatePlanets } from "@/classes/PlanetInfo";
 import { useAssetLoader } from "@/hooks/useAssetLoader"; // Import new hook
 import { useAudioManager } from "@/hooks/useAudioManager"; // Import new hook
 import * as Constants from "@/constants"; // Keep constants
@@ -45,7 +37,10 @@ const GlobalStateInitializer: React.FC = () => {
     // Generate planets once assets are loaded (or based on another trigger)
     if (isLoadingComplete) {
       console.log("Initializing global planet state...");
-      const generatedPlanets = generatePlanets(PLANET_SEED, PLANET_COUNT);
+      const generatedPlanets = generatePlanets(
+        Constants.PLANET_SEED,
+        Constants.PLANET_COUNT
+      );
       setPlanetInfos(generatedPlanets);
       if (generatedPlanets.length > 0) {
         setCurrentPlanetName(generatedPlanets[0].name); // Set initial current planet
@@ -59,22 +54,10 @@ const GlobalStateInitializer: React.FC = () => {
   return null;
 };
 
-const AppContent: React.FC = () => {
+const App: React.FC = () => {
   // --- Global State Hooks ---
   const { gameState } = useGameState(); // Keep gameState
   const { assets, isLoadingComplete } = useAssetLoader(); // Use asset loader
-  const { introMusicRef, undockSoundRef } = useAudioManager(); // Use audio manager
-  // HUD state can be used directly by HUD components or passed if needed
-  const {
-    coordinates,
-    speed,
-    roll,
-    pitch,
-    altitude,
-    laserHeat,
-    stationDirection,
-    radarPositions,
-  } = useHudState();
 
   // --- Helper Functions ---
   // Function to render the correct scene UI component based on gameState
@@ -207,17 +190,6 @@ const AppContent: React.FC = () => {
       {/* Audio elements (hidden) - Refs managed by useAudioManager */}
       {/* No need to render them explicitly if refs are handled */}
     </div>
-  );
-};
-
-// Wrap AppContent with providers
-const App: React.FC = () => {
-  return (
-    <PlanetInfosProvider>
-      {" "}
-      {/* Keep PlanetInfosProvider */}
-      <AppContent />
-    </PlanetInfosProvider>
   );
 };
 

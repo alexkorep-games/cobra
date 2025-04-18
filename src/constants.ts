@@ -54,3 +54,6 @@ export const JUMP_RANGE = 7.0; // Max jump distance in Light Years (example)
 export const INITIAL_PLANET_INDEX = 0; // Start at the first planet
 
 export const SHIP_SCALE = 6;
+
+
+export const CAMERA_FAR_PLANE = 10_000_000;
