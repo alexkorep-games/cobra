@@ -19,6 +19,7 @@ import { SpaceStation } from "./entities/SpaceStation";
 
 // Import Constants
 import * as Constants from "../constants";
+import { generatePlanets, PlanetInfo } from "../classes/PlanetInfo";
 
 // Keep ship scale as needed based on model source size
 const shipScale = 6;
@@ -29,6 +30,7 @@ export class GameManager implements IGameManager {
   camera: THREE.PerspectiveCamera | null = null;
   renderer: THREE.WebGLRenderer | null = null;
   clock: THREE.Clock = new THREE.Clock();
+  planetInfos: PlanetInfo[];
   // Initialize assets with correct types
   assets: GameEntities = {
     titleShips: [],
@@ -67,11 +69,16 @@ export class GameManager implements IGameManager {
     this.boundHandleGlobalInput = this.handleGlobalInput.bind(this);
     this.boundOnWindowResize = this.onWindowResize.bind(this);
     this.boundAnimate = this.animate.bind(this);
+    this.planetInfos = generatePlanets(
+      Constants.PLANET_SEED,
+      Constants.PLANET_COUNT
+    );
+    console.log('Generated planet infos:', this.planetInfos);
   }
 
   async init(canvas: HTMLCanvasElement, loadingCallback: () => void) {
     this.loadingCompleteCallback = loadingCallback;
-    
+
     // Create scene first
     this.scene = new THREE.Scene();
 
@@ -101,15 +108,15 @@ export class GameManager implements IGameManager {
 
     // Setup scene logics before loading assets
     this.setupSceneLogics();
-    
+
     try {
       await this.createAssets(cameraFarPlane); // Wait for assets to load
       this.startAnimationLoop();
-      
+
       window.addEventListener("resize", this.boundOnWindowResize);
       window.addEventListener("keydown", this.boundHandleGlobalInput);
       window.addEventListener("mousedown", this.boundHandleGlobalInput);
-      
+
       console.log("GameManager initialized and listeners added.");
     } catch (error) {
       console.error("Error during initialization:", error);
@@ -135,7 +142,7 @@ export class GameManager implements IGameManager {
     }
 
     console.log("Starting asset loading...");
-    
+
     // Load shared/common assets first
     try {
       await Promise.all([
@@ -147,7 +154,7 @@ export class GameManager implements IGameManager {
       console.error("Error loading common assets:", error);
       throw error;
     }
-    
+
     const shipFilePaths = [
       "assets/ships/ship-cobra.gltf",
       "assets/ships/ship-pirate.gltf",
@@ -165,9 +172,9 @@ export class GameManager implements IGameManager {
       this.assets.planet.load().then(() => {
         // Check if scene still exists before adding
         if (this.scene) {
-            this.assets.planet?.addToScene(this.scene); // Add to scene after successful load
+          this.assets.planet?.addToScene(this.scene); // Add to scene after successful load
         } else {
-            console.warn("Scene disposed before Planet could be added.");
+          console.warn("Scene disposed before Planet could be added.");
         }
       })
     );
@@ -183,9 +190,9 @@ export class GameManager implements IGameManager {
       this.assets.spaceStation.load().then(() => {
         // Check if scene still exists before adding
         if (this.scene) {
-            this.assets.spaceStation?.addToScene(this.scene);
+          this.assets.spaceStation?.addToScene(this.scene);
         } else {
-            console.warn("Scene disposed before SpaceStation could be added.");
+          console.warn("Scene disposed before SpaceStation could be added.");
         }
       })
     );
@@ -199,9 +206,11 @@ export class GameManager implements IGameManager {
         ship.load().then(() => {
           // Check if scene still exists before adding
           if (this.scene) {
-              ship.addToScene(this.scene); // Add each ship after it loads
+            ship.addToScene(this.scene); // Add each ship after it loads
           } else {
-              console.warn(`Scene disposed before Title Ship (${path}) could be added.`);
+            console.warn(
+              `Scene disposed before Title Ship (${path}) could be added.`
+            );
           }
         })
       );
@@ -216,9 +225,11 @@ export class GameManager implements IGameManager {
         pirate.load().then(() => {
           // Check if scene still exists before adding
           if (this.scene) {
-              pirate.addToScene(this.scene); // Add each pirate after it loads
+            pirate.addToScene(this.scene); // Add each pirate after it loads
           } else {
-              console.warn(`Scene disposed before Pirate Ship (${i}) could be added.`);
+            console.warn(
+              `Scene disposed before Pirate Ship (${i}) could be added.`
+            );
           }
         })
       );
@@ -237,18 +248,18 @@ export class GameManager implements IGameManager {
     this.assets.undockingSquares = [];
     // Check if scene exists before adding squares directly
     if (this.scene) {
-        for (let i = 0; i < 20; i++) {
-            const squareLine = new THREE.LineLoop(squareOutlineGeom, squareLineMat);
-            squareLine.scale.set((i + 1) * 2, (i + 1) * 2, 1);
-            squareLine.position.z = -i * 5;
-            squareLine.visible = false;
-            this.scene.add(squareLine); // Add squares directly
-            this.assets.undockingSquares.push(squareLine);
-        }
+      for (let i = 0; i < 20; i++) {
+        const squareLine = new THREE.LineLoop(squareOutlineGeom, squareLineMat);
+        squareLine.scale.set((i + 1) * 2, (i + 1) * 2, 1);
+        squareLine.position.z = -i * 5;
+        squareLine.visible = false;
+        this.scene.add(squareLine); // Add squares directly
+        this.assets.undockingSquares.push(squareLine);
+      }
     } else {
-        console.warn("Scene disposed before Undocking Squares could be added.");
-        // Ensure the array exists even if squares aren't added
-        this.assets.undockingSquares = [];
+      console.warn("Scene disposed before Undocking Squares could be added.");
+      // Ensure the array exists even if squares aren't added
+      this.assets.undockingSquares = [];
     }
     // --- End Undocking Squares ---
 
@@ -258,12 +269,12 @@ export class GameManager implements IGameManager {
       .then(() => {
         // Check if scene exists before proceeding
         if (!this.scene) {
-            console.warn("Scene disposed before asset loading completed fully.");
-            // Still call callback? Maybe not, as the game state is invalid.
-            // if (this.loadingCompleteCallback) {
-            //     this.loadingCompleteCallback();
-            // }
-            return; // Don't proceed if scene is gone
+          console.warn("Scene disposed before asset loading completed fully.");
+          // Still call callback? Maybe not, as the game state is invalid.
+          // if (this.loadingCompleteCallback) {
+          //     this.loadingCompleteCallback();
+          // }
+          return; // Don't proceed if scene is gone
         }
         console.log("All assets loaded successfully.");
         if (this.loadingCompleteCallback) {
@@ -283,10 +294,10 @@ export class GameManager implements IGameManager {
         }
         // Check if scene exists before trying to enter state
         if (this.scene) {
-            // Enter initial state even with errors? Or a specific error state?
-            this.sceneLogics[this.currentState]?.enter(); // Or switch to an error state
+          // Enter initial state even with errors? Or a specific error state?
+          this.sceneLogics[this.currentState]?.enter(); // Or switch to an error state
         } else {
-            console.warn("Scene disposed after asset loading error.");
+          console.warn("Scene disposed after asset loading error.");
         }
       });
   }
@@ -300,7 +311,7 @@ export class GameManager implements IGameManager {
     // Update Entities
     this.assets.planet?.update(deltaTime);
     this.assets.spaceStation?.update(deltaTime);
-    this.assets.pirateShips.forEach(pirate => pirate.update(deltaTime)); // Update pirates
+    this.assets.pirateShips.forEach((pirate) => pirate.update(deltaTime)); // Update pirates
     // Ships might have their own update logic, but title animation is external
     // this.assets.titleShips.forEach(ship => ship.update(deltaTime));
 
@@ -369,16 +380,15 @@ export class GameManager implements IGameManager {
     this.assets.pirateShips.forEach((pirate) => pirate.dispose()); // Dispose pirates
 
     // Dispose remaining non-entity THREE objects (like undocking squares)
-    this.assets.undockingSquares.forEach(square => {
-         square.geometry?.dispose();
-         if (Array.isArray(square.material)) {
-             square.material.forEach(m => m.dispose());
-         } else {
-             square.material?.dispose();
-         }
-         this.scene?.remove(square); // Remove from scene as well
+    this.assets.undockingSquares.forEach((square) => {
+      square.geometry?.dispose();
+      if (Array.isArray(square.material)) {
+        square.material.forEach((m) => m.dispose());
+      } else {
+        square.material?.dispose();
+      }
+      this.scene?.remove(square); // Remove from scene as well
     });
-
 
     console.log("Entities and remaining objects disposed.");
 
@@ -401,5 +411,4 @@ export class GameManager implements IGameManager {
     this.loadingCompleteCallback = null;
     console.log("GameManager disposed.");
   }
-
 }

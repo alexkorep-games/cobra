@@ -39,8 +39,10 @@ const App: React.FC = () => {
   const introMusicRef = useRef<HTMLAudioElement>(null);
   const undockSoundRef = useRef<HTMLAudioElement>(null);
 
+
   // --- Game Logic Initialization Effect ---
   useEffect(() => {
+    // TODO figure out why it happens twice
     if (!mountRef.current || !canvasRef.current) {
       console.error("Mount point or canvas not found");
       return;
