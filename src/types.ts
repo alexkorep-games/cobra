@@ -78,6 +78,11 @@ export interface IGameManager {
   currentState: GameState;
   constants: typeof Constants;
 
+  // Lifecycle methods
+  init: (loadingCallback: () => void) => Promise<void>;
+  update: (deltaTime: number) => void;
+  dispose: () => void;
+
   // State Management
   switchState: (newState: GameState) => void;
 
