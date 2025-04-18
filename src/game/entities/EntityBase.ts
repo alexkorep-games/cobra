@@ -24,7 +24,10 @@ export abstract class EntityBase {
       return;
     }
     if (this.mesh) {
-      scene.add(this.mesh);
+      // Check if already added to prevent duplicates
+      if (!scene.children.includes(this.mesh)) {
+        scene.add(this.mesh);
+      }
       this.visible = this.mesh.visible;
     } else {
       console.warn('Attempted to add null mesh to scene');
@@ -34,7 +37,7 @@ export abstract class EntityBase {
   // Remove the entity's mesh from the scene
   public removeFromScene(): void {
     if (this.mesh) {
-      this.scene.remove(this.mesh);
+      this.scene?.remove(this.mesh); // Use optional chaining for scene
     }
   }
 
@@ -78,22 +81,46 @@ export abstract class EntityBase {
 
   // Clean up THREE.js resources
   public dispose(): void {
-    this.removeFromScene();
+    this.removeFromScene(); // Remove from scene first
     if (this.mesh) {
+      // Traverse the object hierarchy
       this.mesh.traverse((object) => {
-        if (
-          object instanceof THREE.Mesh ||
-          object instanceof THREE.Points ||
-          object instanceof THREE.Line
-        ) {
-          object.geometry?.dispose();
-          const materials = Array.isArray(object.material)
-            ? object.material
-            : [object.material];
-          materials.forEach((material) => material?.dispose());
+        // Dispose geometries
+        if (object instanceof THREE.Mesh || object instanceof THREE.SkinnedMesh || object instanceof THREE.Line || object instanceof THREE.Points) {
+          if (object.geometry) {
+            object.geometry.dispose();
+            // console.log(`Disposed geometry for ${object.name || object.type}`);
+          }
+        }
+
+        // Dispose materials and textures
+        if (object instanceof THREE.Mesh || object instanceof THREE.SkinnedMesh) {
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          materials.forEach((material) => {
+            if (material) {
+              // Dispose textures attached to the material
+              Object.values(material).forEach((value) => {
+                if (value instanceof THREE.Texture) {
+                  value.dispose();
+                  // console.log(`Disposed texture for material`);
+                }
+              });
+              // Dispose the material itself if the method exists
+              if (typeof material.dispose === 'function') {
+                material.dispose();
+                // console.log(`Disposed material`);
+              }
+            }
+          });
+        } else if (object instanceof THREE.LineBasicMaterial || object instanceof THREE.PointsMaterial || object instanceof THREE.SpriteMaterial) {
+             // Handle basic materials that might be used directly
+             if (typeof object.material?.dispose === 'function') {
+                 object.material.dispose();
+             }
         }
       });
     }
-    this.mesh = null;
+    // console.log(`Disposed entity ${this.mesh?.name}`);
+    this.mesh = null; // Clear the reference
   }
 }

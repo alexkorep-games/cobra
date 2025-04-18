@@ -53,3 +53,5 @@ export const PLANET_COUNT = 100; // Number of planets to generate
 export const PLANET_SEED = 73791;
 export const JUMP_RANGE = 7.0; // Max jump distance in Light Years (example)
 export const INITIAL_PLANET_INDEX = 0; // Start at the first planet
+
+export const SHIP_SCALE = 6;

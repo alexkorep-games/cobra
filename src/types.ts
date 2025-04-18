@@ -1,10 +1,11 @@
 // src/types.ts
 import * as THREE from "three";
-import { Planet } from "./game/entities/Planet";
+import { Planet } from "./game/entities/Planet"; // Ensure correct paths
 import { Ship } from "./game/entities/Ship";
 import { SpaceStation } from "./game/entities/SpaceStation";
 import { PlanetInfo } from "./classes/PlanetInfo";
 
+// Define possible game states as a string union type
 export type GameState =
   | "loading"
   | "title"
@@ -15,67 +16,70 @@ export type GameState =
   | "short_range_chart"
   | "planet_info";
 
-// Interface for game assets
+// Interface describing the structure of loaded game assets
 export interface GameEntities {
-  titleShips: Ship[];
-  planet: Planet | null;
-  undockingSquares: THREE.LineLoop[];
-  spaceStation: SpaceStation | null;
-  pirateShips: Ship[]; // Added for pirate NPCs
+  titleShips: Ship[];                  // Ships shown on the title screen
+  planet: Planet | null;               // The current planet (or sun) object
+  undockingSquares: THREE.LineLoop[];  // Visual effect for undocking
+  spaceStation: SpaceStation | null;   // The space station object
+  pirateShips: Ship[];                 // Array of pirate ship NPCs
 }
 
-// These functions called by GameManager to update the React components
-// like BottomHud, etc.
-
+// Type describing the position of an object on the radar HUD
 export type RadarPosition = {
-  x: number; // -1..1 (relative horizontal direction)
-  y: number; // -1..1 (relative vertical direction)
-  z: number; // -1..1 (relative forward/backward direction)
+  x: number; // -1 (left) to +1 (right) relative direction
+  y: number; // -1 (below) to +1 (above) relative direction
+  z: number; // -1 (front) to +1 (behind) relative direction
 };
 
+// Interface defining the callback functions provided by React (App.tsx)
+// to the GameManager for updating the UI state.
 export interface ReactSetters {
-  setGameState: (state: GameState) => void;
-  setCoordinates: (coords: [number, number, number]) => void;
-  setSpeed: (speed: number) => void;
-  setRoll: (roll: number) => void;
-  setPitch: (pitch: number) => void;
-  setLaserHeat: (heat: number) => void;
-  setAltitude: (altitude: number) => void; // Add altitude setter
-  setStationDirection: (direction: {
-    x: number;
-    y: number;
-    offCenterAmount: number;
-    isInFront: boolean;
+  setGameState: (state: GameState) => void; // Update the current game state view
+  setCoordinates: (coords: [number, number, number]) => void; // Update player coordinates display
+  setSpeed: (speed: number) => void;        // Update speed display (0-100)
+  setRoll: (roll: number) => void;          // Update roll indicator (-1 to 1)
+  setPitch: (pitch: number) => void;        // Update pitch indicator (-1 to 1)
+  setLaserHeat: (heat: number) => void;     // Update laser heat display (0-100)
+  setAltitude: (altitude: number) => void;  // Update altitude display (0-100)
+  setStationDirection: (direction: {        // Update station direction indicator
+    x: number;        // Relative X direction
+    y: number;        // Relative Y direction
+    offCenterAmount: number; // 0 (center) to 1 (edge of view)
+    isInFront: boolean; // True if station is in front of camera
   } | null) => void;
-  setRadarPositions: (positions: RadarPosition[]) => void;
-  setPlanetInfos: (infos: PlanetInfo[]) => void;
-  setCurrentPlanetIndex: (index: string) => void;
+  setRadarPositions: (positions: RadarPosition[]) => void; // Update radar contacts
+  setPlanetInfos: (infos: PlanetInfo[]) => void; // Set the generated planet data list
+  setCurrentPlanetIndex: (name: string) => void; // Set the name of the current planet system
+  setSelectedPlanetName: (name: string | null) => void; // Set/clear the name of the selected target planet
 }
 
-// Forward declaration or interface for GameManager to avoid circular dependencies if needed
-// If SceneLogic needs detailed access, define an interface here.
+// Interface defining the methods and properties the scene logic (hooks or classes)
+// expects the GameManager instance to provide.
 export interface IGameManager {
-  assets: GameEntities;
-  currentState: GameState;
-  scene: THREE.Scene | null;
-  camera: THREE.PerspectiveCamera | null;
-  switchState: (newState: GameState) => void;
-  reactSetters: ReactSetters;
-  introMusicRef: React.RefObject<HTMLAudioElement>;
-  undockSoundRef: React.RefObject<HTMLAudioElement>;
-  constants: {
-    // Pass constants explicitly if needed
-    SHIP_DISPLAY_DURATION: number;
-    FLY_IN_DURATION: number;
-    FLY_OUT_DURATION: number;
-    HOLD_DURATION: number;
-    TOTAL_CYCLE_DURATION: number;
-    START_Z: number;
-    TARGET_POS: THREE.Vector3;
-    // Add HUD constants if needed directly
-    MAX_VISUAL_ROLL_RATE: number;
-    MAX_VISUAL_PITCH_RATE: number;
-  };
-  planetInfos: PlanetInfo[];
-  getCurrentPlanet: () => PlanetInfo;
+  assets: GameEntities;                     // Access to loaded game objects
+  currentState: GameState;                  // The current game state
+  scene: THREE.Scene | null;                // The main THREE.js scene
+  camera: THREE.PerspectiveCamera | null;   // The main THREE.js camera
+  constants: typeof Constants;              // Access to game constants
+
+  // State Management
+  switchState: (newState: GameState) => void; // Function to change the game state
+
+  // React Integration
+  reactSetters: ReactSetters;               // Setters to update React UI state
+  introMusicRef: React.RefObject<HTMLAudioElement>; // Ref to intro music audio element
+  undockSoundRef: React.RefObject<HTMLAudioElement>; // Ref to undock sound audio element
+
+  // Hook Integration
+  registerSceneUpdate: (state: GameState, updateFn: (deltaTime: number) => void) => void; // Register hook update logic
+  unregisterSceneUpdate: (state: GameState) => void; // Unregister hook update logic
+
+  // Planet Data Management
+  planetInfos: PlanetInfo[];                // List of all generated planets
+  currentPlanetName: string;                // Name of the current planet system
+  selectedPlanetName: string | null;        // Name of the currently selected target planet
+  getCurrentPlanet: () => PlanetInfo;       // Get info for the current planet
+  setSelectedPlanetName: (name: string | null) => void; // Set the selected target planet
+  getSelectedPlanet: () => PlanetInfo | undefined; // Get info for the selected planet (if any)
 }

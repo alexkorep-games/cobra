@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import { SceneLogicBase } from "../common/SceneLogicBase";
-import { GameState, IGameManager, RadarPosition } from "../../types";
+import { /* GameState, */ IGameManager, RadarPosition } from "../../types";
 import * as Constants from "../../constants";
 import { EntityBase } from "../../game/entities/EntityBase";
 import { Ship } from "../../game/entities/Ship"; // Import Ship
@@ -8,7 +7,8 @@ import { Ship } from "../../game/entities/Ship"; // Import Ship
 // Define radar range constant
 const RADAR_DISTANCE = 10000;
 
-export class SpaceFlightSceneLogic extends SceneLogicBase {
+export class SpaceFlightSceneLogic {
+  protected readonly gameManager: IGameManager; // Added gameManager property
   private velocity: number = 0;
   private rollRate: number = 0;
   private pitchRate: number = 0;
@@ -31,7 +31,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
   private raycaster = new THREE.Raycaster();
 
   constructor(game: IGameManager) {
-    super(game);
+    this.gameManager = game; // Initialize gameManager
     console.log("SpaceFlightSceneLogic constructor");
     this.boundHandleKeyDown = this.handleKeyDown.bind(this);
     this.boundHandleKeyUp = this.handleKeyUp.bind(this);
@@ -74,9 +74,8 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     );
   }
 
-  enter(previousState?: GameState): void {
+  enter(/* previousState?: GameState */): void {
     console.log("Entering SpaceFlightSceneLogic scene");
-    super.enter(previousState); // Resets common visibility
 
     // Position planet far away
     if (this.gameManager.assets.planet && this.gameManager.camera) {
@@ -125,7 +124,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     // Position Pirates randomly around the player's starting position
     const playerStartPosition =
       this.gameManager.camera?.position ?? new THREE.Vector3(0, 0, 0);
-    this.gameManager.assets.pirateShips.forEach((pirate) => {
+    this.gameManager.assets.pirateShips.forEach((pirate: Ship) => {
       this.positionObjectRandomly(
         pirate,
         Constants.PIRATE_BASE_DISTANCE,
@@ -194,8 +193,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     console.log("Key event listeners bound");
   }
 
-  exit(nextState?: GameState): void {
-    super.exit(nextState);
+  exit(/* nextState?: GameState */): void {
     this.resetHud();
     window.removeEventListener("keydown", this.boundHandleKeyDown);
     window.removeEventListener("keyup", this.boundHandleKeyUp);
@@ -205,7 +203,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     // Hide planet, station, and pirates
     this.gameManager.assets.planet?.setVisible(false);
     this.gameManager.assets.spaceStation?.setVisible(false);
-    this.gameManager.assets.pirateShips.forEach((pirate) => pirate.setVisible(false));
+    this.gameManager.assets.pirateShips.forEach((pirate: Ship) => pirate.setVisible(false));
 
     this.wantsToFire = false; // Ensure firing stops on exit
     if (this.laserBeam) {
@@ -286,9 +284,9 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
       // Prepare list of pirate meshes to check against
       const pirateMeshes: THREE.Object3D[] = this.gameManager.assets.pirateShips
-        .map((p) => p.mesh) // Get the mesh from each Ship entity
+        .map((p: Ship) => p.mesh) // Get the mesh from each Ship entity
         .filter(
-          (mesh): mesh is THREE.Object3D => mesh !== null && mesh.visible
+          (mesh: THREE.Object3D | null): mesh is THREE.Object3D => mesh !== null && mesh.visible
         ); // Filter out null or invisible meshes
 
       const intersects = this.raycaster.intersectObjects(pirateMeshes, true); // Check recursively
@@ -553,7 +551,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
     // --- Pirate AI ---
     const playerPos = this.gameManager.camera.position;
-    this.gameManager.assets.pirateShips.forEach((pirate) => {
+    this.gameManager.assets.pirateShips.forEach((pirate: Ship) => {
       if (!pirate.mesh || !pirate.visible) return; // Skip inactive pirates
 
       const piratePos = pirate.getPosition();
@@ -603,8 +601,8 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
     // --- Update pirate positions for radar ---
     const piratePositions: RadarPosition[] = this.gameManager.assets.pirateShips
-      .filter(pirate => pirate.mesh && pirate.visible)
-      .map(pirate => {
+      .filter((pirate: Ship) => pirate.mesh && pirate.visible)
+      .map((pirate: Ship) => {
         const piratePos = pirate.getPosition();
         const distance = playerPos.distanceTo(piratePos);
 
@@ -638,7 +636,7 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
           z: relativeZ,
         };
       })
-      .filter((p): p is RadarPosition => p !== null); // Filter out null entries
+      .filter((p: RadarPosition | null): p is RadarPosition => p !== null); // Filter out null entries
 
     // Update radar with pirate positions
     this.gameManager.reactSetters.setRadarPositions(piratePositions);
@@ -706,25 +704,21 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
 
    // Update coordinate display in React UI
    protected updateCoordinates(coords: [number, number, number]): void {
-    if (!this.isActive) return;
     this.gameManager.reactSetters.setCoordinates(coords);
   }
 
   // Update speed display in React UI
   protected updateSpeed(speed: number): void {
-    if (!this.isActive) return;
     this.gameManager.reactSetters.setSpeed(speed);
   }
 
   // Update roll indicator in React UI
   protected updateRoll(roll: number): void {
-    if (!this.isActive) return;
     this.gameManager.reactSetters.setRoll(roll);
   }
 
   // Update pitch indicator in React UI
   protected updatePitch(pitch: number): void {
-    if (!this.isActive) return;
     this.gameManager.reactSetters.setPitch(pitch);
   }
 
@@ -735,19 +729,16 @@ export class SpaceFlightSceneLogic extends SceneLogicBase {
     offCenterAmount: number;
     isInFront: boolean;
   } | null): void {
-    if (!this.isActive) return;
     this.gameManager.reactSetters.setStationDirection(direction);
   }
 
   // Update pirate ship positions for radar display
   protected updatePiratePositions(positions: RadarPosition[]): void {
-    if (!this.isActive) return;
     this.gameManager.reactSetters.setRadarPositions(positions);
   }
 
   // Common utility for switching to different scenes
   protected switchToScene(scene: string): void {
-    if (!this.isActive) return;
     this.gameManager.switchState(scene as any); // GameState is string union type
   }
 }
