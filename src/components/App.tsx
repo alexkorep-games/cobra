@@ -1,6 +1,8 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
 import "./App.css";
-import { GameState, PiratePosition, ReactSetters } from "../types";
+// Use RadarPosition from types.ts
+import { GameState, RadarPosition, ReactSetters } from "../types";
 import { GameManager } from "../game/GameManager";
 
 // Import Scene Components
@@ -11,10 +13,15 @@ import StatsScreen from "../features/stats/StatsScreen";
 import CoordinatesDisplay from "./hud/CoordinatesDisplay";
 import SpaceFlightScreen from "../features/space_flight/SpaceFlightScreen";
 import { PlanetInfo, calculateDistance } from "../classes/PlanetInfo"; // Moved PLANET constants here or import from constants.ts
-// import { INITIAL_PLANET_INDEX } from "../constants"; // Import from PlanetInfo instead
 import ShortRangeChartScreen from "../features/short_range_chart/ShortRangeChartScreen";
 import PlanetInfoScreen from "../features/planet_info/PlanetInfoScreen";
 import UndockingScreen from "../features/undocking/UndockingScreen";
+
+// Import R3F Entity Components
+import PlanetComponent from "./r3f/PlanetComponent";
+import SpaceStationComponent from "./r3f/SpaceStationComponent";
+import ShipComponent from "./r3f/ShipComponent";
+import UndockingSquares from "./r3f/UndockingSquares"; // Import the new component
 
 // Import Scene Logic Hooks
 import { useLoadingLogic } from "../features/loading/useLoadingLogic";
@@ -25,6 +32,14 @@ import { useUndockingLogic } from "../features/undocking/useUndockingLogic";
 import { useShortRangeChartLogic } from "../features/short_range_chart/useShortRangeChartLogic";
 import { usePlanetInfoLogic } from "../features/planet_info/usePlanetInfoLogic";
 import { INITIAL_PLANET_INDEX, JUMP_RANGE } from "../constants";
+
+// Helper component to run GameManager update loop
+const GameLoop: React.FC<{ gameManager: GameManager | null }> = ({ gameManager }) => {
+  useFrame((_, delta) => { // Changed state to _
+    gameManager?.update(delta);
+  });
+  return null; // This component doesn't render anything itself
+};
 
 const App: React.FC = () => {
   // --- State ---
@@ -42,28 +57,24 @@ const App: React.FC = () => {
     offCenterAmount: number;
     isInFront: boolean;
   } | null>(null); // Updated to use object structure
-  const [radarPositions, setRadarPositions] = useState<PiratePosition[]>([]);
+  // Use RadarPosition type for radarPositions state
+  const [radarPositions, setRadarPositions] = useState<RadarPosition[]>([]);
 
   // --- Planet Info State ---
   // These are now set by GameManager via reactSetters
   const [planetInfos, setPlanetInfos] = useState<PlanetInfo[]>([]);
-  const [currentPlanetIndex, setCurrentPlanetIndex] = useState<string>(INITIAL_PLANET_INDEX); // Index is name
+  // Initialize currentPlanetIndex as empty string, GameManager will set the correct one
+  const [currentPlanetIndex, setCurrentPlanetIndex] = useState<string>("");
   const [selectedPlanetName, setSelectedPlanetName] = useState<string | null>(null);
 
   // --- Refs ---
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  // canvasRef is no longer needed for direct Three.js init
   const gameManagerRef = useRef<GameManager | null>(null);
   const introMusicRef = useRef<HTMLAudioElement>(null);
   const undockSoundRef = useRef<HTMLAudioElement>(null);
 
-
   // --- Game Logic Initialization Effect ---
   useEffect(() => {
-    // TODO figure out why it happens twice
-    if (!canvasRef.current) {
-      console.error("Mount point or canvas not found");
-      return;
-    }
     if (gameManagerRef.current) {
       console.log("GameManager instance already exists, skipping init.");
       return;
@@ -98,7 +109,8 @@ const App: React.FC = () => {
       setIsLoadingComplete(true);
     };
 
-    gameManager.init(canvasRef.current, handleLoadingComplete);
+    // Pass the loading callback, but not the canvas
+    gameManager.init(handleLoadingComplete);
     gameManagerRef.current = gameManager;
 
     return () => {
@@ -150,7 +162,7 @@ const App: React.FC = () => {
             altitude={altitude}
             laserHeat={laserHeat} // Pass laser heat
             stationDirection={stationDirection}
-            radarPosition={radarPositions} // Pass radar positions
+            radarPosition={radarPositions} // Prop name matches state name
           />
         );
         case "short_range_chart":
@@ -185,12 +197,66 @@ const App: React.FC = () => {
   };
 
   // --- Render ---
+  const gm = gameManagerRef.current;
+  const assets = gm?.assets;
+
   return (
     <div id="container">
-      <canvas ref={canvasRef} id="eliteCanvas"></canvas>
+      <Canvas
+        camera={{ fov: 75, near: 0.1, far: 10_000_000, position: [0, 0, 15] }}
+        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }}
+      >
+         <Suspense fallback={null}>
+            {/* Basic lighting */}
+            <ambientLight intensity={0.7} />
+            <directionalLight position={[5, 5, 5]} intensity={0.8} />
 
-      {/* The overlay now renders the specific scene component */}
-      <div className="overlay">{renderSceneComponent()}</div>
+            {/* Game Loop Runner */}
+            <GameLoop gameManager={gm} />
+
+            {/* Render Entities conditionally based on gameState and asset availability */}
+            {assets?.planet && (
+              <PlanetComponent
+                planet={assets.planet}
+                visible={gameState === 'space_flight'} // Example: Only visible during space flight
+              />
+            )}
+
+            {assets?.spaceStation && (
+              <SpaceStationComponent
+                station={assets.spaceStation}
+                visible={gameState === 'undocking' || gameState === 'space_flight'} // Visible during undocking and flight
+              />
+            )}
+
+            {/* Render Title Ships */}
+            {assets?.titleShips && assets.titleShips.map((ship, index) => (
+              <ShipComponent
+                key={`title-ship-${index}`}
+                ship={ship}
+                visible={gameState === 'title'} // Only visible during title screen
+              />
+            ))}
+
+            {/* Render Pirate Ships */}
+            {assets?.pirateShips && assets.pirateShips.map((pirate, index) => (
+              <ShipComponent
+                key={`pirate-ship-${index}`}
+                ship={pirate}
+                visible={gameState === 'space_flight'} // Only visible during space flight
+              />
+            ))}
+
+            {/* Render Undocking Squares conditionally */}
+            {gameState === 'undocking' && <UndockingSquares />}
+
+         </Suspense>
+      </Canvas>
+
+      {/* Overlay UI */}
+      <div className="overlay" style={{ zIndex: 1, position: 'relative' }}>
+        {renderSceneComponent()}
+      </div>
 
       {/* Audio Elements */}
       {/* Conditionally render CoordinatesDisplay only during space flight */}

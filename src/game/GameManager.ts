@@ -1,6 +1,7 @@
 // src/features/space_flight/GameManager.ts
-import * as THREE from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; // If needed
+// Remove unused THREE import
+// import * as THREE from "three";
+// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"; // Removed
 import { GameState, IGameManager, GameEntities, ReactSetters } from "../types";
 
 import { SpaceFlightSceneLogic } from "../features/space_flight/SpaceFlightSceneLogic.ts"
@@ -20,53 +21,55 @@ import { generatePlanets, PlanetInfo } from "../classes/PlanetInfo"; // Correcte
 const stationScale = Constants.SHIP_SCALE * 1.5; // Make station a bit larger
 
 export class GameManager implements IGameManager {
-  scene: THREE.Scene | null = null;
-  camera: THREE.PerspectiveCamera | null = null;
-  renderer: THREE.WebGLRenderer | null = null;
-  clock: THREE.Clock = new THREE.Clock();
+  // Remove Three.js core objects managed by R3F
+  // scene: THREE.Scene | null = null;
+  // camera: THREE.PerspectiveCamera | null = null;
+  // renderer: THREE.WebGLRenderer | null = null;
+  // clock: THREE.Clock = new THREE.Clock(); // R3F provides delta time in useFrame
+
   planetInfos: PlanetInfo[];
   currentPlanetName: string; // Store current planet name (which is the ID)
   selectedPlanetName: string | null = null; // Store selected planet name
 
-  // Initialize assets with correct types
+  // Assets remain, but they won't be added to the scene here
   assets: GameEntities = {
     titleShips: [],
     planet: null,
-    undockingSquares: [],
+    undockingSquares: [], // Will need refactoring for R3F
     spaceStation: null,
     pirateShips: [],
   };
 
   loadingCompleteCallback: (() => void) | null = null;
   currentState: GameState = "loading";
-  // Only store class-based scene logic (just space_flight)
   sceneLogics: Partial<Record<GameState, SpaceFlightSceneLogic>> = {};
-  // Map to store update functions provided by hooks
   private sceneUpdateFunctions: Partial<
     Record<GameState, (deltaTime: number) => void>
   > = {};
 
-  animationFrameId: number | null = null;
+  // Remove animation loop properties
+  // animationFrameId: number | null = null;
 
-  controls: OrbitControls | null = null; // Optional OrbitControls for debugging
+  // Remove controls
+  // controls: OrbitControls | null = null;
 
-  // Refs from React
-  introMusicRef: React.RefObject<HTMLAudioElement>;
-  undockSoundRef: React.RefObject<HTMLAudioElement>;
+  // Refs from React - Update constructor signature to accept potentially null refs
+  introMusicRef: React.RefObject<HTMLAudioElement | null>;
+  undockSoundRef: React.RefObject<HTMLAudioElement | null>;
   reactSetters: ReactSetters; // Single property for all React setters
 
   // Constants (no change)
   constants = { ...Constants };
 
-  // Bound event handlers (no change)
+  // Bound event handlers (remove resize and animate)
   boundHandleGlobalInput: (event: KeyboardEvent | MouseEvent) => void;
-  boundOnWindowResize: () => void;
-  boundAnimate: () => void;
+  // boundOnWindowResize: () => void;
+  // boundAnimate: () => void;
 
   constructor(
     reactSetters: ReactSetters,
-    introMusicRef: React.RefObject<HTMLAudioElement> | null,
-    undockSoundRef: React.RefObject<HTMLAudioElement> | null
+    introMusicRef: React.RefObject<HTMLAudioElement | null>, // Accept null
+    undockSoundRef: React.RefObject<HTMLAudioElement | null> // Accept null
   ) {
     if (!introMusicRef || !undockSoundRef) {
       throw new Error("Audio refs must be provided");
@@ -76,8 +79,9 @@ export class GameManager implements IGameManager {
     this.undockSoundRef = undockSoundRef;
 
     this.boundHandleGlobalInput = this.handleGlobalInput.bind(this);
-    this.boundOnWindowResize = this.onWindowResize.bind(this);
-    this.boundAnimate = this.animate.bind(this);
+    // Remove bindings for resize and animate
+    // this.boundOnWindowResize = this.onWindowResize.bind(this);
+    // this.boundAnimate = this.animate.bind(this);
 
     // Generate planets using constants from Constants
     this.planetInfos = generatePlanets(
@@ -101,62 +105,46 @@ export class GameManager implements IGameManager {
     this.reactSetters.setCurrentPlanetIndex(this.currentPlanetName); // Pass initial name
   }
 
-  async init(canvas: HTMLCanvasElement, loadingCallback: () => void) {
+  // Adjust init signature - remove canvas parameter
+  async init(loadingCallback: () => void) {
     this.loadingCompleteCallback = loadingCallback;
 
-    // Create scene first
+    // Remove scene, camera, renderer, lighting, controls setup
+    /*
     this.scene = new THREE.Scene();
-
-    const cameraFarPlane = 10_000_000; // 10 million units
-    this.camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      cameraFarPlane
-    );
-    this.camera.position.z = 15; // Default start position
-
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: canvas,
-      antialias: false, // Keep pixelated aesthetic
-    });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setClearColor(0x000000); // Black background
-    // Enable logarithmic depth buffer if needed for large scenes
-    // NOTE: Requires compatible materials (e.g., MeshBasicMaterial wireframe might be okay)
-    // this.renderer.logarithmicDepthBuffer = true; // Commented out due to type error
-
-    // Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+    const cameraFarPlane = 10_000_000;
+    this.camera = new THREE.PerspectiveCamera(...);
+    this.renderer = new THREE.WebGLRenderer(...);
+    this.renderer.setSize(...);
+    this.renderer.setClearColor(...);
+    const ambientLight = new THREE.AmbientLight(...);
     this.scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(5, 5, 5);
+    const directionalLight = new THREE.DirectionalLight(...);
     this.scene.add(directionalLight);
+    // this.controls = new OrbitControls(...);
+    */
 
-    // Optional: OrbitControls for debugging
-    // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    // this.controls.enableDamping = true;
-    // this.controls.dampingFactor = 0.05;
-    // this.controls.screenSpacePanning = false;
-
-    // Setup scene logics before loading assets
+    // Setup scene logics (remains the same for now)
     this.setupSceneLogics();
 
     try {
+      // Pass a large number for cameraFarPlane if createAssets still uses it
+      // Or refactor createAssets to not depend on it directly
+      const cameraFarPlane = 10_000_000; // Keep for now if needed by createAssets
       await this.createAssets(cameraFarPlane); // Wait for assets to load
-      this.startAnimationLoop();
 
-      // Add global listeners
-      window.addEventListener("resize", this.boundOnWindowResize);
+      // Remove animation loop start
+      // this.startAnimationLoop();
+
+      // Add global listeners (remove resize)
+      // window.addEventListener("resize", this.boundOnWindowResize);
       window.addEventListener("keydown", this.boundHandleGlobalInput);
       window.addEventListener("keyup", this.boundHandleGlobalInput); // Listen for keyup too
       window.addEventListener("mousedown", this.boundHandleGlobalInput);
-      // window.addEventListener("mouseup", this.boundHandleGlobalInput); // Add if needed
 
-      console.log("GameManager initialized and listeners added.");
+      console.log("GameManager initialized (without scene/renderer) and listeners added.");
     } catch (error) {
       console.error("Error during initialization:", error);
-      // Still call callback to unblock UI
       if (this.loadingCompleteCallback) {
         this.loadingCompleteCallback();
       }
@@ -170,9 +158,10 @@ export class GameManager implements IGameManager {
   }
 
   async createAssets(cameraFarPlane: number) {
-    if (!this.scene || !this.camera) {
-      throw new Error("Scene or camera not initialized");
-    }
+    // Remove checks for scene/camera as they are no longer properties here
+    // if (!this.scene || !this.camera) {
+    //   throw new Error("Scene or camera not initialized");
+    // }
 
     console.log("Starting asset loading...");
 
@@ -201,53 +190,58 @@ export class GameManager implements IGameManager {
     const loadPromises: Promise<void>[] = [];
 
     // --- Instantiate Planet ---
-    // Example radius - adjust as needed for scale relative to far plane
     const planetRadius = cameraFarPlane * 0.05; // Example: 5% of far plane distance
-    this.assets.planet = new Planet(this.scene, planetRadius, 0x44aa44); // Greenish planet
+    // Pass null for scene, as entities shouldn't add themselves directly anymore
+    this.assets.planet = new Planet(null, planetRadius, 0x44aa44); // Greenish planet
     loadPromises.push(
       this.assets.planet.load().then(() => {
-        if (this.scene) {
-          this.assets.planet?.addToScene(this.scene); // Add to scene after load
-          this.assets.planet?.setVisible(false); // Start hidden
-        } else {
-          console.warn("Scene disposed before Planet could be added.");
-        }
+        // Remove addToScene and setVisible calls
+        // if (this.scene) {
+        //   this.assets.planet?.addToScene(this.scene);
+        //   this.assets.planet?.setVisible(false);
+        // } else {
+        //   console.warn("Scene disposed before Planet could be added.");
+        // }
+        console.log("Planet loaded.");
       })
     );
 
     // --- Instantiate Space Station ---
     this.assets.spaceStation = new SpaceStation(
-      this.scene,
+      null, // Pass null for scene
       spaceStationPath,
       stationScale,
       0xffff00 // Yellow station
     );
     loadPromises.push(
       this.assets.spaceStation.load().then(() => {
-        if (this.scene) {
-          this.assets.spaceStation?.addToScene(this.scene);
-          this.assets.spaceStation?.setVisible(false); // Start hidden
-        } else {
-          console.warn("Scene disposed before SpaceStation could be added.");
-        }
+        // Remove addToScene and setVisible calls
+        // if (this.scene) {
+        //   this.assets.spaceStation?.addToScene(this.scene);
+        //   this.assets.spaceStation?.setVisible(false);
+        // } else {
+        //   console.warn("Scene disposed before SpaceStation could be added.");
+        // }
+        console.log("SpaceStation loaded.");
       })
     );
 
     // --- Instantiate Title Ships ---
     this.assets.titleShips = []; // Clear previous array if any
     shipFilePaths.forEach((path) => {
-      const ship = new Ship(this.scene!, path, Constants.SHIP_SCALE, 0x00ffff); // Cyan ships
+      const ship = new Ship(null, path, Constants.SHIP_SCALE, 0x00ffff); // Pass null for scene
       this.assets.titleShips.push(ship);
       loadPromises.push(
         ship.load().then(() => {
-          if (this.scene) {
-            ship.addToScene(this.scene); // Add each ship after it loads
-            ship.setVisible(false); // Start hidden
-          } else {
-            console.warn(
-              `Scene disposed before Title Ship (${path}) could be added.`
-            );
-          }
+          // Remove addToScene and setVisible calls
+          // if (this.scene) {
+          //   ship.addToScene(this.scene);
+          //   ship.setVisible(false);
+          // } else {
+          //   console.warn(
+          //     `Scene disposed before Title Ship (${path}) could be added.`
+          //   );
+          console.log(`Title Ship ${path} loaded.`);
         })
       );
     });
@@ -256,7 +250,7 @@ export class GameManager implements IGameManager {
     this.assets.pirateShips = []; // Clear previous array if any
     for (let i = 0; i < Constants.PIRATE_COUNT; i++) {
       const pirate = new Ship(
-        this.scene!,
+        null, // Pass null for scene
         pirateShipPath,
         Constants.SHIP_SCALE,
         0xff0000
@@ -264,64 +258,46 @@ export class GameManager implements IGameManager {
       this.assets.pirateShips.push(pirate);
       loadPromises.push(
         pirate.load().then(() => {
-          if (this.scene) {
-            pirate.addToScene(this.scene); // Add each pirate after it loads
-            pirate.setVisible(false); // Start hidden
-          } else {
-            console.warn(
-              `Scene disposed before Pirate Ship (${i}) could be added.`
-            );
-          }
+          // Remove addToScene and setVisible calls
+          // if (this.scene) {
+          //   pirate.addToScene(this.scene);
+          //   pirate.setVisible(false);
+          // } else {
+          //   console.warn(
+          //     `Scene disposed before Pirate Ship (${i}) could be added.`
+          //   );
+          console.log(`Pirate Ship ${i} loaded.`);
         })
       );
     }
 
-    // --- Undocking Squares (Keep as is for now) ---
-    // Geometry and material should be created once
+    // --- Undocking Squares (Needs complete refactor for R3F) ---
+    // Remove direct THREE object creation and scene addition
+    /*
     const squareOutlineGeom = new THREE.BufferGeometry();
-    const vertices = new Float32Array([
-      -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0,
-    ]);
-    squareOutlineGeom.setAttribute(
-      "position",
-      new THREE.BufferAttribute(vertices, 3)
-    );
-    const squareLineMat = new THREE.LineBasicMaterial({ color: 0x00ff00 });
-    squareLineMat.userData = { disposeOnce: true }; // Mark for single disposal
-
+    ...
+    const squareLineMat = new THREE.LineBasicMaterial(...);
     this.assets.undockingSquares = [];
     if (this.scene) {
       for (let i = 0; i < 20; i++) {
-        // Use the shared geometry and material
-        const squareLine = new THREE.LineLoop(squareOutlineGeom, squareLineMat);
-        squareLine.scale.set((i + 1) * 2, (i + 1) * 2, 1);
-        squareLine.position.z = -i * 5;
-        squareLine.visible = false; // Start hidden
-        this.scene.add(squareLine); // Add squares directly
+        const squareLine = new THREE.LineLoop(...);
+        this.scene.add(squareLine);
         this.assets.undockingSquares.push(squareLine);
       }
-    } else {
-      console.warn("Scene disposed before Undocking Squares could be added.");
-      this.assets.undockingSquares = []; // Ensure array exists
-      // Manually dispose shared geometry/material if scene died early
-      squareOutlineGeom.dispose();
-      squareLineMat.dispose();
-    }
+    } else { ... }
+    */
+    this.assets.undockingSquares = []; // Keep array, but it won't be populated here
+    console.warn("Undocking Squares creation needs refactoring for R3F.");
     // --- End Undocking Squares ---
 
     // --- Loading Completion ---
     console.log(`Starting loading of ${loadPromises.length} assets...`);
-    await Promise.all(loadPromises); // Use await to ensure completion before proceeding
+    await Promise.all(loadPromises);
 
-    // Check if scene exists after loading
-    if (!this.scene) {
-      console.warn("Scene disposed during asset loading.");
-      // Still call callback? Maybe not, as the game state is likely invalid.
-      // if (this.loadingCompleteCallback) this.loadingCompleteCallback();
-      return; // Don't proceed if scene is gone
-    }
+    // Remove scene check
+    // if (!this.scene) { ... }
 
-    console.log("All assets loaded successfully.");
+    console.log("All assets loaded successfully (but not added to scene).");
     if (this.loadingCompleteCallback) {
       this.loadingCompleteCallback(); // Notify React loading is done
     } else {
@@ -333,7 +309,7 @@ export class GameManager implements IGameManager {
     // The class-based 'enter' for SpaceFlightSceneLogic will be called via switchState.
   } // End createAssets
 
-  // --- Hook Update Registration ---
+  // --- Hook Update Registration (Keep for now, might adapt later) ---
   registerSceneUpdate(state: GameState, updateFn: (deltaTime: number) => void) {
     this.sceneUpdateFunctions[state] = updateFn;
   }
@@ -343,55 +319,38 @@ export class GameManager implements IGameManager {
   }
   // --- End Hook Update Registration ---
 
+  // Remove the entire animate method and related loop methods
+  /*
   animate() {
-    // Important: Check if animation should run
-    if (this.animationFrameId === null && !this.clock.running) {
-      console.log("Animation loop stopped, exiting animate.");
-      return; // Don't request another frame if explicitly stopped
-    }
+    // ... removed ...
+  }
 
-    if (!this.renderer || !this.scene || !this.camera) return;
-    const deltaTime = this.clock.getDelta();
+  startAnimationLoop() {
+    // ... removed ...
+  }
 
+  stopAnimationLoop() {
+    // ... removed ...
+  }
+  */
+
+  // Update method - This will likely be called differently or replaced by useFrame logic
+  // For now, keep the structure but it won't be called by an animation loop here.
+  update(deltaTime: number) {
     // Update Entities (Planet, Station, Pirates have their own updates)
     this.assets.planet?.update(deltaTime);
     this.assets.spaceStation?.update(deltaTime);
     this.assets.pirateShips.forEach((pirate) => pirate.update(deltaTime));
     // Title ships are updated by the TitleSceneLogic hook
 
-    // Optional: Update OrbitControls
-    // this.controls?.update();
-
     // Update Current Scene Logic
-    // Prioritize hook update function if registered
     const currentHookUpdateFn = this.sceneUpdateFunctions[this.currentState];
     if (currentHookUpdateFn) {
       currentHookUpdateFn(deltaTime); // Call hook's update function
     } else {
-      // Fallback to class-based logic (only space_flight remains)
       const currentClassLogic = this.sceneLogics[this.currentState];
       currentClassLogic?.update(deltaTime);
     }
-
-    // Render the scene
-    this.renderer.render(this.scene, this.camera);
-
-    // Request next frame
-    this.animationFrameId = requestAnimationFrame(this.boundAnimate);
-  }
-
-  startAnimationLoop() {
-    if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
-    this.clock.start(); // Ensure clock is running
-    this.boundAnimate(); // Initial call
-  }
-
-  stopAnimationLoop() {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
-    this.clock.stop(); // Stop the clock
   }
 
   switchState(newState: GameState) {
@@ -452,12 +411,12 @@ export class GameManager implements IGameManager {
   }
   // --- End Interaction Methods ---
 
+  // Remove onWindowResize method
+  /*
   onWindowResize() {
-    if (!this.camera || !this.renderer) return;
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    // ... removed ...
   }
+  */
 
   handleGlobalInput(/* event: KeyboardEvent | MouseEvent */) {
     // Hooks handle their own input via window listeners setup in their effects.
@@ -477,14 +436,14 @@ export class GameManager implements IGameManager {
 
   dispose() {
     console.log("Disposing GameManager...");
-    this.stopAnimationLoop();
+    // Remove stopAnimationLoop call
+    // this.stopAnimationLoop();
 
-    // Remove global listeners
-    window.removeEventListener("resize", this.boundOnWindowResize);
+    // Remove global listeners (remove resize)
+    // window.removeEventListener("resize", this.boundOnWindowResize);
     window.removeEventListener("keydown", this.boundHandleGlobalInput);
     window.removeEventListener("keyup", this.boundHandleGlobalInput);
     window.removeEventListener("mousedown", this.boundHandleGlobalInput);
-    // window.removeEventListener("mouseup", this.boundHandleGlobalInput);
 
     // Dispose Entities managed by assets
     this.assets.planet?.dispose();
@@ -492,39 +451,27 @@ export class GameManager implements IGameManager {
     this.assets.titleShips.forEach((ship) => ship.dispose());
     this.assets.pirateShips.forEach((pirate) => pirate.dispose());
 
-    // Dispose remaining non-entity THREE objects (like undocking squares)
-    // Ensure shared geometry/material are disposed only once
+    // Remove disposal of undocking squares THREE objects
+    /*
     let geomDisposed = false;
     let matDisposed = false;
     this.assets.undockingSquares.forEach((square) => {
-      if (square.geometry && !geomDisposed) {
-        square.geometry.dispose();
-        geomDisposed = true;
-      }
-      // Check custom flag to dispose material only once, handling single or array
-      const materials = Array.isArray(square.material) ? square.material : [square.material];
-      materials.forEach(material => {
-          if (material && !matDisposed && material.userData?.disposeOnce) {
-              material.dispose();
-              matDisposed = true; // Assume shared material, dispose only once globally
-          }
-      });
-
-      this.scene?.remove(square); // Remove from scene
+      // ... disposal logic removed ...
+      // this.scene?.remove(square); // Remove scene removal
     });
+    */
+    console.log("Entities disposed.");
 
-    console.log("Entities and remaining objects disposed.");
+    // Remove renderer and controls disposal
+    // this.renderer?.dispose();
+    // this.controls?.dispose();
 
-    // Dispose renderer and controls
-    this.renderer?.dispose();
-    this.controls?.dispose();
-
-    // Clear scene, references, and state
-    this.scene?.clear(); // Clear scene children
-    this.scene = null;
-    this.camera = null;
-    this.renderer = null;
-    this.controls = null;
+    // Remove scene, camera, renderer, controls clearing
+    // this.scene?.clear();
+    // this.scene = null;
+    // this.camera = null;
+    // this.renderer = null;
+    // this.controls = null;
 
     // Reset assets structure
     this.assets = {

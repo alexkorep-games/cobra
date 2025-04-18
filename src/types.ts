@@ -4,6 +4,7 @@ import { Planet } from "./game/entities/Planet"; // Ensure correct paths
 import { Ship } from "./game/entities/Ship";
 import { SpaceStation } from "./game/entities/SpaceStation";
 import { PlanetInfo } from "./classes/PlanetInfo";
+import * as Constants from "./constants"; // Import Constants
 
 // Define possible game states as a string union type
 export type GameState =
@@ -59,8 +60,6 @@ export interface ReactSetters {
 export interface IGameManager {
   assets: GameEntities;                     // Access to loaded game objects
   currentState: GameState;                  // The current game state
-  scene: THREE.Scene | null;                // The main THREE.js scene
-  camera: THREE.PerspectiveCamera | null;   // The main THREE.js camera
   constants: typeof Constants;              // Access to game constants
 
   // State Management
@@ -68,8 +67,8 @@ export interface IGameManager {
 
   // React Integration
   reactSetters: ReactSetters;               // Setters to update React UI state
-  introMusicRef: React.RefObject<HTMLAudioElement>; // Ref to intro music audio element
-  undockSoundRef: React.RefObject<HTMLAudioElement>; // Ref to undock sound audio element
+  introMusicRef: React.RefObject<HTMLAudioElement | null>; // Ref to intro music audio element
+  undockSoundRef: React.RefObject<HTMLAudioElement | null>; // Ref to undock sound audio element
 
   // Hook Integration
   registerSceneUpdate: (state: GameState, updateFn: (deltaTime: number) => void) => void; // Register hook update logic

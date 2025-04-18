@@ -8,18 +8,17 @@ export class Planet extends EntityBase {
   private rotationSpeed: number;
 
   constructor(
-    scene: THREE.Scene,
     radius: number,
     color: THREE.ColorRepresentation = 0xff0000,
     rotationSpeed: number = 0.005
   ) {
-    super(scene);
+    super();
     this.radius = radius;
     this.color = color;
     this.rotationSpeed = rotationSpeed;
   }
 
-  static async loadCommonAssets(scene: THREE.Scene) {
+  static async loadCommonAssets() {
     // Load and cache any shared geometry/materials/models here if needed
     // For Planet, this may be a no-op unless you want to share geometry/material
     return Promise.resolve();
@@ -39,13 +38,6 @@ export class Planet extends EntityBase {
     this.visible = false;
     // No need to add to scene here, GameManager will do it after load
     return Promise.resolve();
-  }
-
-  addToScene(scene: THREE.Scene) {
-    if (this.mesh && !scene.children.includes(this.mesh)) {
-      scene.add(this.mesh);
-      this.visible = this.mesh.visible;
-    }
   }
 
   update(deltaTime: number): void {
