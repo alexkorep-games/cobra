@@ -28,7 +28,7 @@ export const MAX_VISUAL_PITCH_RATE = Math.PI * 0.3; // Radians/sec (Used for HUD
 // Space Station Constants
 export const STATION_PLANET_OFFSET_MIN = 1000; // Min distance from planet surface/center
 export const STATION_PLANET_OFFSET_MAX = 5000; // Max distance from planet surface/center
-export const STATION_DOCKING_RADIUS = 150; // Distance to trigger docking/return to title
+export const STATION_DOCKING_RADIUS = 10; // Distance to trigger docking/return to title
 
 // Pirate Constants
 export const PIRATE_COUNT = 3;
@@ -47,6 +47,7 @@ export const LASER_MAX_HEAT = 100; // Max heat before overheating
 export const LASER_COLOR = 0xff0000; // Red laser
 export const LASER_DURATION = 0.1; // How long the beam is visible per shot
 export const LASER_LENGTH = 40; // Visual length of the beam
+export const LASER_LINE_WIDTH = 1; // Width of the laser beam
 
 
 // Planets

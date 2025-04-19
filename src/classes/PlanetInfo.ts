@@ -74,6 +74,7 @@ export class PlanetInfo {
   radius: number; // In kilometers
   description: string;
   coordinates: Coordinates;
+  playerSpawnPosition: Coordinates; // New property for player spawn position
 
   constructor(
     name: string,
@@ -84,7 +85,8 @@ export class PlanetInfo {
     productivity: number,
     radius: number,
     description: string,
-    coordinates: Coordinates
+    coordinates: Coordinates,
+    playerSpawnPosition: Coordinates // Add to constructor
   ) {
     this.name = name;
     this.governmentType = governmentType;
@@ -95,6 +97,7 @@ export class PlanetInfo {
     this.radius = radius;
     this.description = description;
     this.coordinates = coordinates;
+    this.playerSpawnPosition = playerSpawnPosition; // Initialize new property
   }
 }
 
@@ -242,6 +245,9 @@ const DESC_QUIRK = [
   "a ban on the color beige",
 ];
 
+// KMs from the planet center
+const PLAYER_SPAWN_MAX_DISTANCE = 5_000_000;
+
 function generatePlanetName(rng: SimplePRNG): string {
   let name =
     rng.select(SYLLABLES1) + rng.select(SYLLABLES2) + rng.select(SYLLABLES3);
@@ -290,6 +296,17 @@ export function generatePlanets(
     usedCoords.add(coordKey);
     const coordinates: Coordinates = { x, y };
 
+    // Calculate player spawn position
+    const spawnDistance = rng.nextInt(
+      Math.floor(PLAYER_SPAWN_MAX_DISTANCE * 0.8),
+      PLAYER_SPAWN_MAX_DISTANCE
+    );
+    const angle = rng.next() * Math.PI * 2; // Random angle in radians
+    const playerSpawnPosition: Coordinates = {
+      x: coordinates.x + Math.cos(angle) * spawnDistance,
+      y: coordinates.y + Math.sin(angle) * spawnDistance,
+    };
+
     const description = generatePlanetDescription(rng);
 
     planets.push(
@@ -302,7 +319,8 @@ export function generatePlanets(
         productivity,
         radius,
         description,
-        coordinates
+        coordinates,
+        playerSpawnPosition // Pass new property
       )
     );
   }
