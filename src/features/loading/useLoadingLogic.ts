@@ -4,7 +4,14 @@ import { useInput } from "@/hooks/useInput";
 
 export function useLoadingLogic(isAssetsLoadingComplete: boolean) {
   const { setGameState } = useGameState();
-  const { isAnyInputActive } = useInput();
+  useInput({
+    onInputStart: () => {
+      if (!isAssetsLoadingComplete) {
+        return;
+      }
+      setGameState("title");
+    },
+  });
   const [showContinuePrompt, setShowContinuePrompt] = useState(false);
 
   useEffect(() => {
@@ -12,13 +19,7 @@ export function useLoadingLogic(isAssetsLoadingComplete: boolean) {
       return;
     }
     setShowContinuePrompt(true);
-  }, [isAssetsLoadingComplete]); // Run when asset loading status changes
-
-  useEffect(() => {
-    if (isAssetsLoadingComplete && isAnyInputActive) {
-      setGameState("title");
-    }
-  }, [isAssetsLoadingComplete, isAnyInputActive]);
+  }, [isAssetsLoadingComplete]);
 
   return { isLoadingComplete: isAssetsLoadingComplete, showContinuePrompt };
 }

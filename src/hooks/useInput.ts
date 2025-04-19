@@ -1,6 +1,6 @@
 import { atom, useAtomValue, useSetAtom } from "jotai";
-import { useEffect, useCallback } from "react";
-import { KEYBINDINGS, checkBinding } from "@/keybindings";
+import { useEffect, useCallback, useRef } from "react";
+import { KEYBINDINGS, checkBinding } from "@/keybindings"; // Assuming this path is correct
 
 export interface ShipControlState {
   accelerate: boolean;
@@ -24,21 +24,15 @@ export interface UIControlState {
 }
 
 export interface InputState {
-  keysPressed: Set<string>;
-  isTouched: boolean;
-  isAnyInputActive: boolean;
-  isAnyKeyPressedRaw: boolean;
   shipControls: ShipControlState;
   uiControls: UIControlState;
 }
 
 // --- Primitive Atoms ---
-// These are directly updated by the listener hook
 export const keysPressedAtom = atom<Set<string>>(new Set<string>());
 export const isTouchedAtom = atom<boolean>(false);
 
-// --- Derived Atoms ---
-// These automatically recalculate when their dependencies (primitive atoms) change
+const inputActivityTriggerAtom = atom(0);
 
 export const shipControlsAtom = atom<ShipControlState>((get) => {
   const keys = get(keysPressedAtom);
@@ -64,48 +58,42 @@ export const uiControlsAtom = atom<UIControlState>((get) => {
     cancel: checkBinding(keys, KEYBINDINGS.UI.CANCEL),
     toggleChart: checkBinding(keys, KEYBINDINGS.UI.TOGGLE_CHART),
     jump: checkBinding(keys, KEYBINDINGS.UI.JUMP),
-    // Add others here
   };
 });
 
-export const isAnyKeyPressedRawAtom = atom<boolean>(
-  (get) => get(keysPressedAtom).size > 0
-);
-
-export const isAnyInputActiveAtom = atom<boolean>((get) => {
-  const keys = get(keysPressedAtom);
-  const touched = get(isTouchedAtom);
-
-  if (touched) return true;
-
-  if (keys.size > 0) {
-    for (const key of keys) {
-      if (!KEYBINDINGS.GENERAL.ANY_KEY_IGNORE.includes(key)) {
-        return true; // Found a meaningful key press
-      }
-    }
-  }
-  return false; // No touch and no meaningful key press
-});
+type UseInputCallbacks = {
+  onInputStart?: () => void;
+};
 
 /**
- * Hook to consume the current input state derived from Jotai atoms.
+ * Hook to consume the current input state derived from Jotai atoms
+ * and optionally subscribe to input start events.
+ * @param callbacks Optional callbacks for specific input events.
  * @returns The current InputState object.
  */
-export function useInput(): InputState {
-  // Read values from individual atoms:
-  const keysPressed = useAtomValue(keysPressedAtom);
-  const isTouched = useAtomValue(isTouchedAtom);
-  const isAnyInputActive = useAtomValue(isAnyInputActiveAtom);
-  const isAnyKeyPressedRaw = useAtomValue(isAnyKeyPressedRawAtom);
+export function useInput(callbacks: UseInputCallbacks): InputState {
   const shipControls = useAtomValue(shipControlsAtom);
   const uiControls = useAtomValue(uiControlsAtom);
 
+  // --- Callback Logic ---
+  const trigger = useAtomValue(inputActivityTriggerAtom);
+  const prevTriggerRef = useRef(trigger);
+  const onInputStart = callbacks?.onInputStart;
+
+  useEffect(() => {
+    // Check if the trigger value has changed since the last render
+    if (trigger !== prevTriggerRef.current) {
+      // If it changed, and a callback is provided, call it.
+      if (onInputStart) {
+        onInputStart();
+      }
+      // Update the ref to the current trigger value for the next render check
+      prevTriggerRef.current = trigger;
+    }
+    // Depend on the trigger value and the callback reference
+  }, [trigger, onInputStart]);
+
   return {
-    keysPressed,
-    isTouched,
-    isAnyInputActive,
-    isAnyKeyPressedRaw,
     shipControls,
     uiControls,
   };
@@ -120,6 +108,7 @@ export function useInput(): InputState {
 export function useInputSetup(): void {
   const setKeysPressed = useSetAtom(keysPressedAtom);
   const setIsTouched = useSetAtom(isTouchedAtom);
+  const triggerInputActivity = useSetAtom(inputActivityTriggerAtom); // Get setter for trigger
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
@@ -128,13 +117,16 @@ export function useInputSetup(): void {
         event.preventDefault();
       }
       setKeysPressed((prevKeys) => {
-        if (prevKeys.has(key)) return prevKeys;
+        if (prevKeys.has(key)) {
+          return prevKeys; // Key already pressed, do nothing extra
+        }
+        triggerInputActivity((c) => c + 1); // Increment trigger
         const newKeys = new Set(prevKeys);
         newKeys.add(key);
         return newKeys;
       });
     },
-    [setKeysPressed]
+    [setKeysPressed, triggerInputActivity] // Add trigger setter to dependencies
   );
 
   const handleKeyUp = useCallback(
@@ -151,8 +143,13 @@ export function useInputSetup(): void {
   );
 
   const handleMouseDown = useCallback(() => {
-    setIsTouched(true);
-  }, [setIsTouched]);
+    setIsTouched((prev) => {
+      if (!prev) {
+        triggerInputActivity((c) => c + 1); // Increment trigger
+      }
+      return true;
+    });
+  }, [setIsTouched, triggerInputActivity]); // Add trigger setter to dependencies
 
   const handleMouseUp = useCallback(() => {
     setIsTouched(false);
@@ -161,9 +158,14 @@ export function useInputSetup(): void {
   const handleTouchStart = useCallback(
     (event: TouchEvent) => {
       event.preventDefault();
-      setIsTouched(true);
+      setIsTouched((prev) => {
+        if (!prev) {
+          triggerInputActivity((c) => c + 1); // Increment trigger
+        }
+        return true;
+      });
     },
-    [setIsTouched]
+    [setIsTouched, triggerInputActivity]
   );
 
   const handleTouchEnd = useCallback(
@@ -174,9 +176,7 @@ export function useInputSetup(): void {
     [setIsTouched]
   );
 
-  // Add/Remove Listeners
   useEffect(() => {
-    // console.log("[useInputSetup] Adding global listeners");
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
     window.addEventListener("mousedown", handleMouseDown);
@@ -185,7 +185,6 @@ export function useInputSetup(): void {
     window.addEventListener("touchend", handleTouchEnd, { passive: false });
 
     return () => {
-      // console.log("[useInputSetup] Removing global listeners");
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
       window.removeEventListener("mousedown", handleMouseDown);

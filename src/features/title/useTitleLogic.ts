@@ -27,6 +27,11 @@ export function useTitleLogic(
   const currentIndexRef = useRef(0);
   const isProcessingInput = useRef(false);
   const { gameState, setGameState } = useGameState();
+  useInput({
+    onInputStart: () => {
+      setGameState("credits");
+    },
+  });
 
   const [visualState, setVisualState] = useState<TitleVisualState | null>(null);
 
@@ -220,15 +225,6 @@ export function useTitleLogic(
     }
   }); // End of useFrame
 
-  // --- Input Handling ---
-  const { keysPressed } = useInput();
-
-  useEffect(() => {
-    console.log("[useTitleLogic] Using useInput hook for input state management.");
-    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
-  }, [keysPressed]);
-
-  // --- Effect for Setup, Cleanup, Input Listeners ---
   useEffect(() => {
     if (gameState === "title") {
       console.log("[useTitleLogic] Activating Title State.");
@@ -250,18 +246,8 @@ export function useTitleLogic(
           console.warn("[useTitleLogic] Intro music play failed:", e)
         );
 
-      // Add input listeners
-      console.log("[useTitleLogic] Adding input listeners.");
-      window.addEventListener("keydown", handleInput);
-      window.addEventListener("mousedown", handleInput);
-
       // Cleanup function for when gameState changes AWAY from 'title' or component unmounts
       return () => {
-        console.log("[useTitleLogic] Deactivating Title State.");
-        // Remove input listeners
-        window.removeEventListener("keydown", handleInput);
-        window.removeEventListener("mousedown", handleInput);
-
         // Stop music and reset time
         introMusicRef.current?.pause();
         if (introMusicRef.current) {
@@ -296,14 +282,7 @@ export function useTitleLogic(
     }
     // Else: If gameState is not 'title', do nothing related to title setup/listeners
     // The cleanup function from the *previous* run (when gameState WAS 'title') handles teardown.
-  }, [
-    gameState,
-    assets, // Keep assets dependency for the cleanup logic
-    introMusicRef,
-    handleInput, // handleInput now depends on gameState/setGameState
-    setGameState, // Keep setGameState if needed by handleInput indirectly
-    // REMOVED visualState from dependencies
-  ]); // End of Setup/Cleanup useEffect
+  }, [gameState, assets, introMusicRef, setGameState]);
 
   return { visualState };
 }
