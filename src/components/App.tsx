@@ -24,7 +24,7 @@ import UndockingScreen from "@/features/undocking/UndockingScreen";
 import UndockingSquares from "@/components/r3f/UndockingSquares";
 import TitleSceneR3F from "@/features/title/TitleSceneR3F";
 import SpaceFlightSceneR3F from "@/features/space_flight/SpaceFlightSceneR3F";
-import { useInputSetup } from "@/hooks/useInputSetup";
+import { useInputSetup } from "@/hooks/useInput";
 
 const GlobalStateInitializer: React.FC = () => {
   useInputSetup();
