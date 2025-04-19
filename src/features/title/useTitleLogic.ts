@@ -4,6 +4,7 @@ import { useFrame } from "@react-three/fiber";
 import { GameAssets } from "@/types";
 import * as Constants from "@/constants";
 import { useGameState } from "@/features/common/useGameState";
+import { useInput } from "@/hooks/useInput";
 
 interface TitleVisualState {
   ships: {
@@ -220,24 +221,12 @@ export function useTitleLogic(
   }); // End of useFrame
 
   // --- Input Handling ---
-  const handleInput = useCallback(
-    (event: KeyboardEvent | MouseEvent) => {
-      // Check gameState *inside* the handler to ensure it uses the latest value
-      if (gameState === "title" && !isProcessingInput.current) {
-        if (event.type === "keydown" || event.type === "mousedown") {
-          isProcessingInput.current = true; // Prevent double triggers
-          console.log(
-            "[useTitleLogic] Title input detected, switching to credits..."
-          );
-          setGameState("credits");
-          // No need to reset isProcessingInput here, the component/hook will effectively reset when gameState changes.
-        }
-      }
-    },
-    // handleInput depends on setGameState and gameState (implicitly checked inside)
-    // If gameState changes, the old listeners are removed anyway by useEffect cleanup
-    [setGameState, gameState] // Added gameState here to ensure the check inside uses the right value context
-  );
+  const { keysPressed } = useInput();
+
+  useEffect(() => {
+    console.log("[useTitleLogic] Using useInput hook for input state management.");
+    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
+  }, [keysPressed]);
 
   // --- Effect for Setup, Cleanup, Input Listeners ---
   useEffect(() => {

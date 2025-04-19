@@ -1,12 +1,19 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useGameState } from "@/features/common/useGameState";
 import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Use this hook
+import { useInput } from "@/hooks/useInput";
 
 export function usePlanetInfoLogic() {
   const isProcessingInput = useRef(false);
   const { gameState, setGameState } = useGameState();
   // Get selected planet name from shared state
   const { selectedPlanetName } = usePlanetInfos();
+  const { keysPressed } = useInput();
+
+  useEffect(() => {
+    console.log("[usePlanetInfoLogic] Using useInput hook for input state management.");
+    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
+  }, [keysPressed]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {

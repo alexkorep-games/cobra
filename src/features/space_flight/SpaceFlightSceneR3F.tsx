@@ -6,6 +6,7 @@ import { useGameState } from "@/features/common/useGameState";
 import { useHudState } from "@/features/common/useHudState";
 import { RadarPosition } from "@/types";
 import * as Constants from "@/constants";
+import { useInput } from "@/hooks/useInput";
 
 // Import R3F Entity Components
 import PlanetComponent from "@/components/r3f/PlanetComponent";
@@ -40,7 +41,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
   // --- Refs ---
   const laserBeamRef = useRef<THREE.LineSegments>(null);
-  const keysPressed = useRef<Set<string>>(new Set());
   const pirateShipRefs = useRef<(THREE.Group | null)[]>([]);
 
   // --- State ---
@@ -79,7 +79,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
     velocity.current.set(0, 0, 0);
     rollRate.current = 0;
     pitchRate.current = 0;
-    keysPressed.current.clear();
     camera.position.set(0, 0, Constants.STATION_DOCKING_RADIUS * 1.5); // Start just outside docking radius
     camera.rotation.set(0, 0, 0);
     camera.quaternion.identity();
@@ -133,8 +132,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
     // --- Input Handlers Setup ---
     const handleKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      keysPressed.current.add(key);
-
       // Handle single press actions
       if (key === "n") {
         console.log("[SpaceFlightSceneR3F] Switching to Short Range Chart");
@@ -147,7 +144,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
     };
     const handleKeyUp = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      keysPressed.current.delete(key);
       if (key === " ") {
         wantsToFire.current = false;
       }
@@ -161,7 +157,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
       console.log("[SpaceFlightSceneR3F] Unmounting & Cleaning Up");
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
-      keysPressed.current.clear(); // Clear keys on unmount
       // No need to reset HUD here, maybe on next state entry?
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -203,25 +198,30 @@ const SpaceFlightSceneR3F: React.FC = () => {
     const dt = Math.min(delta, 0.05);
 
     // --- Input Processing & Physics ---
+    const { keysPressed } = useInput();
+    const keysSet = new Set(keysPressed);
+
     let targetRollRate = 0;
     let targetPitchRate = 0;
     let accelerationInput = 0;
     let decelerationInput = 0;
 
     // Rotation Input -> Target Rates
-    if (keysPressed.current.has("a")) targetRollRate = Constants.ROLL_ACCELERATION;
-    if (keysPressed.current.has("d")) targetRollRate = -Constants.ROLL_ACCELERATION;
-    if (keysPressed.current.has("w")) targetPitchRate = Constants.PITCH_ACCELERATION;
-    if (keysPressed.current.has("s")) targetPitchRate = -Constants.PITCH_ACCELERATION;
+    if (keysSet.has("a")) targetRollRate = Constants.ROLL_ACCELERATION;
+    if (keysSet.has("d")) targetRollRate = -Constants.ROLL_ACCELERATION;
+    if (keysSet.has("w")) targetPitchRate = Constants.PITCH_ACCELERATION;
+    if (keysSet.has("s")) targetPitchRate = -Constants.PITCH_ACCELERATION;
 
     // Thrust/Brake Input
-    if (keysPressed.current.has("z") || keysPressed.current.has("shift")) {
-        accelerationInput = Constants.ACCELERATION;
+    if (keysSet.has("z") || keysSet.has("shift")) {
+      accelerationInput = Constants.ACCELERATION;
     }
-    if (keysPressed.current.has("x")) { // Assuming 'x' for deceleration/brake
-        decelerationInput = Constants.DECELERATION;
+    if (keysSet.has("x")) {
+      decelerationInput = Constants.DECELERATION;
     }
 
+    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
+    console.log("[SpaceFlightSceneR3F] Unmounting & Cleaning Up");
 
     // Interpolate current rates towards target rates (simulates inertia/response time)
     rollRate.current = THREE.MathUtils.damp(rollRate.current, targetRollRate !== 0 ? Math.sign(targetRollRate) * Constants.MAX_VISUAL_ROLL_RATE : 0, Constants.ANGULAR_DAMPING, dt);

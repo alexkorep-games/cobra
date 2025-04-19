@@ -3,6 +3,7 @@ import { useGameState } from "@/features/common/useGameState";
 import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Use this hook
 import { PlanetInfo, calculateDistance } from "@/classes/PlanetInfo";
 import { JUMP_RANGE } from "@/constants";
+import { useInput } from "@/hooks/useInput";
 
 export function useShortRangeChartLogic() {
   const [reachablePlanets, setReachablePlanets] = useState<PlanetInfo[]>([]);
@@ -145,23 +146,12 @@ export function useShortRangeChartLogic() {
     ] // Dependencies
   );
 
-  // Effect for adding/removing input listener
-  useEffect(() => {
-    if (gameState === "short_range_chart") {
-      console.log("Activating Short Range Chart Logic Hook");
-      // Add listener
-      window.addEventListener("keydown", handleKeyDown);
+  const { keysPressed } = useInput();
 
-      // Cleanup function
-      return () => {
-        console.log("Deactivating Short Range Chart Logic Hook");
-        // Remove listener
-        window.removeEventListener("keydown", handleKeyDown);
-        // Optional: Clear selection when leaving? Depends on UX.
-        // setSelectedPlanetName(null);
-      };
-    }
-  }, [gameState, handleKeyDown]); // Rerun if dependencies change
+  useEffect(() => {
+    console.log("[useShortRangeChartLogic] Using useInput hook for input state management.");
+    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
+  }, [keysPressed]);
 
   // Return state needed by the ShortRangeChartScreen component
   return { reachablePlanets, selectedIndexInReachable };

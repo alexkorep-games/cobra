@@ -4,6 +4,7 @@ import BottomHud from "@/components/hud/BottomHud";
 import { useShortRangeChartLogic } from "./useShortRangeChartLogic"; // Import hook
 import { usePlanetInfos } from "../common/usePlanetInfos"; // Import shared state hook
 import { JUMP_RANGE } from "@/constants"; // Import jump range
+import { useInput } from "@/hooks/useInput";
 
 // Chart dimensions and scaling
 const CHART_PADDING = 30; // Px padding inside the chart area
@@ -106,6 +107,13 @@ const ShortRangeChartScreen: React.FC = () => {
   const displayUnreachablePlanets = sortedPlanets.filter(
     (pd) => pd.distance > JUMP_RANGE
   );
+
+  const { keysPressed } = useInput();
+
+  useEffect(() => {
+    console.log("[ShortRangeChartScreen] Using useInput hook for input state management.");
+    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
+  }, [keysPressed]);
 
   return (
     <>

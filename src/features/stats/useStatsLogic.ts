@@ -1,10 +1,12 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useGameState } from "@/features/common/useGameState";
+import { useInput } from "@/hooks/useInput";
 
 export function useStatsLogic() {
   const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const isProcessingInput = useRef(false);
   const { gameState, setGameState } = useGameState(); // Get gameState
+  const { keysPressed } = useInput();
 
   const handleInput = useCallback(
     (event: KeyboardEvent | MouseEvent) => {
@@ -67,6 +69,11 @@ export function useStatsLogic() {
     }
     // Effect dependencies
   }, [gameState, handleInput, setGameState]); // Added gameState dependency
+
+  useEffect(() => {
+    console.log("[useStatsLogic] Using useInput hook for input state management.");
+    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
+  }, [keysPressed]);
 
   // No update logic needed
 }
