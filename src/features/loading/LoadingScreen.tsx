@@ -1,11 +1,9 @@
-/* src/features/loading/LoadingScreen.tsx */
 import React from "react";
-import "../../components/App.css";
-import { useLoadingLogic } from "./useLoadingLogic"; // Import the hook
-import { useAssetLoader } from "@/hooks/useAssetLoader";
+import { useLoadingLogic } from "./useLoadingLogic";
+import { useAssets } from "@/hooks/useAssets";
 
 const LoadingScreen: React.FC = () => {
-  const {isLoadingComplete} = useAssetLoader(); // Call the asset loader hook
+  const { isLoadingComplete } = useAssets();
   const { showContinuePrompt } = useLoadingLogic(isLoadingComplete);
 
   return (

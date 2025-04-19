@@ -5,7 +5,7 @@ import "./App.css";
 import { useGameState } from "@/features/common/useGameState";
 import { usePlanetInfos } from "@/features/common/usePlanetInfos";
 import { generatePlanets } from "@/classes/PlanetInfo";
-import { useAssetLoader } from "@/hooks/useAssetLoader";
+import { useAssets } from "@/hooks/useAssets";
 import { useAudioManager } from "@/hooks/useAudioManager";
 import * as Constants from "@/constants";
 
@@ -26,7 +26,7 @@ import TitleSceneR3F from "@/features/title/TitleSceneR3F"; // --- IMPORT THE NE
 
 const GlobalStateInitializer: React.FC = () => {
   const { setPlanetInfos, setCurrentPlanetName } = usePlanetInfos();
-  const { isLoadingComplete } = useAssetLoader();
+  const { isLoadingComplete } = useAssets();
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -50,8 +50,12 @@ const GlobalStateInitializer: React.FC = () => {
 
 const App: React.FC = () => {
   const { gameState } = useGameState();
-  const { assets, isLoadingComplete } = useAssetLoader();
+  const { load, assets, isLoadingComplete } = useAssets();
   const { introMusicRef, undockSoundRef } = useAudioManager();
+
+  useEffect(() => {
+    load(); // Load assets on mount
+  }, [load]);
 
   const renderSceneUIComponent = () => {
     try {
@@ -67,7 +71,12 @@ const App: React.FC = () => {
         case "undocking":
           return <UndockingScreen undockSoundRef={undockSoundRef} />;
         case "space_flight":
-          return <CoordinatesDisplay />;
+          return (
+            <>
+              <SpaceFlightScreen />
+              <CoordinatesDisplay />
+            </>
+          );
         case "short_range_chart":
           return <ShortRangeChartScreen />;
         case "planet_info":
@@ -114,20 +123,14 @@ const App: React.FC = () => {
           <directionalLight position={[5, 5, 5]} intensity={0.8} />
           {/* Global State Initializer (Planets) */}
           <GlobalStateInitializer />
-          // --- Conditional Rendering of R3F Scene Content ---
+          {/* Conditional Rendering of R3F Scene Content */}
           {gameState === "title" && assets && (
             <TitleSceneR3F assets={assets} introMusicRef={introMusicRef} />
           )}
           {assets && <UndockingSquares visible={gameState === "undocking"} />}
-          {gameState === "space_flight" && assets && (
-            <SpaceFlightScreen assets={assets} />
-          )}
         </Suspense>
       </Canvas>
-
-      <div id="ui-overlay" style={{ zIndex: 1 }}>
-        {renderSceneUIComponent()}
-      </div>
+      {renderSceneUIComponent()}
     </div>
   );
 };

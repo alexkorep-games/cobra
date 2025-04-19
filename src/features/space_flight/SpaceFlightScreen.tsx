@@ -10,6 +10,7 @@ import * as Constants from "@/constants";
 import PlanetComponent from "@/components/r3f/PlanetComponent";
 import SpaceStationComponent from "@/components/r3f/SpaceStationComponent";
 import ShipComponent from "@/components/r3f/ShipComponent"; // For pirates
+import { useAssets } from "@/hooks/useAssets";
 
 // Define radar range constant
 const RADAR_DISTANCE = 10000;
@@ -30,9 +31,9 @@ interface SpaceFlightScreenProps {
   // Remove HUD props like speed, roll etc. - use useHudState instead
 }
 
-const SpaceFlightScreen: React.FC<SpaceFlightScreenProps> = ({
-  assets, // Destructure assets prop
-}) => {
+const SpaceFlightScreen: React.FC = () => {
+  const { assets } = useAssets();
+
   const { camera } = useThree();
   const { setGameState } = useGameState();
   // Get HUD setters from the hook
