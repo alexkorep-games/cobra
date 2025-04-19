@@ -1,8 +1,11 @@
 import React from "react";
-import BottomHud from "../../components/hud/BottomHud";
-import "../../components/App.css";
+import BottomHud from "@/components/hud/BottomHud";
+import { useCreditsLogic } from "./useCreditsLogic"; // Import hook
 
 const CreditsScreen: React.FC = () => {
+  // Call the hook
+  useCreditsLogic();
+
   return (
     <>
       <div className="top-bar">
@@ -11,7 +14,7 @@ const CreditsScreen: React.FC = () => {
       <div id="credits-text" className="center-text small">
         Game Copyright: 2025 Alexey Korepanov
       </div>
-      <BottomHud /> {/* Show basic HUD frame */}
+      <BottomHud />
     </>
   );
 };

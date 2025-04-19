@@ -1,8 +1,9 @@
 import React from "react";
-import BottomHud from "../../components/hud/BottomHud";
-import "../../components/App.css";
-
+import BottomHud from "@/components/hud/BottomHud";
+import "@/components/App.css";
+import { useStatsLogic } from "./useStatsLogic"; // Import hook
 const StatsScreen: React.FC = () => {
+  useStatsLogic();
   return (
     <>
       <div className="top-bar">
@@ -33,7 +34,8 @@ const StatsScreen: React.FC = () => {
         </p>{" "}
         <p>Missile (3)</p> <p>Pulse Laser (Fore)</p>
       </div>
-      <BottomHud /> {/* Show basic HUD frame */}
+      {/* Render BottomHud without props */}
+      <BottomHud />
     </>
   );
 };
