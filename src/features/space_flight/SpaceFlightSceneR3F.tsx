@@ -20,9 +20,20 @@ interface PirateState {
   quaternion: THREE.Quaternion;
   visible: boolean;
   modelPath: string;
-  velocity?: THREE.Vector3;
+  velocity: THREE.Vector3; // Make velocity non-optional for easier handling
   // Add health etc. later if needed
 }
+
+// Helper function for deep comparison of relevant pirate properties
+// (You might want a more robust deep comparison if state gets complex)
+const havePiratePropsChanged = (p1: PirateState, p2: PirateState): boolean => {
+  if (!p1.position.equals(p2.position)) return true;
+  if (!p1.quaternion.equals(p2.quaternion)) return true;
+  if (!p1.velocity.equals(p2.velocity)) return true;
+  if (p1.visible !== p2.visible) return true;
+  // Add checks for health, etc. if they are added later
+  return false;
+};
 
 const SpaceFlightSceneR3F: React.FC = () => {
   const { assets } = useAssets(); // Get assets via hook
@@ -83,7 +94,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
     camera.position.set(0, 0, Constants.STATION_DOCKING_RADIUS * 1.5); // Start just outside docking radius
     camera.rotation.set(0, 0, 0);
     camera.quaternion.identity();
-    camera.lookAt(0, 0, 0); // Look towards origin (where station might be)
 
     currentLaserHeat.current = 0;
     laserCooldownTimer.current = 0;
@@ -157,7 +167,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
       // No need to reset HUD here, maybe on next state entry?
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assets, setGameState]); // Re-run initialization if assets load *after* mount
+  }, [assets, setGameState]);
 
   // --- Positioning Logic Helper ---
   const positionObjectRandomly = useCallback(
@@ -199,24 +209,16 @@ const SpaceFlightSceneR3F: React.FC = () => {
     let accelerationInput = 0;
     let decelerationInput = 0;
 
-    // Rotation Input -> Target Rates
     if (shipControls.rollLeft) targetRollRate = -Constants.ROLL_ACCELERATION;
     if (shipControls.rollRight) targetRollRate = Constants.ROLL_ACCELERATION;
     if (shipControls.pitchUp) targetPitchRate = -Constants.PITCH_ACCELERATION;
     if (shipControls.pitchDown) targetPitchRate = Constants.PITCH_ACCELERATION;
+    if (shipControls.accelerate) accelerationInput = Constants.ACCELERATION;
+    if (shipControls.brake) decelerationInput = Constants.DECELERATION;
 
-    // Thrust/Brake Input
-    if (shipControls.accelerate) {
-      accelerationInput = Constants.ACCELERATION;
-    }
-    if (shipControls.brake) {
-      decelerationInput = Constants.DECELERATION;
-    }
+    // --- Player Ship Physics & Movement ---
 
-    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
-    console.log("[SpaceFlightSceneR3F] Unmounting & Cleaning Up");
-
-    // Interpolate current rates towards target rates (simulates inertia/response time)
+    // Interpolate current rates towards target rates
     rollRate.current = THREE.MathUtils.damp(
       rollRate.current,
       targetRollRate !== 0
@@ -234,56 +236,50 @@ const SpaceFlightSceneR3F: React.FC = () => {
       dt
     );
 
-    // Apply rotation deltas based on current rates
-    // Rotate around local Z axis for roll
+    // Apply rotation deltas
     tempQuaternion.setFromAxisAngle(
       forwardVector.set(0, 0, -1),
       rollRate.current * dt
     );
-    camera.quaternion.premultiply(tempQuaternion); // Premultiply for local rotation
-
-    // Rotate around local X axis for pitch
+    camera.quaternion.premultiply(tempQuaternion);
     tempQuaternion.setFromAxisAngle(
       rightVector.set(1, 0, 0),
       pitchRate.current * dt
     );
     camera.quaternion.premultiply(tempQuaternion);
-
-    // Normalize quaternion to prevent drift
     camera.quaternion.normalize();
 
-    // --- Linear Movement ---
-    // Get current forward direction in world space
+    // Linear Movement
     const worldForward = tempVector
       .set(0, 0, -1)
       .applyQuaternion(camera.quaternion);
-
-    // Apply acceleration
     velocity.current.addScaledVector(worldForward, accelerationInput * dt);
 
-    // Apply explicit deceleration (braking)
     if (decelerationInput > 0) {
       const brakeForce = tempVector2
         .copy(velocity.current)
         .normalize()
         .multiplyScalar(-decelerationInput * dt);
-      // Prevent braking from reversing direction if speed is low
       if (velocity.current.lengthSq() > brakeForce.lengthSq()) {
         velocity.current.add(brakeForce);
       } else {
-        velocity.current.set(0, 0, 0); // Stop completely
+        velocity.current.set(0, 0, 0);
       }
     }
 
-    // Apply linear damping (friction/drag)
-    velocity.current.multiplyScalar(Math.pow(1 - Constants.LINEAR_DAMPING, dt)); // Frame-rate independent damping
+    velocity.current.multiplyScalar(Math.pow(1 - Constants.LINEAR_DAMPING, dt));
 
-    // Clamp speed
     const currentSpeed = velocity.current.length();
     if (currentSpeed > Constants.MAX_SPEED) {
       velocity.current.normalize().multiplyScalar(Constants.MAX_SPEED);
-    } else if (currentSpeed < Constants.MIN_SPEED) {
-      velocity.current.set(0, 0, 0); // Ensure minimum speed is respected
+    } else if (currentSpeed < Constants.MIN_SPEED && currentSpeed > 0) {
+      // Apply min speed threshold only if moving slightly
+      if (
+        velocity.current.lengthSq() <
+        Constants.MIN_SPEED * Constants.MIN_SPEED
+      ) {
+        velocity.current.set(0, 0, 0); // Come to a full stop if below min speed threshold after damping/braking
+      }
     }
 
     // Update camera position
@@ -293,7 +289,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
     laserCooldownTimer.current = Math.max(0, laserCooldownTimer.current - dt);
     laserBeamHideTimer.current = Math.max(0, laserBeamHideTimer.current - dt);
 
-    // Firing condition
     if (
       wantsToFire.current &&
       currentLaserHeat.current < Constants.LASER_MAX_HEAT &&
@@ -304,89 +299,115 @@ const SpaceFlightSceneR3F: React.FC = () => {
         currentLaserHeat.current + Constants.LASER_HEAT_INCREASE
       );
       laserCooldownTimer.current = Constants.LASER_COOLDOWN;
-      laserBeamHideTimer.current = Constants.LASER_DURATION; // Use correct constant
-      // TODO: Add laser hit detection logic here if needed
+      laserBeamHideTimer.current = Constants.LASER_DURATION;
+      // TODO: Laser hit detection
     } else {
-      // Cool down
       currentLaserHeat.current = Math.max(
         0,
         currentLaserHeat.current - Constants.LASER_HEAT_DECREASE_RATE * dt
       );
     }
 
-    // Update laser beam visibility and position/orientation
     if (laserBeamRef.current) {
       laserBeamRef.current.visible = laserBeamHideTimer.current > 0;
       if (laserBeamRef.current.visible) {
-        // Position beam relative to camera
         laserBeamRef.current.position.copy(camera.position);
         laserBeamRef.current.quaternion.copy(camera.quaternion);
-        // Need to update geometry if points change, but they don't here.
       }
     }
 
-    // --- Pirate Logic ---
-    const updatedPirateStates = pirateStates.map((pirate, index) => {
-      const pirateRef = pirateShipRefs.current[index];
-      if (!pirateRef || !pirate.velocity) return pirate; // Skip if ref or velocity missing
+    // --- Pirate Logic (FIXED) ---
+    let hasAnyPirateStateChanged = false; // Flag to check if we need to call setPirateStates
 
-      // Simple AI: Move towards player if within attack range, otherwise wander slowly?
-      const distanceToPlayerSq = pirate.position.distanceToSquared(
+    const nextPirateStates = pirateStates.map((pirate, index) => {
+      const pirateRef = pirateShipRefs.current[index];
+      // Skip update if ref isn't ready or pirate isn't visible (optimization)
+      if (!pirateRef || !pirate.visible) {
+        return pirate; // Return the original object if no update needed
+      }
+
+      // Create temporary variables to store potential new state
+      const nextPosition = pirate.position.clone();
+      const nextQuaternion = pirate.quaternion.clone();
+      const nextVelocity = pirate.velocity.clone(); // Clone velocity too!
+
+      // --- Calculate AI based updates ---
+      const distanceToPlayerSq = nextPosition.distanceToSquared(
         camera.position
       );
 
-      if (
-        distanceToPlayerSq <
-        Constants.PIRATE_ATTACK_RANGE * Constants.PIRATE_ATTACK_RANGE
-      ) {
+      if (distanceToPlayerSq < Constants.PIRATE_ATTACK_RANGE_SQUARED) {
+        // Use squared constant
         // Attack: Move towards player
-        tempVector.copy(camera.position).sub(pirate.position).normalize();
-        pirate.velocity.lerp(
+        tempVector.copy(camera.position).sub(nextPosition).normalize(); // Direction to player
+        nextVelocity.lerp(
           tempVector.multiplyScalar(Constants.PIRATE_SPEED),
-          dt * 1.5
-        ); // Adjust lerp factor for responsiveness
+          dt * 1.5 // Responsiveness factor
+        );
 
-        // Aim towards player
-        tempVector2.copy(pirate.position).add(pirate.velocity); // Look ahead slightly
+        // Aim towards player - modifies the Ref directly
         pirateRef.lookAt(camera.position);
-        pirate.quaternion.copy(pirateRef.quaternion); // Update state quaternion from looked-at ref
+        // Capture the orientation from the ref AFTER lookAt
+        nextQuaternion.copy(pirateRef.quaternion);
       } else {
-        // Wander or idle (e.g., slow down)
-        pirate.velocity.lerp(tempVector.set(0, 0, 0), dt * 0.5); // Slow down if far away
+        // Wander/Idle: Slow down
+        nextVelocity.lerp(tempVector.set(0, 0, 0), dt * 0.5);
+        // Optionally add some random turning when idle later
       }
 
-      pirate.position.addScaledVector(pirate.velocity, dt);
+      // Apply velocity to calculate next position
+      nextPosition.addScaledVector(nextVelocity, dt);
 
-      // TODO: Add pirate firing logic?
+      // --- Check if state actually changed ---
+      const positionChanged = !nextPosition.equals(pirate.position);
+      const quaternionChanged = !nextQuaternion.equals(pirate.quaternion);
+      const velocityChanged = !nextVelocity.equals(pirate.velocity);
+      // Add checks for 'visible' or other properties if they can change here
 
-      return { ...pirate }; // Return updated state
+      // If any relevant property changed for THIS pirate...
+      if (
+        positionChanged ||
+        quaternionChanged ||
+        velocityChanged /* || visibilityChanged etc. */
+      ) {
+        hasAnyPirateStateChanged = true; // Mark that a state update is needed
+        // Return a NEW object with the updated values
+        return {
+          ...pirate, // Keep id, modelPath etc.
+          position: nextPosition,
+          quaternion: nextQuaternion,
+          velocity: nextVelocity,
+          // visible: nextVisible // example if visibility could change
+        };
+      } else {
+        // If nothing changed for THIS pirate, return the ORIGINAL object reference
+        return pirate;
+      }
     });
-    if (updatedPirateStates.some((p, i) => p !== pirateStates[i])) {
-      setPirateStates(updatedPirateStates); // Update state only if changed
+
+    // Only call setPirateStates if at least one pirate's state truly changed
+    if (hasAnyPirateStateChanged) {
+      // console.log("Updating Pirate States"); // Optional: Log only when actual updates occur
+      setPirateStates(nextPirateStates);
     }
 
     // --- Docking Check ---
     if (stationRef.current) {
       const distanceToStationSq = camera.position.distanceToSquared(
-        stationRef.current.position
+        stationRef.current.position // Position of the group wrapper
       );
-      if (
-        distanceToStationSq <
-        Constants.STATION_DOCKING_RADIUS * Constants.STATION_DOCKING_RADIUS
-      ) {
+      if (distanceToStationSq < Constants.STATION_DOCKING_RANGE_SQUARED) {
+        // Use squared constant
         console.log(
           "[SpaceFlightSceneR3F] Docking range entered. Returning to title."
         );
-        // TODO: Add a smoother transition? Docking sequence state?
-        setGameState("title"); // Or maybe "docked_menu"?
-        // Reset speed etc. ?
-        velocity.current.set(0, 0, 0);
+        setGameState("title");
+        velocity.current.set(0, 0, 0); // Stop the ship upon docking
       }
     }
 
     // --- HUD Updates ---
     const finalSpeed = velocity.current.length();
-    // Normalize roll/pitch rates for HUD (-1 to 1 based on max visual rates)
     const normalizedRoll = THREE.MathUtils.clamp(
       rollRate.current / Constants.MAX_VISUAL_ROLL_RATE,
       -1,
@@ -398,12 +419,11 @@ const SpaceFlightSceneR3F: React.FC = () => {
       1
     );
 
-    setSpeed(Math.min(100, (finalSpeed / Constants.MAX_SPEED) * 100)); // Speed as % of max
-    setRoll(normalizedRoll); // Use normalized value for HUD bar marker
-    setPitch(normalizedPitch); // Use normalized value for HUD bar marker
-    setLaserHeat((currentLaserHeat.current / Constants.LASER_MAX_HEAT) * 100); // Heat as %
+    setSpeed(Math.min(100, (finalSpeed / Constants.MAX_SPEED) * 100));
+    setRoll(normalizedRoll);
+    setPitch(normalizedPitch);
+    setLaserHeat((currentLaserHeat.current / Constants.LASER_MAX_HEAT) * 100);
     setCoordinates([camera.position.x, camera.position.y, camera.position.z]);
-    // setAltitude(...) // Implement altitude calculation later
 
     // --- Radar Calculation ---
     const radarPositionsData: RadarPosition[] = [];
@@ -415,38 +435,37 @@ const SpaceFlightSceneR3F: React.FC = () => {
       const distToStation = tempVector.length();
 
       if (distToStation < Constants.RADAR_DISTANCE) {
-        tempVector.normalize();
+        // Make a copy before normalize if you need the original camera-space vector later
+        const normalizedStationDir = tempVector2.copy(tempVector).normalize();
         radarPositionsData.push({
-          x: tempVector.x,
-          y: tempVector.y,
-          z: tempVector.z,
+          x: normalizedStationDir.x,
+          y: normalizedStationDir.y,
+          z: normalizedStationDir.z,
         });
-        // Update station direction indicator
         setStationDirection({
-          x: tempVector.x,
-          y: tempVector.y,
+          x: normalizedStationDir.x,
+          y: normalizedStationDir.y,
           offCenterAmount: Math.min(
             1,
-            Math.sqrt(tempVector.x ** 2 + tempVector.y ** 2)
-          ), // Clamp amount 0-1
-          isInFront: tempVector.z < 0, // Z is negative when in front in camera space
+            Math.sqrt(normalizedStationDir.x ** 2 + normalizedStationDir.y ** 2)
+          ),
+          isInFront: normalizedStationDir.z < 0,
         });
       } else {
-        setStationDirection(null); // Out of radar range
+        setStationDirection(null);
       }
     } else {
-      setStationDirection(null); // Station not rendered/found
+      setStationDirection(null);
     }
 
     // Pirate Radar
     pirateStates.forEach((pirate) => {
       if (pirate.visible) {
+        // Use pirate state visibility
         tempVector.copy(pirate.position).applyMatrix4(cameraMatrix);
-        if (
-          tempVector.lengthSq() <
-          Constants.RADAR_DISTANCE * Constants.RADAR_DISTANCE
-        ) {
-          tempVector.normalize();
+        if (tempVector.lengthSq() < Constants.RADAR_DISTANCE_SQUARED) {
+          // Use squared constant
+          tempVector.normalize(); // Normalize for direction only
           radarPositionsData.push({
             x: tempVector.x,
             y: tempVector.y,
@@ -455,7 +474,10 @@ const SpaceFlightSceneR3F: React.FC = () => {
         }
       }
     });
-    setRadarPositions(radarPositionsData); // Update HUD state
+    // NOTE: Consider optimizing radar updates. Calling setRadarPositions every frame
+    // might be okay, but if performance becomes an issue, you could compare the
+    // new radarPositionsData with the previous one before setting state.
+    setRadarPositions(radarPositionsData);
   }); // End useFrame
 
   // --- Render 3D Components ---
@@ -463,28 +485,25 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
   return (
     <>
-      {/* Planet (Example placement) */}
+      {/* Planet */}
       {assets.planet && (
         <PlanetComponent
           radius={assets.planet.radius}
           color={assets.planet.color}
-          position={[0, -assets.planet.radius - 5000, -15000]} // Below and behind station
+          position={[0, -assets.planet.radius - 5000, -15000]}
           visible={true}
         />
       )}
 
-      {/* Space Station (Placed at origin for simplicity) */}
+      {/* Space Station */}
       {assets.spaceStation && (
         <group ref={stationRef} position={[0, 0, 0]}>
-          {" "}
-          {/* Use group to easily get station world position */}
           <SpaceStationComponent
             modelPath={assets.spaceStation.modelPath}
-            initialScale={Constants.SHIP_SCALE * 2} // Make station bigger
+            initialScale={Constants.SHIP_SCALE * 2}
             wireframeColor={0xffff00}
             rotationSpeed={0.01}
             visible={true}
-            // Position/rotation are relative to the parent group now (which is at 0,0,0)
           />
         </group>
       )}
@@ -492,35 +511,36 @@ const SpaceFlightSceneR3F: React.FC = () => {
       {/* Pirates */}
       {pirateStates.map((pirate, index) => (
         <ShipComponent
-          key={pirate.id}
-          ref={(el) => (pirateShipRefs.current[index] = el)}
+          key={pirate.id} // Use stable key
+          ref={(el) => (pirateShipRefs.current[index] = el)} // Assign ref
           modelPath={pirate.modelPath}
           initialScale={Constants.SHIP_SCALE}
-          wireframeColor={0xff0000} // Red pirates
-          visible={pirate.visible}
+          wireframeColor={0xff0000}
+          visible={pirate.visible} // Controlled by state
+          // IMPORTANT: Apply state changes directly here. The ShipComponent should use these props.
           position={pirate.position}
-          quaternion={pirate.quaternion} // Use quaternion for smooth rotation from AI
+          quaternion={pirate.quaternion}
         />
       ))}
 
       {/* Laser Beam */}
       <lineSegments ref={laserBeamRef} visible={false} frustumCulled={false}>
         <bufferGeometry ref={laserGeometryRef} attach="geometry">
-          <bufferAttribute
-            attach="attributes-position"
-            count={laserBeamPoints.length}
-            array={
-              new Float32Array(laserBeamPoints.flatMap((p) => p.toArray()))
+          {/* Use BufferAttribute constructor directly */}
+          <primitive
+            object={
+              new THREE.BufferAttribute(
+                new Float32Array(laserBeamPoints.flatMap((p) => p.toArray())),
+                3
+              )
             }
-            itemSize={3}
-            usage={THREE.DynamicDrawUsage} // Not strictly needed as points don't change, but good practice if they might
+            attach="attributes-position"
           />
         </bufferGeometry>
-        {/* Use LineBasicMaterial for simple lines */}
         <lineBasicMaterial
           attach="material"
           color={Constants.LASER_COLOR}
-          linewidth={2}
+          linewidth={Constants.LASER_LINE_WIDTH} // Use constant
           transparent
           opacity={0.8}
         />
