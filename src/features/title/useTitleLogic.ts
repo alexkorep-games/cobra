@@ -1,11 +1,10 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber"; // Import useFrame
-import { GameAssets } from "@/types"; // Use GameAssets
+import { useFrame } from "@react-three/fiber";
+import { GameAssets } from "@/types";
 import * as Constants from "@/constants";
 import { useGameState } from "@/features/common/useGameState";
 
-// Define state for title ship visuals (position, rotation, visibility)
 interface TitleVisualState {
   ships: {
     visible: boolean;
@@ -19,9 +18,6 @@ interface TitleVisualState {
   };
 }
 
-// Pass assets config and audio ref
-// This hook now requires being called from within the R3F render tree (a component inside <Canvas>)
-// because it uses useFrame.
 export function useTitleLogic(
   assets: GameAssets | null,
   introMusicRef: React.RefObject<HTMLAudioElement | null>
@@ -31,7 +27,6 @@ export function useTitleLogic(
   const isProcessingInput = useRef(false);
   const { gameState, setGameState } = useGameState();
 
-  // State to hold calculated visual properties for R3F components
   const [visualState, setVisualState] = useState<TitleVisualState | null>(null);
 
   // Initialize visual state when assets are available
@@ -49,20 +44,24 @@ export function useTitleLogic(
           rotation: [0, Math.PI, 0],
         })),
         planet: {
-          visible: true, // Assume planet is visible if assets loaded
-          position: [200, 0, -500], // Default position
+          visible: true,
+          position: [200, 0, -500],
           scale: [1, 1, 1],
         },
       });
-      currentIndexRef.current = 0; // Reset index when assets load/change
-      shipDisplayTimerRef.current = 0; // Reset timer
+      currentIndexRef.current = 0;
+      shipDisplayTimerRef.current = 0;
+    } else {
+      // Reset visual state if assets become null
+      setVisualState(null);
     }
-  }, [assets]); // Dependency on assets
+  }, [assets]); // Dependency ONLY on assets
 
   const advanceTitleShip = useCallback(() => {
-    if (!assets || assets.titleShips.length === 0) {
+    // Added guard for visualState existence as well
+    if (!assets || !visualState || assets.titleShips.length === 0) {
       console.warn(
-        "[useTitleLogic] Cannot advance title ship: No ships available."
+        "[useTitleLogic] Cannot advance title ship: No ships available or visualState not ready."
       );
       return;
     }
@@ -73,7 +72,25 @@ export function useTitleLogic(
     );
     currentIndexRef.current = nextIndex;
     shipDisplayTimerRef.current = 0; // Reset timer for the new ship
-  }, [assets]);
+
+    // --- Optimization: Force immediate visual reset for non-current ships ---
+    // This prevents potential brief visibility of the wrong ship if useFrame hasn't caught up
+    setVisualState((prevState) => {
+      if (!prevState) return null; // Should not happen if called from advanceTitleShip, but safe check
+      const newShips = prevState.ships.map((ship, index) => ({
+        ...ship,
+        visible: false, // Hide all initially
+        position: [
+          Constants.TARGET_POS.x,
+          Constants.TARGET_POS.y,
+          Constants.START_Z,
+        ] as [number, number, number],
+        rotation: [0, Math.PI, 0] as [number, number, number],
+      }));
+      return { ...prevState, ships: newShips };
+    });
+    // useFrame will then immediately start animating the *new* current ship on the next frame tick.
+  }, [assets, visualState]); // Added visualState dependency here
 
   // --- Animation Logic (using useFrame) ---
   useFrame((_state, delta) => {
@@ -82,47 +99,57 @@ export function useTitleLogic(
       return;
     }
 
-    shipDisplayTimerRef.current += delta; // Use delta time from useFrame
+    shipDisplayTimerRef.current += delta;
     const timer = shipDisplayTimerRef.current;
     const currentShipIndex = currentIndexRef.current;
+    const totalCycle = Constants.TOTAL_CYCLE_DURATION; // Calculate once
 
+    let needsStateUpdate = false; // Flag to track if visual state actually changes
     const newShipsState = visualState.ships.map((shipState, index) => {
-      let targetVisible = false;
+      let targetVisible = shipState.visible;
       let targetPosition = new THREE.Vector3(...shipState.position);
       let targetRotationY = shipState.rotation[1];
+      const originalPositionArr = shipState.position;
+      const originalRotationArr = shipState.rotation;
+      const originalVisible = shipState.visible;
 
-      const startZ = Constants.START_Z; // Base start Z
+      const startZ = Constants.START_Z;
+
       if (index === currentShipIndex) {
         const targetZ = Constants.TARGET_POS.z;
         const flyInDuration = Constants.FLY_IN_DURATION;
         const holdDuration = Constants.HOLD_DURATION;
         const flyOutDuration = Constants.FLY_OUT_DURATION;
-        const totalCycle = flyInDuration + holdDuration + flyOutDuration;
 
-        let currentZ = startZ; // Default to start
+        let currentZ = targetPosition.z; // Start with current Z
 
         if (timer < flyInDuration) {
-          // Fly In
           targetVisible = true;
           const t = Math.min(1, timer / flyInDuration);
-          currentZ = THREE.MathUtils.lerp(startZ, targetZ, t);
-          targetRotationY = Math.PI + t * Math.PI * 4; // Spin in
+          // Use ease-out interpolation for smoother arrival
+          currentZ = THREE.MathUtils.lerp(
+            startZ,
+            targetZ,
+            1 - Math.pow(1 - t, 3)
+          ); // Ease-out cubic
+          targetRotationY = Math.PI + t * Math.PI * 4;
         } else if (timer < flyInDuration + holdDuration) {
-          // Hold
           targetVisible = true;
-          currentZ = targetZ;
-          targetRotationY += 0.5 * delta; // Slow rotation (use delta)
+          currentZ = targetZ; // Ensure it stays at target Z
+          targetRotationY += 0.5 * delta; // Slow rotation
         } else if (timer < totalCycle) {
-          // Fly Out
           targetVisible = true;
           const flyOutTimer = timer - (flyInDuration + holdDuration);
           const t = Math.min(1, flyOutTimer / flyOutDuration);
-          currentZ = THREE.MathUtils.lerp(targetZ, startZ, t);
-          targetRotationY += 2.0 * delta; // Faster rotation (use delta)
+          // Use ease-in interpolation for smoother departure
+          currentZ = THREE.MathUtils.lerp(targetZ, startZ, t * t * t); // Ease-in cubic
+          targetRotationY += 2.0 * delta; // Faster rotation
         } else {
-          // Cycle ended for this ship (advanceTitleShip will handle index/timer reset)
+          // Cycle ended for this ship - will be handled by advanceTitleShip check below
+          // Ensure it's hidden *if* the timer has just passed the cycle duration
           targetVisible = false;
           currentZ = startZ;
+          targetRotationY = Math.PI; // Reset rotation
         }
         targetPosition.set(
           Constants.TARGET_POS.x,
@@ -130,86 +157,102 @@ export function useTitleLogic(
           currentZ
         );
       } else {
-        // Not the current ship, ensure it's hidden and reset
-        targetVisible = false;
-        targetPosition.set(
-          Constants.TARGET_POS.x,
-          Constants.TARGET_POS.y,
-          startZ
-        );
-        targetRotationY = Math.PI;
+        // Not the current ship, ensure it's hidden and reset *if it's not already*
+        if (targetVisible || targetPosition.z !== startZ) {
+          targetVisible = false;
+          targetPosition.set(
+            Constants.TARGET_POS.x,
+            Constants.TARGET_POS.y,
+            startZ
+          );
+          targetRotationY = Math.PI;
+        }
+      }
+
+      const newPositionArr = targetPosition.toArray() as [
+        number,
+        number,
+        number
+      ];
+      const newRotationArr = [0, targetRotationY, 0] as [
+        number,
+        number,
+        number
+      ];
+
+      // Check if anything actually changed for this specific ship
+      if (
+        originalVisible !== targetVisible ||
+        originalPositionArr[0] !== newPositionArr[0] ||
+        originalPositionArr[1] !== newPositionArr[1] ||
+        originalPositionArr[2] !== newPositionArr[2] ||
+        originalRotationArr[1] !== newRotationArr[1] // Only check Y rotation as others are fixed
+      ) {
+        needsStateUpdate = true;
       }
 
       return {
         visible: targetVisible,
-        position: targetPosition.toArray() as [number, number, number],
-        rotation: [0, targetRotationY, 0] as [number, number, number],
+        position: newPositionArr,
+        rotation: newRotationArr,
       };
     });
 
-    // Update planet state (e.g., make it visible if it wasn't)
-    // Planet rotation etc. might be handled within PlanetComponent itself using its own useFrame
+    // Check if planet state needs update (only visibility for now)
+    if (!visualState.planet.visible) {
+      needsStateUpdate = true;
+    }
     const newPlanetState = {
       ...visualState.planet,
       visible: true, // Ensure planet is marked visible during title
     };
 
-    // Update the visual state
-    // Throttle state updates if performance becomes an issue, but usually fine
-    setVisualState({ ships: newShipsState, planet: newPlanetState });
+    // Update the visual state ONLY if something actually changed
+    if (needsStateUpdate) {
+      setVisualState({ ships: newShipsState, planet: newPlanetState });
+    }
 
     // Cycle ship if timer exceeds duration
-    if (timer >= Constants.TOTAL_CYCLE_DURATION) {
-      advanceTitleShip();
+    // Use >= to catch cases where delta might push it slightly over
+    if (timer >= totalCycle) {
+      advanceTitleShip(); // This will reset the timer and index
     }
   }); // End of useFrame
 
   // --- Input Handling ---
   const handleInput = useCallback(
     (event: KeyboardEvent | MouseEvent) => {
+      // Check gameState *inside* the handler to ensure it uses the latest value
       if (gameState === "title" && !isProcessingInput.current) {
         if (event.type === "keydown" || event.type === "mousedown") {
-          isProcessingInput.current = true;
+          isProcessingInput.current = true; // Prevent double triggers
           console.log(
             "[useTitleLogic] Title input detected, switching to credits..."
           );
           setGameState("credits");
-          // No need for timeout to reset isProcessingInput, state change handles it
+          // No need to reset isProcessingInput here, the component/hook will effectively reset when gameState changes.
         }
       }
     },
-    [gameState, setGameState] // Dependencies
+    // handleInput depends on setGameState and gameState (implicitly checked inside)
+    // If gameState changes, the old listeners are removed anyway by useEffect cleanup
+    [setGameState, gameState] // Added gameState here to ensure the check inside uses the right value context
   );
 
   // --- Effect for Setup, Cleanup, Input Listeners ---
   useEffect(() => {
     if (gameState === "title") {
-      console.log("[useTitleLogic] Activating.");
+      console.log("[useTitleLogic] Activating Title State.");
       isProcessingInput.current = false; // Reset input flag on activation
 
-      // Reset ship index/timer only if assets are loaded (visualState exists)
-      if (visualState) {
-        currentIndexRef.current = 0;
-        shipDisplayTimerRef.current = 0;
-        // Optionally force reset visual state to ensure clean start
-        setVisualState((prev) =>
-          prev
-            ? {
-                ...prev,
-                ships: prev.ships.map((ship, index) => ({
-                  ...ship,
-                  visible: index === 0 ? false : false, // Ensure only first ship might become visible initially
-                  position: [
-                    Constants.TARGET_POS.x,
-                    Constants.TARGET_POS.y,
-                    Constants.START_Z,
-                  ],
-                  rotation: [0, Math.PI, 0],
-                })),
-              }
-            : null
-        );
-      }
+      // Reset animation state refs ONLY when entering the title state
+      // This ensures the animation starts from the beginning each time
+      currentIndexRef.current = 0;
+      shipDisplayTimerRef.current = 0;
+
+      // --- Removed redundant setVisualState reset here ---
+      // The initial useEffect based on `assets` handles the initial setup.
+      // `useFrame` will handle positioning based on the reset refs.
 
       // Play intro music
       introMusicRef.current
@@ -219,14 +262,13 @@ export function useTitleLogic(
         );
 
       // Add input listeners
+      console.log("[useTitleLogic] Adding input listeners.");
       window.addEventListener("keydown", handleInput);
       window.addEventListener("mousedown", handleInput);
 
-      // NOTE: Animation is now handled by useFrame, no need to start/stop RAF
-
-      // Cleanup function
+      // Cleanup function for when gameState changes AWAY from 'title' or component unmounts
       return () => {
-        console.log("[useTitleLogic] Deactivating.");
+        console.log("[useTitleLogic] Deactivating Title State.");
         // Remove input listeners
         window.removeEventListener("keydown", handleInput);
         window.removeEventListener("mousedown", handleInput);
@@ -238,8 +280,9 @@ export function useTitleLogic(
         }
 
         // Reset visual state to hidden when leaving title screen
-        // This prevents flicker if the component calling the hook doesn't unmount immediately
+        // Check if assets exist before trying to map them
         if (assets) {
+          console.log("[useTitleLogic] Resetting visual state for cleanup.");
           setVisualState({
             ships: assets.titleShips.map(() => ({
               visible: false,
@@ -256,17 +299,22 @@ export function useTitleLogic(
               scale: [1, 1, 1],
             },
           });
+        } else {
+          // If assets are null, ensure visual state is also null
+          setVisualState(null);
         }
       };
     }
+    // Else: If gameState is not 'title', do nothing related to title setup/listeners
+    // The cleanup function from the *previous* run (when gameState WAS 'title') handles teardown.
   }, [
     gameState,
-    assets,
+    assets, // Keep assets dependency for the cleanup logic
     introMusicRef,
-    handleInput,
-    setGameState,
-    visualState,
-  ]);
+    handleInput, // handleInput now depends on gameState/setGameState
+    setGameState, // Keep setGameState if needed by handleInput indirectly
+    // REMOVED visualState from dependencies
+  ]); // End of Setup/Cleanup useEffect
 
   return { visualState };
 }
