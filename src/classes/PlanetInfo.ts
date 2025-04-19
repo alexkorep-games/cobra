@@ -62,6 +62,12 @@ export interface Coordinates {
   y: number;
 }
 
+export interface Coordinates3D {
+  x: number;
+  y: number;
+  z: number;
+}
+
 // --- Planet Class ---
 
 export class PlanetInfo {
@@ -74,7 +80,7 @@ export class PlanetInfo {
   radius: number; // In kilometers
   description: string;
   coordinates: Coordinates;
-  playerSpawnPosition: Coordinates; // New property for player spawn position
+  playerSpawnPosition: Coordinates3D; // New property for player spawn position
 
   constructor(
     name: string,
@@ -86,7 +92,7 @@ export class PlanetInfo {
     radius: number,
     description: string,
     coordinates: Coordinates,
-    playerSpawnPosition: Coordinates // Add to constructor
+    playerSpawnPosition: Coordinates3D
   ) {
     this.name = name;
     this.governmentType = governmentType;
@@ -302,9 +308,11 @@ export function generatePlanets(
       PLAYER_SPAWN_MAX_DISTANCE
     );
     const angle = rng.next() * Math.PI * 2; // Random angle in radians
-    const playerSpawnPosition: Coordinates = {
-      x: coordinates.x + Math.cos(angle) * spawnDistance,
-      y: coordinates.y + Math.sin(angle) * spawnDistance,
+    const verticalAngle = rng.next() * Math.PI; // Random vertical angle in radians
+    const playerSpawnPosition: Coordinates3D = {
+      x: coordinates.x + Math.cos(angle) * spawnDistance * Math.sin(verticalAngle),
+      y: coordinates.y + Math.sin(angle) * spawnDistance * Math.sin(verticalAngle),
+      z: coordinates.y + Math.cos(verticalAngle) * spawnDistance,
     };
 
     const description = generatePlanetDescription(rng);
@@ -320,7 +328,7 @@ export function generatePlanets(
         radius,
         description,
         coordinates,
-        playerSpawnPosition // Pass new property
+        playerSpawnPosition
       )
     );
   }

@@ -13,6 +13,7 @@ import SpaceStationComponent from "@/components/r3f/SpaceStationComponent";
 // import ShipComponent from "@/components/r3f/ShipComponent"; // No longer directly needed here
 import PiratesComponent from "@/components/r3f/PiratesComponent"; // Import the new component
 import { useAssets } from "@/hooks/useAssets";
+import { usePlanetInfos } from "../common/usePlanetInfos";
 
 const SpaceFlightSceneR3F: React.FC = () => {
   const { assets } = useAssets();
@@ -28,6 +29,8 @@ const SpaceFlightSceneR3F: React.FC = () => {
     setStationDirection,
     setRadarPositions, // Still needed for combined radar
   } = useHudState();
+  const { getCurrentPlanet } = usePlanetInfos();
+  const currentPlanet = getCurrentPlanet();
 
   // --- Refs ---
   const laserBeamRef = useRef<THREE.LineSegments>(null);
@@ -64,15 +67,17 @@ const SpaceFlightSceneR3F: React.FC = () => {
       return;
     }
 
+    if (!currentPlanet) {
+      console.error("[SpaceFlightSceneR3F] Current planet not found!");
+      return;
+    }
+
     // Reset player state
     velocity.current.set(0, 0, 0);
     rollRate.current = 0;
     pitchRate.current = 0;
-    const startPos = new THREE.Vector3(
-      0,
-      0,
-      Constants.STATION_DOCKING_RADIUS * 150
-    );
+    const pos = currentPlanet.playerSpawnPosition;
+    const startPos = new THREE.Vector3(pos.x, pos.y, pos.z);
     initialPlayerPositionRef.current.copy(startPos); // Store initial position
     camera.position.copy(startPos); // Use stored value
     camera.rotation.set(0, 0, 0);
@@ -114,6 +119,8 @@ const SpaceFlightSceneR3F: React.FC = () => {
   // --- Game Loop Logic (useFrame) ---
   useFrame((state, delta) => {
     if (!assets) return;
+    ////////////////////////////////////////////////////////////////////////
+    // ... inside useFrame ...
 
     const { camera: currentCamera } = state; // Use destructured camera from state for clarity
     const dt = Math.min(delta, 0.05);
@@ -148,16 +155,31 @@ const SpaceFlightSceneR3F: React.FC = () => {
       dt
     );
 
-    tempQuaternion.setFromAxisAngle(
-      forwardVector.set(0, 0, -1),
-      rollRate.current * dt
-    );
-    currentCamera.quaternion.premultiply(tempQuaternion);
-    tempQuaternion.setFromAxisAngle(
-      rightVector.set(1, 0, 0),
-      pitchRate.current * dt
-    );
-    currentCamera.quaternion.premultiply(tempQuaternion);
+    // Reuse tempQuaternion for incremental rotations
+    const rotationDelta = tempQuaternion; // Reuse existing ref for efficiency
+
+    // Calculate rotation axes based on the *current* camera orientation
+    const localRight = tempVector
+      .set(1, 0, 0)
+      .applyQuaternion(currentCamera.quaternion);
+    const localForward = tempVector2
+      .set(0, 0, -1)
+      .applyQuaternion(currentCamera.quaternion); // Use tempVector2
+
+    // Apply Roll around the camera's local forward (Z) axis
+    if (Math.abs(rollRate.current) > 1e-5) {
+      // Add tolerance check
+      rotationDelta.setFromAxisAngle(localForward, rollRate.current * dt);
+      currentCamera.quaternion.multiply(rotationDelta); // Use multiply for local rotation
+    }
+
+    // Apply Pitch around the camera's local right (X) axis
+    if (Math.abs(pitchRate.current) > 1e-5) {
+      // Add tolerance check
+      rotationDelta.setFromAxisAngle(localRight, pitchRate.current * dt);
+      currentCamera.quaternion.multiply(rotationDelta); // Use multiply for local rotation
+    }
+
     currentCamera.quaternion.normalize();
 
     const worldForward = tempVector
@@ -182,12 +204,19 @@ const SpaceFlightSceneR3F: React.FC = () => {
     const currentSpeed = velocity.current.length();
     if (currentSpeed > Constants.MAX_SPEED) {
       velocity.current.normalize().multiplyScalar(Constants.MAX_SPEED);
-    } else if (currentSpeed < Constants.MIN_SPEED && currentSpeed > 0) {
-      if (
+    } else if (currentSpeed > 0 && currentSpeed < Constants.MIN_SPEED) {
+      // Check if trying to move below min speed (but not braking to zero)
+      if (accelerationInput > 0 || decelerationInput === 0) {
+        // Optional: If accelerating or coasting below min speed, clamp up to min speed?
+        // Or let it decay naturally via damping as currently implemented.
+        // If you want a hard floor unless braking:
+        // velocity.current.normalize().multiplyScalar(Constants.MIN_SPEED);
+      } else if (
         velocity.current.lengthSq() <
-        Constants.MIN_SPEED * Constants.MIN_SPEED
+        Constants.MIN_SPEED * Constants.MIN_SPEED * 0.25
       ) {
-        velocity.current.set(0, 0, 0);
+        // Allow braking to fully stop
+        velocity.current.set(0, 0, 0); // Snap to zero if very slow and braking/coasting
       }
     }
 
