@@ -1,12 +1,12 @@
 // src/keybindings.ts
 export const KEYBINDINGS = {
   SHIP: {
-    ACCELERATE: ["z", "shift"],
-    BRAKE: ["x"],
-    ROLL_LEFT: ["a"],
-    ROLL_RIGHT: ["d"],
-    PITCH_UP: ["w"],
-    PITCH_DOWN: ["s"],
+    ACCELERATE: ["a"],
+    BRAKE: ["z"],
+    ROLL_LEFT: ["arrowleft"],
+    ROLL_RIGHT: ["arrowright"],
+    PITCH_UP: ["arrowup"],
+    PITCH_DOWN: ["arrowdown"],
     FIRE: [" "], // Space bar
   },
   UI: {

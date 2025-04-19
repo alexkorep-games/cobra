@@ -71,7 +71,7 @@ type UseInputCallbacks = {
  * @param callbacks Optional callbacks for specific input events.
  * @returns The current InputState object.
  */
-export function useInput(callbacks: UseInputCallbacks): InputState {
+export function useInput(callbacks?: UseInputCallbacks): InputState {
   const shipControls = useAtomValue(shipControlsAtom);
   const uiControls = useAtomValue(uiControlsAtom);
 

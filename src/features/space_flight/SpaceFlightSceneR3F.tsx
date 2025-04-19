@@ -27,6 +27,7 @@ interface PirateState {
 const SpaceFlightSceneR3F: React.FC = () => {
   const { assets } = useAssets(); // Get assets via hook
   const { camera } = useThree();
+  const { shipControls } = useInput();
   const { setGameState } = useGameState();
   const {
     setCoordinates,
@@ -90,11 +91,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
     laserBeamHideTimer.current = 0;
 
     // Reset HUD
-    setCoordinates([
-      camera.position.x,
-      camera.position.y,
-      camera.position.z,
-    ]);
+    setCoordinates([camera.position.x, camera.position.y, camera.position.z]);
     setSpeed(0);
     setRoll(0);
     setPitch(0);
@@ -197,26 +194,22 @@ const SpaceFlightSceneR3F: React.FC = () => {
     // Clamp delta to prevent physics glitches if frame rate tanks
     const dt = Math.min(delta, 0.05);
 
-    // --- Input Processing & Physics ---
-    const { keysPressed } = useInput();
-    const keysSet = new Set(keysPressed);
-
     let targetRollRate = 0;
     let targetPitchRate = 0;
     let accelerationInput = 0;
     let decelerationInput = 0;
 
     // Rotation Input -> Target Rates
-    if (keysSet.has("a")) targetRollRate = Constants.ROLL_ACCELERATION;
-    if (keysSet.has("d")) targetRollRate = -Constants.ROLL_ACCELERATION;
-    if (keysSet.has("w")) targetPitchRate = Constants.PITCH_ACCELERATION;
-    if (keysSet.has("s")) targetPitchRate = -Constants.PITCH_ACCELERATION;
+    if (shipControls.rollLeft) targetRollRate = -Constants.ROLL_ACCELERATION;
+    if (shipControls.rollRight) targetRollRate = Constants.ROLL_ACCELERATION;
+    if (shipControls.pitchUp) targetPitchRate = -Constants.PITCH_ACCELERATION;
+    if (shipControls.pitchDown) targetPitchRate = Constants.PITCH_ACCELERATION;
 
     // Thrust/Brake Input
-    if (keysSet.has("z") || keysSet.has("shift")) {
+    if (shipControls.accelerate) {
       accelerationInput = Constants.ACCELERATION;
     }
-    if (keysSet.has("x")) {
+    if (shipControls.brake) {
       decelerationInput = Constants.DECELERATION;
     }
 
@@ -224,16 +217,36 @@ const SpaceFlightSceneR3F: React.FC = () => {
     console.log("[SpaceFlightSceneR3F] Unmounting & Cleaning Up");
 
     // Interpolate current rates towards target rates (simulates inertia/response time)
-    rollRate.current = THREE.MathUtils.damp(rollRate.current, targetRollRate !== 0 ? Math.sign(targetRollRate) * Constants.MAX_VISUAL_ROLL_RATE : 0, Constants.ANGULAR_DAMPING, dt);
-    pitchRate.current = THREE.MathUtils.damp(pitchRate.current, targetPitchRate !== 0 ? Math.sign(targetPitchRate) * Constants.MAX_VISUAL_PITCH_RATE : 0, Constants.ANGULAR_DAMPING, dt);
+    rollRate.current = THREE.MathUtils.damp(
+      rollRate.current,
+      targetRollRate !== 0
+        ? Math.sign(targetRollRate) * Constants.MAX_VISUAL_ROLL_RATE
+        : 0,
+      Constants.ANGULAR_DAMPING,
+      dt
+    );
+    pitchRate.current = THREE.MathUtils.damp(
+      pitchRate.current,
+      targetPitchRate !== 0
+        ? Math.sign(targetPitchRate) * Constants.MAX_VISUAL_PITCH_RATE
+        : 0,
+      Constants.ANGULAR_DAMPING,
+      dt
+    );
 
     // Apply rotation deltas based on current rates
     // Rotate around local Z axis for roll
-    tempQuaternion.setFromAxisAngle(forwardVector.set(0, 0, -1), rollRate.current * dt);
+    tempQuaternion.setFromAxisAngle(
+      forwardVector.set(0, 0, -1),
+      rollRate.current * dt
+    );
     camera.quaternion.premultiply(tempQuaternion); // Premultiply for local rotation
 
     // Rotate around local X axis for pitch
-    tempQuaternion.setFromAxisAngle(rightVector.set(1, 0, 0), pitchRate.current * dt);
+    tempQuaternion.setFromAxisAngle(
+      rightVector.set(1, 0, 0),
+      pitchRate.current * dt
+    );
     camera.quaternion.premultiply(tempQuaternion);
 
     // Normalize quaternion to prevent drift
@@ -241,38 +254,40 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
     // --- Linear Movement ---
     // Get current forward direction in world space
-    const worldForward = tempVector.set(0, 0, -1).applyQuaternion(camera.quaternion);
+    const worldForward = tempVector
+      .set(0, 0, -1)
+      .applyQuaternion(camera.quaternion);
 
     // Apply acceleration
     velocity.current.addScaledVector(worldForward, accelerationInput * dt);
 
     // Apply explicit deceleration (braking)
     if (decelerationInput > 0) {
-        const brakeForce = tempVector2.copy(velocity.current).normalize().multiplyScalar(-decelerationInput * dt);
-        // Prevent braking from reversing direction if speed is low
-        if (velocity.current.lengthSq() > brakeForce.lengthSq()) {
-            velocity.current.add(brakeForce);
-        } else {
-            velocity.current.set(0, 0, 0); // Stop completely
-        }
+      const brakeForce = tempVector2
+        .copy(velocity.current)
+        .normalize()
+        .multiplyScalar(-decelerationInput * dt);
+      // Prevent braking from reversing direction if speed is low
+      if (velocity.current.lengthSq() > brakeForce.lengthSq()) {
+        velocity.current.add(brakeForce);
+      } else {
+        velocity.current.set(0, 0, 0); // Stop completely
+      }
     }
 
     // Apply linear damping (friction/drag)
     velocity.current.multiplyScalar(Math.pow(1 - Constants.LINEAR_DAMPING, dt)); // Frame-rate independent damping
 
-
     // Clamp speed
     const currentSpeed = velocity.current.length();
     if (currentSpeed > Constants.MAX_SPEED) {
-        velocity.current.normalize().multiplyScalar(Constants.MAX_SPEED);
+      velocity.current.normalize().multiplyScalar(Constants.MAX_SPEED);
     } else if (currentSpeed < Constants.MIN_SPEED) {
-         velocity.current.set(0, 0, 0); // Ensure minimum speed is respected
+      velocity.current.set(0, 0, 0); // Ensure minimum speed is respected
     }
-
 
     // Update camera position
     camera.position.addScaledVector(velocity.current, dt);
-
 
     // --- Laser Logic ---
     laserCooldownTimer.current = Math.max(0, laserCooldownTimer.current - dt);
@@ -284,13 +299,19 @@ const SpaceFlightSceneR3F: React.FC = () => {
       currentLaserHeat.current < Constants.LASER_MAX_HEAT &&
       laserCooldownTimer.current <= 0
     ) {
-      currentLaserHeat.current = Math.min(Constants.LASER_MAX_HEAT, currentLaserHeat.current + Constants.LASER_HEAT_INCREASE);
+      currentLaserHeat.current = Math.min(
+        Constants.LASER_MAX_HEAT,
+        currentLaserHeat.current + Constants.LASER_HEAT_INCREASE
+      );
       laserCooldownTimer.current = Constants.LASER_COOLDOWN;
       laserBeamHideTimer.current = Constants.LASER_DURATION; // Use correct constant
       // TODO: Add laser hit detection logic here if needed
     } else {
       // Cool down
-      currentLaserHeat.current = Math.max(0, currentLaserHeat.current - Constants.LASER_HEAT_DECREASE_RATE * dt);
+      currentLaserHeat.current = Math.max(
+        0,
+        currentLaserHeat.current - Constants.LASER_HEAT_DECREASE_RATE * dt
+      );
     }
 
     // Update laser beam visibility and position/orientation
@@ -304,63 +325,81 @@ const SpaceFlightSceneR3F: React.FC = () => {
       }
     }
 
-
     // --- Pirate Logic ---
     const updatedPirateStates = pirateStates.map((pirate, index) => {
-        const pirateRef = pirateShipRefs.current[index];
-        if (!pirateRef || !pirate.velocity) return pirate; // Skip if ref or velocity missing
+      const pirateRef = pirateShipRefs.current[index];
+      if (!pirateRef || !pirate.velocity) return pirate; // Skip if ref or velocity missing
 
-        // Simple AI: Move towards player if within attack range, otherwise wander slowly?
-        const distanceToPlayerSq = pirate.position.distanceToSquared(camera.position);
+      // Simple AI: Move towards player if within attack range, otherwise wander slowly?
+      const distanceToPlayerSq = pirate.position.distanceToSquared(
+        camera.position
+      );
 
-        if (distanceToPlayerSq < Constants.PIRATE_ATTACK_RANGE * Constants.PIRATE_ATTACK_RANGE) {
-            // Attack: Move towards player
-            tempVector.copy(camera.position).sub(pirate.position).normalize();
-            pirate.velocity.lerp(tempVector.multiplyScalar(Constants.PIRATE_SPEED), dt * 1.5); // Adjust lerp factor for responsiveness
+      if (
+        distanceToPlayerSq <
+        Constants.PIRATE_ATTACK_RANGE * Constants.PIRATE_ATTACK_RANGE
+      ) {
+        // Attack: Move towards player
+        tempVector.copy(camera.position).sub(pirate.position).normalize();
+        pirate.velocity.lerp(
+          tempVector.multiplyScalar(Constants.PIRATE_SPEED),
+          dt * 1.5
+        ); // Adjust lerp factor for responsiveness
 
-            // Aim towards player
-             tempVector2.copy(pirate.position).add(pirate.velocity); // Look ahead slightly
-             pirateRef.lookAt(camera.position);
-             pirate.quaternion.copy(pirateRef.quaternion); // Update state quaternion from looked-at ref
+        // Aim towards player
+        tempVector2.copy(pirate.position).add(pirate.velocity); // Look ahead slightly
+        pirateRef.lookAt(camera.position);
+        pirate.quaternion.copy(pirateRef.quaternion); // Update state quaternion from looked-at ref
+      } else {
+        // Wander or idle (e.g., slow down)
+        pirate.velocity.lerp(tempVector.set(0, 0, 0), dt * 0.5); // Slow down if far away
+      }
 
-        } else {
-            // Wander or idle (e.g., slow down)
-             pirate.velocity.lerp(tempVector.set(0,0,0), dt * 0.5); // Slow down if far away
-        }
+      pirate.position.addScaledVector(pirate.velocity, dt);
 
-        pirate.position.addScaledVector(pirate.velocity, dt);
+      // TODO: Add pirate firing logic?
 
-
-        // TODO: Add pirate firing logic?
-
-        return { ...pirate }; // Return updated state
+      return { ...pirate }; // Return updated state
     });
     if (updatedPirateStates.some((p, i) => p !== pirateStates[i])) {
-         setPirateStates(updatedPirateStates); // Update state only if changed
+      setPirateStates(updatedPirateStates); // Update state only if changed
     }
-
 
     // --- Docking Check ---
     if (stationRef.current) {
-        const distanceToStationSq = camera.position.distanceToSquared(stationRef.current.position);
-        if (distanceToStationSq < Constants.STATION_DOCKING_RADIUS * Constants.STATION_DOCKING_RADIUS) {
-             console.log("[SpaceFlightSceneR3F] Docking range entered. Returning to title.");
-             // TODO: Add a smoother transition? Docking sequence state?
-             setGameState("title"); // Or maybe "docked_menu"?
-             // Reset speed etc. ?
-             velocity.current.set(0,0,0);
-        }
+      const distanceToStationSq = camera.position.distanceToSquared(
+        stationRef.current.position
+      );
+      if (
+        distanceToStationSq <
+        Constants.STATION_DOCKING_RADIUS * Constants.STATION_DOCKING_RADIUS
+      ) {
+        console.log(
+          "[SpaceFlightSceneR3F] Docking range entered. Returning to title."
+        );
+        // TODO: Add a smoother transition? Docking sequence state?
+        setGameState("title"); // Or maybe "docked_menu"?
+        // Reset speed etc. ?
+        velocity.current.set(0, 0, 0);
+      }
     }
-
 
     // --- HUD Updates ---
     const finalSpeed = velocity.current.length();
     // Normalize roll/pitch rates for HUD (-1 to 1 based on max visual rates)
-    const normalizedRoll = THREE.MathUtils.clamp(rollRate.current / Constants.MAX_VISUAL_ROLL_RATE, -1, 1);
-    const normalizedPitch = THREE.MathUtils.clamp(pitchRate.current / Constants.MAX_VISUAL_PITCH_RATE, -1, 1);
+    const normalizedRoll = THREE.MathUtils.clamp(
+      rollRate.current / Constants.MAX_VISUAL_ROLL_RATE,
+      -1,
+      1
+    );
+    const normalizedPitch = THREE.MathUtils.clamp(
+      pitchRate.current / Constants.MAX_VISUAL_PITCH_RATE,
+      -1,
+      1
+    );
 
     setSpeed(Math.min(100, (finalSpeed / Constants.MAX_SPEED) * 100)); // Speed as % of max
-    setRoll(normalizedRoll);   // Use normalized value for HUD bar marker
+    setRoll(normalizedRoll); // Use normalized value for HUD bar marker
     setPitch(normalizedPitch); // Use normalized value for HUD bar marker
     setLaserHeat((currentLaserHeat.current / Constants.LASER_MAX_HEAT) * 100); // Heat as %
     setCoordinates([camera.position.x, camera.position.y, camera.position.z]);
@@ -377,12 +416,19 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
       if (distToStation < Constants.RADAR_DISTANCE) {
         tempVector.normalize();
-        radarPositionsData.push({ x: tempVector.x, y: tempVector.y, z: tempVector.z });
+        radarPositionsData.push({
+          x: tempVector.x,
+          y: tempVector.y,
+          z: tempVector.z,
+        });
         // Update station direction indicator
         setStationDirection({
           x: tempVector.x,
           y: tempVector.y,
-          offCenterAmount: Math.min(1, Math.sqrt(tempVector.x ** 2 + tempVector.y ** 2)), // Clamp amount 0-1
+          offCenterAmount: Math.min(
+            1,
+            Math.sqrt(tempVector.x ** 2 + tempVector.y ** 2)
+          ), // Clamp amount 0-1
           isInFront: tempVector.z < 0, // Z is negative when in front in camera space
         });
       } else {
@@ -392,21 +438,25 @@ const SpaceFlightSceneR3F: React.FC = () => {
       setStationDirection(null); // Station not rendered/found
     }
 
-
     // Pirate Radar
     pirateStates.forEach((pirate) => {
       if (pirate.visible) {
         tempVector.copy(pirate.position).applyMatrix4(cameraMatrix);
-        if (tempVector.lengthSq() < Constants.RADAR_DISTANCE * Constants.RADAR_DISTANCE) {
+        if (
+          tempVector.lengthSq() <
+          Constants.RADAR_DISTANCE * Constants.RADAR_DISTANCE
+        ) {
           tempVector.normalize();
-          radarPositionsData.push({ x: tempVector.x, y: tempVector.y, z: tempVector.z });
+          radarPositionsData.push({
+            x: tempVector.x,
+            y: tempVector.y,
+            z: tempVector.z,
+          });
         }
       }
     });
     setRadarPositions(radarPositionsData); // Update HUD state
-
   }); // End useFrame
-
 
   // --- Render 3D Components ---
   if (!assets) return null; // Don't render if assets aren't loaded
@@ -425,18 +475,19 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
       {/* Space Station (Placed at origin for simplicity) */}
       {assets.spaceStation && (
-        <group ref={stationRef} position={[0, 0, 0]}> {/* Use group to easily get station world position */}
-            <SpaceStationComponent
-                modelPath={assets.spaceStation.modelPath}
-                initialScale={Constants.SHIP_SCALE * 2} // Make station bigger
-                wireframeColor={0xffff00}
-                rotationSpeed={0.01}
-                visible={true}
-                // Position/rotation are relative to the parent group now (which is at 0,0,0)
-            />
+        <group ref={stationRef} position={[0, 0, 0]}>
+          {" "}
+          {/* Use group to easily get station world position */}
+          <SpaceStationComponent
+            modelPath={assets.spaceStation.modelPath}
+            initialScale={Constants.SHIP_SCALE * 2} // Make station bigger
+            wireframeColor={0xffff00}
+            rotationSpeed={0.01}
+            visible={true}
+            // Position/rotation are relative to the parent group now (which is at 0,0,0)
+          />
         </group>
       )}
-
 
       {/* Pirates */}
       {pirateStates.map((pirate, index) => (
@@ -458,13 +509,21 @@ const SpaceFlightSceneR3F: React.FC = () => {
           <bufferAttribute
             attach="attributes-position"
             count={laserBeamPoints.length}
-            array={new Float32Array(laserBeamPoints.flatMap((p) => p.toArray()))}
+            array={
+              new Float32Array(laserBeamPoints.flatMap((p) => p.toArray()))
+            }
             itemSize={3}
             usage={THREE.DynamicDrawUsage} // Not strictly needed as points don't change, but good practice if they might
           />
         </bufferGeometry>
         {/* Use LineBasicMaterial for simple lines */}
-        <lineBasicMaterial attach="material" color={Constants.LASER_COLOR} linewidth={2} transparent opacity={0.8}/>
+        <lineBasicMaterial
+          attach="material"
+          color={Constants.LASER_COLOR}
+          linewidth={2}
+          transparent
+          opacity={0.8}
+        />
       </lineSegments>
 
       {/* Add Stars / Skybox etc. here */}

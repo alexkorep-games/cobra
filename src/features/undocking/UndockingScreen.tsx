@@ -13,12 +13,7 @@ interface UndockingScreenProps {
 const UndockingScreen: React.FC<UndockingScreenProps> = ({
   undockSoundRef,
 }) => {
-  // Pass prop to the hook
   useUndockingLogic(undockSoundRef);
-
-  // R3F UndockingSquares rendering is handled in App.tsx based on gameState
-  // This component only renders the overlay UI
-
   return (
     <>
       <div className="top-bar">
@@ -27,7 +22,6 @@ const UndockingScreen: React.FC<UndockingScreenProps> = ({
       <div id="leaving-text" className="center-text small">
         Leaving Space Station
       </div>
-      {/* Render BottomHud without props */}
       <BottomHud />
     </>
   );

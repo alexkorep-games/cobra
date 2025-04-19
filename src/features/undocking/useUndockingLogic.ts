@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useGameState } from "@/features/common/useGameState";
 
-const UNDOCKING_DURATION = 4000; // ms
+const UNDOCKING_DURATION = 2000; // ms
 
 // Receive audio ref
 export function useUndockingLogic(
