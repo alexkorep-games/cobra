@@ -1,6 +1,4 @@
 import * as THREE from "three";
-import * as Constants from "@/constants";
-import { PlanetInfo } from "@/classes/PlanetInfo"; // Keep if used by usePlanetInfos
 
 // Define possible game states as a string union type
 export type GameState =

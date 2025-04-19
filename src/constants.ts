@@ -46,6 +46,8 @@ export const LASER_HEAT_DECREASE_RATE = 20; // Heat lost per second when not fir
 export const LASER_MAX_HEAT = 100; // Max heat before overheating
 export const LASER_COLOR = 0xff0000; // Red laser
 export const LASER_DURATION = 0.1; // How long the beam is visible per shot
+export const LASER_LENGTH = 40; // Visual length of the beam
+
 
 // Planets
 export const PLANET_COUNT = 100; // Number of planets to generate

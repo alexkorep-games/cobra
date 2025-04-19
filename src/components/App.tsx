@@ -9,20 +9,21 @@ import { useAssets } from "@/hooks/useAssets";
 import { useAudioManager } from "@/hooks/useAudioManager";
 import * as Constants from "@/constants";
 
-// Import Scene Components
+// Import Scene UI Overlay Components
 import LoadingScreen from "@/features/loading/LoadingScreen";
-import TitleScreen from "@/features/title/TitleScreen"; // This is now just the UI overlay
+import TitleScreen from "@/features/title/TitleScreen";
 import CreditsScreen from "@/features/credits/CreditsScreen";
 import StatsScreen from "@/features/stats/StatsScreen";
-import CoordinatesDisplay from "@/components/hud/CoordinatesDisplay";
-import SpaceFlightScreen from "@/features/space_flight/SpaceFlightScreen"; // This likely needs to be an R3F component too
+// CoordinatesDisplay is now part of SpaceFlightScreenUI
+import SpaceFlightScreenUI from "@/features/space_flight/SpaceFlightScreenUI";
 import ShortRangeChartScreen from "@/features/short_range_chart/ShortRangeChartScreen";
 import PlanetInfoScreen from "@/features/planet_info/PlanetInfoScreen";
-import UndockingScreen from "@/features/undocking/UndockingScreen"; // This is just the UI overlay
+import UndockingScreen from "@/features/undocking/UndockingScreen";
 
-// Import R3F Entity Components / Scenes
+// Import R3F Scene Content Components
 import UndockingSquares from "@/components/r3f/UndockingSquares";
-import TitleSceneR3F from "@/features/title/TitleSceneR3F"; // --- IMPORT THE NEW R3F COMPONENT ---
+import TitleSceneR3F from "@/features/title/TitleSceneR3F";
+import SpaceFlightSceneR3F from "@/features/space_flight/SpaceFlightSceneR3F";
 
 const GlobalStateInitializer: React.FC = () => {
   const { setPlanetInfos, setCurrentPlanetName } = usePlanetInfos();
@@ -37,8 +38,12 @@ const GlobalStateInitializer: React.FC = () => {
       );
       setPlanetInfos(generatedPlanets);
       if (generatedPlanets.length > 0) {
-        setCurrentPlanetName(generatedPlanets[0].name);
-        console.log(`Set initial planet: ${generatedPlanets[0].name}`);
+        setCurrentPlanetName(generatedPlanets[0].name); // Use defined constant
+        console.log(
+          `Set initial planet: ${
+            generatedPlanets[Constants.INITIAL_PLANET_INDEX].name
+          }`
+        );
       } else {
         console.error("No planets generated!");
       }
@@ -71,18 +76,15 @@ const App: React.FC = () => {
         case "undocking":
           return <UndockingScreen undockSoundRef={undockSoundRef} />;
         case "space_flight":
-          return (
-            <>
-              <SpaceFlightScreen />
-              <CoordinatesDisplay />
-            </>
-          );
+          return <SpaceFlightScreenUI />;
         case "short_range_chart":
           return <ShortRangeChartScreen />;
         case "planet_info":
           return <PlanetInfoScreen />;
         default:
-          return null;
+          return (
+            <div className="center-text">Unknown Game State: {gameState}</div>
+          );
       }
     } catch (error) {
       console.error(
@@ -91,11 +93,34 @@ const App: React.FC = () => {
         }>.`,
         error
       );
-      return <div>An error occurred rendering this screen overlay.</div>;
+      return <div className="center-text">Error rendering UI.</div>;
     }
   };
 
-  if (!isLoadingComplete || !assets) {
+  const renderSceneR3FContent = () => {
+    if (!assets) return null;
+
+    switch (gameState) {
+      case "title":
+        return <TitleSceneR3F assets={assets} introMusicRef={introMusicRef} />;
+      case "undocking":
+        // UndockingSquares are now controlled by their own visibility prop triggered by the gameState check below
+        return null; // Or render a specific minimal scene if desired
+      case "space_flight":
+        // Render the dedicated R3F scene component
+        return <SpaceFlightSceneR3F />; // <-- Use new R3F component
+      // Add other cases if different states have unique 3D scenes
+      default:
+        // Render nothing or a default empty scene
+        return null;
+    }
+  };
+
+  if (!isLoadingComplete) {
+    return <LoadingScreen />;
+  }
+  if (!assets) {
+    console.log("Waiting for assets to be set...");
     return <LoadingScreen />;
   }
 
@@ -106,7 +131,6 @@ const App: React.FC = () => {
           fov: 75,
           near: 0.1,
           far: Constants.CAMERA_FAR_PLANE,
-          position: [0, 0, 15],
         }}
         style={{
           position: "absolute",
@@ -118,19 +142,20 @@ const App: React.FC = () => {
         }}
       >
         <Suspense fallback={null}>
-          {/* Basic lighting */}
-          <ambientLight intensity={0.7} />
-          <directionalLight position={[5, 5, 5]} intensity={0.8} />
+          <ambientLight intensity={0.6} /> {/* Slightly adjusted intensity */}
+          <directionalLight
+            position={[10, 15, 5]}
+            intensity={1.0}
+            castShadow
+          />{" "}
           {/* Global State Initializer (Planets) */}
           <GlobalStateInitializer />
-          {/* Conditional Rendering of R3F Scene Content */}
-          {gameState === "title" && assets && (
-            <TitleSceneR3F assets={assets} introMusicRef={introMusicRef} />
-          )}
-          {assets && <UndockingSquares visible={gameState === "undocking"} />}
+          {renderSceneR3FContent()}
+          <UndockingSquares visible={gameState === "undocking"} />
         </Suspense>
       </Canvas>
-      {renderSceneUIComponent()}
+
+      <div className="overlay">{renderSceneUIComponent()}</div>
     </div>
   );
 };
