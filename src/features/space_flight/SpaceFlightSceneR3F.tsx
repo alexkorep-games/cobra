@@ -3,7 +3,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useGameState } from "@/features/common/useGameState";
 import { useHudState } from "@/features/common/useHudState";
-import { RadarPosition } from "@/types";
+import { RadarPosition,  } from "@/types";
 import * as Constants from "@/constants";
 import { useInput } from "@/hooks/useInput";
 import PlanetComponent from "@/components/r3f/PlanetComponent";
@@ -11,6 +11,7 @@ import SpaceStationComponent from "@/components/r3f/SpaceStationComponent";
 import PiratesComponent from "@/components/r3f/PiratesComponent";
 import { useAssets } from "@/hooks/useAssets";
 import { usePlanetInfos } from "../common/usePlanetInfos";
+import LaserBeam from "@/components/r3f/LaserBeam";
 
 const SpaceFlightSceneR3F: React.FC = () => {
   const { assets } = useAssets();
@@ -29,22 +30,12 @@ const SpaceFlightSceneR3F: React.FC = () => {
   const { getCurrentPlanet } = usePlanetInfos();
   const currentPlanet = getCurrentPlanet();
 
-  const laserBeamRef = useRef<THREE.LineSegments>(null);
   const velocity = useRef(new THREE.Vector3(0, 0, 0));
   const rollRate = useRef(0); // Radians per second
   const pitchRate = useRef(0); // Radians per second
   const [pirateRadarPositions, setPirateRadarPositions] = useState<
     RadarPosition[]
   >([]);
-  const currentLaserHeat = useRef(0);
-  const laserCooldownTimer = useRef(0);
-  const wantsToFire = useRef(false);
-  const laserBeamHideTimer = useRef(0);
-  const laserBeamPoints = useRef([
-    new THREE.Vector3(0, 0, -1), // Start slightly in front of camera
-    new THREE.Vector3(0, 0, -1 - Constants.LASER_LENGTH), // Extend forward
-  ]).current;
-  const laserGeometryRef = useRef<THREE.BufferGeometry>(null);
   const stationRef = useRef<THREE.Group>(null);
   const initialPlayerPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
 
@@ -56,15 +47,10 @@ const SpaceFlightSceneR3F: React.FC = () => {
   const rightVector = useRef(new THREE.Vector3()).current;
 
   useEffect(() => {
-    if (!assets) {
-      console.error("[SpaceFlightSceneR3F] Assets not loaded!");
-      return;
-    }
-
-    if (!currentPlanet) {
-      console.error("[SpaceFlightSceneR3F] Current planet not found!");
-      // Maybe set a default state or return to title?
-      // setGameState('title'); // Example recovery
+    if (!assets || !currentPlanet) {
+      console.error("[SpaceFlightSceneR3F] Assets or planet not ready!");
+      // Consider setting a default state or returning to title
+      // setGameState('title');
       return;
     }
 
@@ -82,27 +68,13 @@ const SpaceFlightSceneR3F: React.FC = () => {
     camera.rotation.set(0, 0, 0); // Reset rotation
     camera.quaternion.identity(); // Ensure quaternion is reset
 
-    // Reset other state variables
-    currentLaserHeat.current = 0;
-    laserCooldownTimer.current = 0;
-    wantsToFire.current = false; // Reset fire intention
-    laserBeamHideTimer.current = 0;
-
-    // Reset HUD
     setCoordinates([camera.position.x, camera.position.y, camera.position.z]);
     setSpeed(0);
     setRoll(0);
     setPitch(0);
-    setLaserHeat(0);
     setStationDirection(null);
     setRadarPositions([]);
-    setPirateRadarPositions([]); // Reset pirate radar data specifically
-
-    // Update laser geometry if needed (points are fixed, but ensures it's set)
-    if (laserGeometryRef.current) {
-      laserGeometryRef.current.setFromPoints(laserBeamPoints);
-      laserGeometryRef.current.attributes.position.needsUpdate = true;
-    }
+setPirateRadarPositions([]); // Reset pirate radar data specifically
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assets, currentPlanet, setGameState]); // Rerun ONLY when assets or current planet changes
@@ -117,6 +89,11 @@ const SpaceFlightSceneR3F: React.FC = () => {
     [pirateRadarPositions] // Dependency is the state itself
   );
 
+  // Callback for the LaserBeam component to update the HUD state
+  const handleLaserHeatUpdate = useCallback((heatPercentage: number) => {
+    setLaserHeat(heatPercentage);
+  }, [setLaserHeat]); // Dependency on the setter function
+
   useFrame((state, delta) => {
     if (!assets || !currentPlanet) return; // Ensure assets and planet are loaded
 
@@ -124,8 +101,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
     // Clamp delta time to prevent physics instability with large frame drops
     const dt = Math.min(delta, 0.05); // Max 50ms step
 
-    // --- Get Input ---
-    wantsToFire.current = shipControls.fire; // Update fire intention
 
     // --- Calculate Target Angular Rates based on Input ---
     const rollAccelInput = shipControls.rollLeft
@@ -218,44 +193,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
     // --- Apply Velocity to Camera Position ---
     currentCamera.position.addScaledVector(velocity.current, dt);
 
-    // --- Laser Logic ---
-    laserCooldownTimer.current = Math.max(0, laserCooldownTimer.current - dt);
-    laserBeamHideTimer.current = Math.max(0, laserBeamHideTimer.current - dt);
-
-    if (
-      wantsToFire.current &&
-      currentLaserHeat.current < Constants.LASER_MAX_HEAT &&
-      laserCooldownTimer.current <= 0
-    ) {
-      // Fire laser
-      currentLaserHeat.current = Math.min(
-        Constants.LASER_MAX_HEAT,
-        currentLaserHeat.current + Constants.LASER_HEAT_INCREASE
-      );
-      laserCooldownTimer.current = Constants.LASER_COOLDOWN;
-      laserBeamHideTimer.current = Constants.LASER_DURATION; // Make beam visible
-
-      // TODO: Add actual laser collision detection/effects here
-    } else {
-      // Cool down laser
-      currentLaserHeat.current = Math.max(
-        0,
-        currentLaserHeat.current - Constants.LASER_HEAT_DECREASE_RATE * dt
-      );
-    }
-
-    // Update laser beam visibility and position/orientation
-    if (laserBeamRef.current) {
-      const isLaserVisible = laserBeamHideTimer.current > 0;
-      laserBeamRef.current.visible = isLaserVisible;
-      if (isLaserVisible) {
-        // Position the laser slightly in front of the camera and align it
-        laserBeamRef.current.position.copy(currentCamera.position);
-        laserBeamRef.current.quaternion.copy(currentCamera.quaternion);
-        // Note: Frustum culling is disabled for the laser line,
-        // so it should render even if technically outside the camera frustum.
-      }
-    }
 
     // --- Docking Check ---
     if (stationRef.current) {
@@ -300,7 +237,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
     setSpeed(normalizedSpeed);
     setRoll(normalizedRoll);
     setPitch(normalizedPitch);
-    setLaserHeat((currentLaserHeat.current / Constants.LASER_MAX_HEAT) * 100); // As percentage
 
     // --- Radar and Direction Indicator ---
     const combinedRadarPositions: RadarPosition[] = [];
@@ -390,32 +326,12 @@ const SpaceFlightSceneR3F: React.FC = () => {
         />
       )}
 
-      {/* Laser Beam */}
-      <lineSegments
-        ref={laserBeamRef}
-        visible={false} // Initially hidden
-        frustumCulled={false} // Don't cull based on camera frustum
-      >
-        <bufferGeometry ref={laserGeometryRef} attach="geometry">
-          {/* Define geometry using the points */}
-          <bufferAttribute
-            attach="attributes-position"
-            count={laserBeamPoints.length}
-            array={
-              // Convert Vector3 array to flat Float32Array
-              new Float32Array(laserBeamPoints.flatMap((p) => p.toArray()))
-            }
-            itemSize={3}
-          />
-        </bufferGeometry>
-        <lineBasicMaterial
-          attach="material"
-          color={Constants.LASER_COLOR}
-          linewidth={Constants.LASER_LINE_WIDTH}
-          transparent // Allow transparency
-          opacity={0.8} // Slightly transparent
-        />
-      </lineSegments>
+      {/* Laser Beam Component */}
+      <LaserBeam
+        camera={camera}
+        onHeatUpdate={handleLaserHeatUpdate}
+      />
+
     </>
   );
 };
