@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { Coordinates, calculateDistance } from "@/classes/PlanetInfo";
 import BottomHud from "@/components/hud/BottomHud";
 import { useShortRangeChartLogic } from "./useShortRangeChartLogic"; // Import hook
-import { usePlanetInfos } from "../common/usePlanetInfos"; // Import shared state hook
+import { usePlanetInfos } from "../../hooks/usePlanetInfos"; // Import shared state hook
 import { JUMP_RANGE } from "@/constants"; // Import jump range
 import { useInput } from "@/hooks/useInput";
 

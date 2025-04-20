@@ -1,7 +1,7 @@
 /* src/features/sell_cargo/SellCargoScreen.tsx */
 import React from "react";
-import { useSellCargoLogic } from "@/features/sell_cargo/useSellCargoLogic";
-import { usePlayerState } from "@/features/common/usePlayerState";
+import { useSellCargoLogic } from "@/screens/sell_cargo/useSellCargoLogic";
+import { usePlayerState } from "@/hooks/usePlayerState";
 import { COMMODITIES } from "@/classes/Market"; // To get units easily
 import "../../components/App.css";
 import "../buy_cargo/Market.css"; // Reuse market styles

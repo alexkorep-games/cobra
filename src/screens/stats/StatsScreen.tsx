@@ -1,9 +1,9 @@
 import React from "react";
 import BottomHud from "@/components/hud/BottomHud";
 import "@/components/App.css";
-import { useStatsLogic } from "@/features/stats/useStatsLogic";
-import { usePlayerState } from "@/features/common/usePlayerState";
-import { usePlanetInfos } from "@/features/common/usePlanetInfos";
+import { useStatsLogic } from "@/screens/stats/useStatsLogic";
+import { usePlayerState } from "@/hooks/usePlayerState";
+import { usePlanetInfos } from "@/hooks/usePlanetInfos";
 
 const StatsScreen: React.FC = () => {
   useStatsLogic();

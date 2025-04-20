@@ -1,8 +1,8 @@
 import React from "react";
 import { getTechLevelNumber, calculateDistance } from "@/classes/PlanetInfo";
 import BottomHud from "@/components/hud/BottomHud";
-import { usePlanetInfoLogic } from "@/features/planet_info/usePlanetInfoLogic"; // Import the hook
-import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Import shared state hook
+import { usePlanetInfoLogic } from "@/screens/planet_info/usePlanetInfoLogic"; // Import the hook
+import { usePlanetInfos } from "@/hooks/usePlanetInfos"; // Import shared state hook
 
 const PlanetInfoScreen: React.FC = () => {
   // Call the hook to handle logic and state transitions

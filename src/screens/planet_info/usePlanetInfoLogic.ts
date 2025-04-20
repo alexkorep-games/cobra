@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
-import { useGameState } from "@/features/common/useGameState";
-import { usePlanetInfos } from "@/features/common/usePlanetInfos"; // Use this hook
+import { useGameState } from "@/hooks/useGameState";
+import { usePlanetInfos } from "@/hooks/usePlanetInfos"; // Use this hook
 import { useInput } from "@/hooks/useInput";
 
 export function usePlanetInfoLogic() {

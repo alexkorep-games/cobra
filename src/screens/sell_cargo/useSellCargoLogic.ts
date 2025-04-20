@@ -1,8 +1,8 @@
 /* src/features/sell_cargo/useSellCargoLogic.ts */
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMarketState } from "../common/useMarketState";
-import { usePlayerState } from "../common/usePlayerState";
-import { useGameState } from "../common/useGameState";
+import { useMarketState } from "../../hooks/useMarketState";
+import { usePlayerState } from "../../hooks/usePlayerState";
+import { useGameState } from "../../hooks/useGameState";
 
 export function useSellCargoLogic() {
   const { market } = useMarketState(); // Get market data generated on dock

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useMarketState } from "@/features/common/useMarketState";
-import { usePlayerState } from "@/features/common/usePlayerState";
-import { useGameState } from "@/features/common/useGameState";
+import { useMarketState } from "@/hooks/useMarketState";
+import { usePlayerState } from "@/hooks/usePlayerState";
+import { useGameState } from "@/hooks/useGameState";
 
 export function useBuyCargoLogic() {
   const { market } = useMarketState(); // Get market data generated on dock

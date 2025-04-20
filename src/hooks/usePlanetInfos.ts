@@ -1,5 +1,5 @@
 import { atom, useAtom } from "jotai";
-import { PlanetInfo } from "../../classes/PlanetInfo";
+import { PlanetInfo } from "../classes/PlanetInfo";
 import { useCallback } from "react"; // Import useCallback
 
 // Atoms to manage planet-related state

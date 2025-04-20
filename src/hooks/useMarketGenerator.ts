@@ -1,7 +1,7 @@
 // src/hooks/useMarketGenerator.ts
 import { useCallback } from "react";
-import { usePlanetInfos } from "@/features/common/usePlanetInfos";
-import { useMarketState } from "@/features/common/useMarketState";
+import { usePlanetInfos } from "@/hooks/usePlanetInfos";
+import { useMarketState } from "@/hooks/useMarketState";
 import { MarketGenerator } from "@/classes/Market";
 import { PLANET_SEED } from "@/constants"; // Assuming galaxy seed is constant for now
 

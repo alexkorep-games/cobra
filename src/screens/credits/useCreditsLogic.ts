@@ -1,4 +1,4 @@
-import { useGameState } from "@/features/common/useGameState";
+import { useGameState } from "@/hooks/useGameState";
 import { useInput } from "@/hooks/useInput";
 
 export function useCreditsLogic() {

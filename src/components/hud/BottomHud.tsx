@@ -3,7 +3,7 @@ import React from "react"; // Removed useEffect
 import "../App.css"; // Assuming App.css contains the HUD styles
 // Removed RadarPosition import, types come from hook
 import * as Constants from "../../constants"; // Import constants for laser heat
-import { useHudState } from "@/features/common/useHudState"; // Import the hook
+import { useHudState } from "@/hooks/useHudState"; // Import the hook
 
 // Remove BottomHudProps interface
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useGameState } from "@/features/common/useGameState";
+import { useGameState } from "@/hooks/useGameState";
 
 const UNDOCKING_DURATION = 2000; // ms
 

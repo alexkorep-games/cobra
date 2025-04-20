@@ -2,33 +2,33 @@
 import React, { Suspense, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import "./App.css";
-import { useGameState } from "@/features/common/useGameState";
-import { usePlanetInfos } from "@/features/common/usePlanetInfos";
+import { useGameState } from "@/hooks/useGameState";
+import { usePlanetInfos } from "@/hooks/usePlanetInfos";
 import { generatePlanets, PlanetInfo } from "@/classes/PlanetInfo";
 import { useAssets } from "@/hooks/useAssets";
 import { useAudioManager } from "@/hooks/useAudioManager";
 import * as Constants from "@/constants";
 
 // Import Scene UI Overlay Components
-import LoadingScreen from "@/features/loading/LoadingScreen";
-import TitleScreen from "@/features/title/TitleScreen";
-import CreditsScreen from "@/features/credits/CreditsScreen";
-import StatsScreen from "@/features/stats/StatsScreen";
+import LoadingScreen from "@/screens/loading/LoadingScreen";
+import TitleScreen from "@/screens/title/TitleScreen";
+import CreditsScreen from "@/screens/credits/CreditsScreen";
+import StatsScreen from "@/screens/stats/StatsScreen";
 // CoordinatesDisplay is now part of SpaceFlightScreenUI
-import SpaceFlightScreenUI from "@/features/space_flight/SpaceFlightScreenUI";
-import ShortRangeChartScreen from "@/features/short_range_chart/ShortRangeChartScreen";
-import PlanetInfoScreen from "@/features/planet_info/PlanetInfoScreen";
-import UndockingScreen from "@/features/undocking/UndockingScreen";
-import BuyCargoScreen from "@/features/buy_cargo/BuyCargoScreen"; // Added
-import SellCargoScreen from "@/features/sell_cargo/SellCargoScreen"; // Added
+import SpaceFlightScreenUI from "@/screens/space_flight/SpaceFlightScreenUI";
+import ShortRangeChartScreen from "@/screens/short_range_chart/ShortRangeChartScreen";
+import PlanetInfoScreen from "@/screens/planet_info/PlanetInfoScreen";
+import UndockingScreen from "@/screens/undocking/UndockingScreen";
+import BuyCargoScreen from "@/screens/buy_cargo/BuyCargoScreen"; // Added
+import SellCargoScreen from "@/screens/sell_cargo/SellCargoScreen"; // Added
 
 // Import R3F Scene Content Components
 import UndockingSquares from "@/components/r3f/UndockingSquares";
-import TitleSceneR3F from "@/features/title/TitleSceneR3F";
-import SpaceFlightSceneR3F from "@/features/space_flight/SpaceFlightSceneR3F";
+import TitleSceneR3F from "@/screens/title/TitleSceneR3F";
+import SpaceFlightSceneR3F from "@/screens/space_flight/SpaceFlightSceneR3F";
 import { useInputSetup } from "@/hooks/useInput";
 import { MarketGenerator } from "@/classes/Market";
-import { useMarketState } from "@/features/common/useMarketState";
+import { useMarketState } from "@/hooks/useMarketState";
 
 const GlobalStateInitializer: React.FC = () => {
   useInputSetup();
