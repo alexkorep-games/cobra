@@ -1,12 +1,12 @@
 import { atom, useAtom } from "jotai";
 import { PlanetInfo } from "../../classes/PlanetInfo";
+import { useCallback } from "react"; // Import useCallback
 
 // Atoms to manage planet-related state
 export const planetInfosAtom = atom<PlanetInfo[]>([]);
 export const currentPlanetNameAtom = atom<string>("");
 export const selectedPlanetNameAtom = atom<string | null>(null);
 
-// Hook to use and update planet-related state
 export function usePlanetInfos() {
   const [planetInfos, setPlanetInfos] = useAtom(planetInfosAtom);
   const [currentPlanetName, setCurrentPlanetName] = useAtom(
@@ -17,15 +17,15 @@ export function usePlanetInfos() {
   );
 
   // Helper to get the current planet object
-  const getCurrentPlanet = (): PlanetInfo | undefined => {
+  const getCurrentPlanet = useCallback((): PlanetInfo | undefined => {
     return planetInfos.find((p) => p.name === currentPlanetName);
-  };
+  }, [planetInfos, currentPlanetName]);
 
   // Helper to get the selected planet object
-  const getSelectedPlanet = (): PlanetInfo | undefined => {
+  const getSelectedPlanet = useCallback((): PlanetInfo | undefined => {
     if (!selectedPlanetName) return undefined;
     return planetInfos.find((p) => p.name === selectedPlanetName);
-  };
+  }, [planetInfos, selectedPlanetName]);
 
   return {
     planetInfos,

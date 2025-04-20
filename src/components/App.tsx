@@ -4,7 +4,7 @@ import { Canvas } from "@react-three/fiber";
 import "./App.css";
 import { useGameState } from "@/features/common/useGameState";
 import { usePlanetInfos } from "@/features/common/usePlanetInfos";
-import { generatePlanets } from "@/classes/PlanetInfo";
+import { generatePlanets, PlanetInfo } from "@/classes/PlanetInfo";
 import { useAssets } from "@/hooks/useAssets";
 import { useAudioManager } from "@/hooks/useAudioManager";
 import * as Constants from "@/constants";
@@ -27,42 +27,49 @@ import UndockingSquares from "@/components/r3f/UndockingSquares";
 import TitleSceneR3F from "@/features/title/TitleSceneR3F";
 import SpaceFlightSceneR3F from "@/features/space_flight/SpaceFlightSceneR3F";
 import { useInputSetup } from "@/hooks/useInput";
-import { useMarketGenerator } from "@/hooks/useMarketGenerator"; // Hook to handle market generation
+import { MarketGenerator } from "@/classes/Market";
+import { useMarketState } from "@/features/common/useMarketState";
 
 const GlobalStateInitializer: React.FC = () => {
   useInputSetup();
   const { setPlanetInfos, setCurrentPlanetName } = usePlanetInfos();
   const { isLoadingComplete } = useAssets();
-  const generateMarketForCurrentPlanet = useMarketGenerator(); // Get market generator function
+  const { setMarket } = useMarketState(); // Get the market setter function
 
   useEffect(() => {
     if (isLoadingComplete) {
       console.log("Initializing global planet state...");
-      const generatedPlanets = generatePlanets(
+      const generatedPlanets: PlanetInfo[] = generatePlanets(
         Constants.PLANET_SEED,
         Constants.PLANET_COUNT
       );
       setPlanetInfos(generatedPlanets);
       if (generatedPlanets.length > 0) {
-        setCurrentPlanetName(
-          generatedPlanets[Constants.INITIAL_PLANET_INDEX].name
-        ); // Use defined constant
-        console.log(
-          `Set initial planet: ${
-            generatedPlanets[Constants.INITIAL_PLANET_INDEX].name
-          }`
+        const initialPlanet = generatedPlanets[Constants.INITIAL_PLANET_INDEX];
+        setCurrentPlanetName(initialPlanet.name);
+        console.log(`Set initial planet: ${initialPlanet.name}`);
+
+        // Generate initial market for the starting planet *directly inside the effect*
+        console.log(`Generating initial market for ${initialPlanet.name}...`);
+        const visitSerial = 0; // Define visit serial locally or get from state if needed
+        const marketData = MarketGenerator.generate(
+          initialPlanet,
+          Constants.PLANET_SEED, // Use constant galaxy seed
+          visitSerial // Use visit serial
         );
-        // Generate initial market for the starting planet
-        generateMarketForCurrentPlanet();
+        setMarket(marketData); // Use the setter from useMarketState
+        console.log("Initial market generated and set.");
       } else {
         console.error("No planets generated!");
+        setMarket(null); // Clear market if no planets
       }
     }
   }, [
+    // Dependencies are now stable state/setters or values that change predictably
     isLoadingComplete,
     setPlanetInfos,
     setCurrentPlanetName,
-    generateMarketForCurrentPlanet,
+    setMarket,
   ]);
 
   return null;
