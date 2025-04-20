@@ -15,6 +15,7 @@ body {
   font-size: 10px; /* Base size, scale as needed */
   line-height: 1.6;
   user-select: none;
+  touch-action: manipulation; /* Allows panning/pinch-zoom, disables double-tap zoom */
 }
 
 #container {
@@ -348,7 +349,6 @@ canvas {
   bottom: 0;
 }
 /* End pirate radar styles */
-
 
 /* --- Planet Info Screen Styles --- */
 .planet-info-container {

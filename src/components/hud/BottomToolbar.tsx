@@ -49,8 +49,9 @@ const BottomToolbar: React.FC = () => {
   const buttons: Array<{ label: string; targetState: GameState }> = [
     { label: "Buy", targetState: "buy_cargo" },
     { label: "Sell", targetState: "sell_cargo" },
-    { label: "Info", targetState: "planet_info" }, // Assumes 'Info' maps to Planet Info screen
-    { label: "Status", targetState: "stats" }, // Assumes 'Planet/Status' maps to Stats screen
+    { label: "Map", targetState: "short_range_chart" },
+    { label: "Info", targetState: "planet_info" },
+    { label: "Status", targetState: "stats" },
     // Add more buttons here as needed (e.g., Shipyard, Equip)
   ];
 
@@ -60,7 +61,6 @@ const BottomToolbar: React.FC = () => {
     "sell_cargo",
     "planet_info",
     "stats",
-    // Add 'short_range_chart' if it should also have the toolbar
     "short_range_chart",
   ];
 
