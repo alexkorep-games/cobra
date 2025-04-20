@@ -147,7 +147,6 @@
   padding: 1px 4px;
   border-radius: 3px;
   white-space: nowrap; /* Prevent label text wrapping */
-  pointer-events: none; /* Allow clicks to pass through to parent marker */
 }
 
 /* Specific style for the current planet label */
