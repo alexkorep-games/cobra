@@ -14,7 +14,6 @@ const CreditsScreen: React.FC = () => {
       <div id="credits-text" className="center-text small">
         Game Copyright: 2025 Alexey Korepanov
       </div>
-      <BottomHud />
     </>
   );
 };

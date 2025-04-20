@@ -28,7 +28,6 @@ const PlanetInfoScreen: React.FC = () => {
             Press ESC or N to return to chart
           </div>
         </div>
-        <BottomHud />
       </>
     );
   }
@@ -97,8 +96,6 @@ const PlanetInfoScreen: React.FC = () => {
           Press J to Jump, ESC or N to return to chart
         </div>
       </div>
-      {/* Render BottomHud without props */}
-      <BottomHud />
     </>
   );
 };

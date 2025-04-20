@@ -1,3 +1,11 @@
+:root {
+  --bottom-toolbar-height: 45px; /* Height defined in BottomToolbar.css */
+  --bottom-toolbar-margin: 10px; /* Optional margin below content */
+  --bottom-offset: calc(
+    var(--bottom-toolbar-height) + var(--bottom-toolbar-margin)
+  );
+}
+
 body {
   margin: 0;
   overflow: hidden;
@@ -23,6 +31,7 @@ canvas {
   height: 100%;
   image-rendering: pixelated; /* Attempt pixelated look */
   image-rendering: crisp-edges;
+  z-index: 0; /* Ensure canvas is behind overlay */
 }
 
 .overlay {
@@ -33,23 +42,29 @@ canvas {
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: flex-end; /* Pushes content towards the bottom, helps with positioning */
   pointer-events: none; /* Allow clicks through to canvas if needed */
   box-sizing: border-box;
-  padding: 10px;
+  padding: 10px; /* Add padding around the overlay */
+  z-index: 1; /* Ensure overlay is above canvas */
 }
 
 .top-bar,
 .bottom-bar {
   width: 100%;
   box-sizing: border-box;
+  pointer-events: auto; /* Allow interaction with HUD */
 }
 
 .top-bar {
+  position: absolute; /* Position relative to overlay */
+  top: 10px; /* Align with overlay padding */
+  left: 10px;
+  right: 10px;
   text-align: center;
   padding: 5px 0;
   border-bottom: 2px solid #ffff00; /* Yellow border */
-  margin-bottom: 10px;
+  /* Removed margin-bottom as it's absolutely positioned now */
 }
 
 .top-left-coords {
@@ -71,6 +86,7 @@ canvas {
   font-size: 1.5em;
   color: #00ff00; /* Bright Green */
   width: 80%; /* Prevent very long lines */
+  pointer-events: auto; /* Allow interaction if needed */
 }
 .center-text.small {
   font-size: 1.2em;
@@ -78,7 +94,13 @@ canvas {
   color: #ffffff; /* White for credits/stats */
 }
 
+/* --- HUD Styles --- */
 .bottom-bar {
+  /* This is the original BottomHud container */
+  position: absolute; /* Position relative to overlay */
+  bottom: 10px; /* Align with overlay padding */
+  left: 10px;
+  right: 10px;
   border: 2px solid #ffff00; /* Yellow border */
   background-color: rgba(0, 0, 0, 0.7);
   display: flex;
@@ -87,7 +109,6 @@ canvas {
   min-height: 80px; /* Adjust as needed */
 }
 
-/* --- HUD Styles (unchanged from original) --- */
 .hud-left,
 .hud-right {
   display: flex;
@@ -219,6 +240,7 @@ canvas {
   /* Uses center-text positioning */
   color: #00ff00; /* Green like other messages */
   font-size: 1.5em; /* Match other center text */
+  pointer-events: auto;
 }
 
 #loader-continue-text {
@@ -237,14 +259,34 @@ canvas {
   display: none;
 }
 
+/* --- Screen Containers (Positioned relative to overlay) --- */
+/* Make these containers take up the available space between top-bar and bottom-offset */
+.screen-content-area {
+  position: absolute;
+  top: calc(10px + 28px + 10px); /* overlay padding + top-bar height + margin */
+  left: 10px; /* overlay padding */
+  right: 10px; /* overlay padding */
+  bottom: var(
+    --bottom-offset
+  ); /* Space for toolbar */ /* overlay padding + bottom toolbar height + margin */
+  pointer-events: auto; /* Allow interaction with screen content */
+  overflow: hidden; /* Prevent content spilling */
+  display: flex; /* Use flex for internal layout if needed */
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
 /* Commander Stats Styling */
 #stats-screen {
+  /* Apply screen-content-area positioning */
+  /* Remove absolute positioning, use styles within screen-content-area */
   color: #cc66ff; /* Magenta-like color */
   background-color: #000000;
   border: 2px solid #cc66ff;
   padding: 20px;
   font-size: 1.2em;
   box-sizing: border-box;
+  height: 100%; /* Fill the available space */
 }
 #stats-screen h2 {
   color: #ffffff;
@@ -266,7 +308,7 @@ canvas {
   color: #ffff00;
 }
 
-/* Pirate radar styles */
+/* Pirate radar styles (part of BottomHud) */
 .pirate-radar-line {
   position: absolute;
   width: 0;
@@ -295,13 +337,8 @@ canvas {
 
 /* --- Short Range Chart Styles --- */
 .short-range-chart-container {
-  position: absolute;
-  top: 5%;
-  left: 5%;
-  right: 5%;
-  bottom: calc(
-    10% + 80px + 10px
-  ); /* Adjust based on bottom HUD height + padding */
+  /* Apply screen-content-area positioning */
+  /* Remove absolute positioning, use styles within screen-content-area */
   border: 2px solid #ffff00; /* Yellow border */
   background-color: rgba(0, 0, 0, 0.8);
   padding: 15px;
@@ -309,6 +346,7 @@ canvas {
   display: flex;
   flex-direction: column;
   font-size: 1.1em; /* Slightly larger text */
+  height: 100%; /* Fill the available space */
 }
 
 .chart-title {
@@ -334,6 +372,7 @@ canvas {
   transform: translate(-50%, -50%);
   background-color: rgba(255, 0, 0, 0.1); /* Faint red fill */
   /* width/height set dynamically */
+  pointer-events: none; /* Don't interfere with planet clicks */
 }
 
 .chart-crosshair {
@@ -343,6 +382,7 @@ canvas {
   width: 10px;
   height: 10px;
   transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 .chart-crosshair::before,
 .chart-crosshair::after {
@@ -373,6 +413,7 @@ canvas {
   cursor: pointer;
   display: flex;
   align-items: center;
+  pointer-events: auto; /* Allow clicks on markers */
 }
 
 .planet-dot {
@@ -408,6 +449,11 @@ canvas {
   outline-offset: 2px;
   animation: blink-animation 1s step-start infinite;
 }
+/* Specific style for current planet label on chart */
+.planet-marker.current-location .planet-label {
+  color: #00ff00;
+  font-weight: bold;
+}
 
 .chart-info-bar {
   display: flex;
@@ -416,23 +462,22 @@ canvas {
   font-size: 0.9em;
   padding-top: 5px;
   border-top: 1px solid #ffff00;
+  margin-top: auto; /* Push to bottom of flex container */
 }
 
 /* --- Planet Info Screen Styles --- */
 .planet-info-container {
-  position: absolute;
-  top: 5%;
-  left: 5%;
-  right: 5%;
-  bottom: calc(
-    10% + 80px + 10px
-  ); /* Adjust based on bottom HUD height + padding */
+  /* Apply screen-content-area positioning */
+  /* Remove absolute positioning, use styles within screen-content-area */
   border: 2px solid #00ffff; /* Cyan border */
   background-color: rgba(0, 0, 50, 0.8); /* Dark blue background */
   padding: 20px;
   color: #ffffff; /* Default White */
   font-size: 1.2em;
   line-height: 1.8;
+  display: flex; /* Use flex for internal layout */
+  flex-direction: column;
+  height: 100%; /* Fill the available space */
 }
 
 .planet-info-title {
@@ -465,12 +510,51 @@ canvas {
   font-style: italic;
   border-top: 1px dashed #00aaaa;
   padding-top: 15px;
+  flex-grow: 1; /* Allow description to take up space */
+  overflow-y: auto; /* Scroll if description is long */
 }
 
 .planet-info-prompt {
-  position: absolute;
-  bottom: 15px;
-  left: 20px;
+  margin-top: 15px; /* Space above prompt */
   color: #ffff00; /* Yellow */
   font-size: 0.9em;
+  text-align: center;
+}
+
+/* Market Screens (Buy/Sell) reuse styles from buy_cargo/Market.css */
+/* Apply screen-content-area positioning */
+.market-container {
+  /* Apply screen-content-area positioning */
+  /* Remove absolute positioning, use styles within screen-content-area */
+  padding: 15px;
+  color: #ffff00; /* Yellow text */
+  display: flex;
+  flex-direction: column;
+  font-size: 1.1em;
+  box-sizing: border-box;
+  height: 100%; /* Fill the available space */
+}
+
+/* --- Additions for general structure --- */
+/* These apply to containers rendered by App.tsx */
+/* Ensure the direct children of the overlay that represent screens fill the space */
+.overlay
+  > div:not(.top-bar):not(.bottom-bar):not(.bottom-toolbar):not(
+    .top-left-coords
+  ):not(.center-text) {
+  /* This selector targets direct children that are screen wrappers */
+  flex-grow: 1; /* Allow screen content to grow */
+  margin-bottom: var(--bottom-offset); /* Leave space for the toolbar */
+  position: relative; /* Establish positioning context for children */
+  overflow: hidden; /* Hide overflow */
+  pointer-events: auto; /* Enable interaction */
+}
+
+/* Override for screens that don't need the bottom offset */
+.overlay > #loader-screen,
+.overlay > #credits-text, /* If credits uses center-text */
+.overlay > #title-screen-container, /* Example if title had a container */
+.overlay > #space-flight-ui-container, /* Example if space flight had one */
+.overlay > #undocking-screen-container /* Example if undocking had one */ {
+  margin-bottom: 0; /* No offset needed */
 }

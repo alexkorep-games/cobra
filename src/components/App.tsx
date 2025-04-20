@@ -8,33 +8,36 @@ import { generatePlanets, PlanetInfo } from "@/classes/PlanetInfo";
 import { useAssets } from "@/hooks/useAssets";
 import { useAudioManager } from "@/hooks/useAudioManager";
 import * as Constants from "@/constants";
+import { useInputSetup } from "@/hooks/useInput";
+import { MarketGenerator } from "@/classes/Market";
+import { useMarketState } from "@/hooks/useMarketState";
+import { useMarketGenerator } from "@/hooks/useMarketGenerator"; // Import the hook
 
 // Import Scene UI Overlay Components
 import LoadingScreen from "@/screens/loading/LoadingScreen";
 import TitleScreen from "@/screens/title/TitleScreen";
 import CreditsScreen from "@/screens/credits/CreditsScreen";
 import StatsScreen from "@/screens/stats/StatsScreen";
-// CoordinatesDisplay is now part of SpaceFlightScreenUI
-import SpaceFlightScreenUI from "@/screens/space_flight/SpaceFlightScreenUI";
+import SpaceFlightScreenUI from "@/screens/space_flight/SpaceFlightScreenUI"; // Includes Coordinates and BottomHud
 import ShortRangeChartScreen from "@/screens/short_range_chart/ShortRangeChartScreen";
 import PlanetInfoScreen from "@/screens/planet_info/PlanetInfoScreen";
 import UndockingScreen from "@/screens/undocking/UndockingScreen";
-import BuyCargoScreen from "@/screens/buy_cargo/BuyCargoScreen"; // Added
-import SellCargoScreen from "@/screens/sell_cargo/SellCargoScreen"; // Added
+import BuyCargoScreen from "@/screens/buy_cargo/BuyCargoScreen";
+import SellCargoScreen from "@/screens/sell_cargo/SellCargoScreen";
+import BottomToolbar from "@/components/hud/BottomToolbar"; // *** IMPORT THE NEW TOOLBAR ***
+import { GameState } from "@/types"; // *** IMPORT GameState TYPE ***
 
 // Import R3F Scene Content Components
 import UndockingSquares from "@/components/r3f/UndockingSquares";
 import TitleSceneR3F from "@/screens/title/TitleSceneR3F";
 import SpaceFlightSceneR3F from "@/screens/space_flight/SpaceFlightSceneR3F";
-import { useInputSetup } from "@/hooks/useInput";
-import { MarketGenerator } from "@/classes/Market";
-import { useMarketState } from "@/hooks/useMarketState";
 
 const GlobalStateInitializer: React.FC = () => {
   useInputSetup();
   const { setPlanetInfos, setCurrentPlanetName } = usePlanetInfos();
   const { isLoadingComplete } = useAssets();
-  const { setMarket } = useMarketState(); // Get the market setter function
+  const { setMarket } = useMarketState();
+  const generateMarket = useMarketGenerator(); // Get the market generator function
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -49,27 +52,24 @@ const GlobalStateInitializer: React.FC = () => {
         setCurrentPlanetName(initialPlanet.name);
         console.log(`Set initial planet: ${initialPlanet.name}`);
 
-        // Generate initial market for the starting planet *directly inside the effect*
+        // Generate initial market data *after* setting the planet
+        // We call this here OR rely on the navigation logic (e.g., in useStatsLogic)
+        // Calling it here ensures it's ready for the first 'stats' view.
         console.log(`Generating initial market for ${initialPlanet.name}...`);
-        const visitSerial = 0; // Define visit serial locally or get from state if needed
-        const marketData = MarketGenerator.generate(
-          initialPlanet,
-          Constants.PLANET_SEED, // Use constant galaxy seed
-          visitSerial // Use visit serial
-        );
-        setMarket(marketData); // Use the setter from useMarketState
+        generateMarket(); // Call the hook's function
         console.log("Initial market generated and set.");
+
       } else {
         console.error("No planets generated!");
-        setMarket(null); // Clear market if no planets
+        setMarket(null);
       }
     }
   }, [
-    // Dependencies are now stable state/setters or values that change predictably
     isLoadingComplete,
     setPlanetInfos,
     setCurrentPlanetName,
     setMarket,
+    generateMarket, // Add generateMarket to dependencies
   ]);
 
   return null;
@@ -81,10 +81,21 @@ const App: React.FC = () => {
   const { introMusicRef, undockSoundRef } = useAudioManager();
 
   useEffect(() => {
-    load(); // Load assets on mount
+    load();
   }, [load]);
 
+  // Define which states show the new bottom toolbar
+  const toolbarVisibleStates: GameState[] = [
+    "buy_cargo",
+    "sell_cargo",
+    "planet_info",
+    "stats",
+    "short_range_chart" // Decide if chart needs it too
+  ];
+
   const renderSceneUIComponent = () => {
+    // No changes needed inside this function itself,
+    // the toolbar is rendered *outside* based on gameState
     try {
       switch (gameState) {
         case "loading":
@@ -94,19 +105,20 @@ const App: React.FC = () => {
         case "credits":
           return <CreditsScreen />;
         case "stats":
-          return <StatsScreen />;
+          return <StatsScreen />; // Will render content, toolbar rendered below
         case "undocking":
           return <UndockingScreen undockSoundRef={undockSoundRef} />;
         case "space_flight":
+          // SpaceFlightScreenUI now implicitly includes CoordinatesDisplay and BottomHud
           return <SpaceFlightScreenUI />;
         case "short_range_chart":
-          return <ShortRangeChartScreen />;
+          return <ShortRangeChartScreen />; // Will render content, toolbar rendered below
         case "planet_info":
-          return <PlanetInfoScreen />;
+          return <PlanetInfoScreen />; // Will render content, toolbar rendered below
         case "buy_cargo":
-          return <BuyCargoScreen />;
+          return <BuyCargoScreen />; // Will render content, toolbar rendered below
         case "sell_cargo":
-          return <SellCargoScreen />;
+          return <SellCargoScreen />; // Will render content, toolbar rendered below
         default:
           return (
             <div className="center-text">Unknown Game State: {gameState}</div>
@@ -130,11 +142,10 @@ const App: React.FC = () => {
       case "title":
         return <TitleSceneR3F assets={assets} introMusicRef={introMusicRef} />;
       case "undocking":
-        // UndockingSquares are now controlled by their own visibility prop triggered by the gameState check below
-        return null; // Or render a specific minimal scene if desired
+        return null;
       case "space_flight":
-        // Render the dedicated R3F scene component
-        return <SpaceFlightSceneR3F />; // <-- Use new R3F component
+        return <SpaceFlightSceneR3F />;
+      // R3F content for docked/info screens is likely null or minimal
       case "buy_cargo":
       case "sell_cargo":
       case "stats":
@@ -142,24 +153,16 @@ const App: React.FC = () => {
       case "loading":
       case "short_range_chart":
       case "planet_info":
-        // Render nothing specific for these UI-heavy states, assuming they overlay
-        // or the background doesn't need complex 3D elements unique to them.
         return null;
       default:
-        // Render nothing or a default empty scene
         return null;
     }
   };
 
-  if (!isLoadingComplete) {
-    return <LoadingScreen />;
-  }
-  if (!assets) {
-    console.log("Waiting for assets to be set...");
+  if (!isLoadingComplete || !assets) {
     return <LoadingScreen />;
   }
 
-  // TODO move to a scene
   const showUndockingSquares = gameState === "undocking";
 
   return (
@@ -180,20 +183,30 @@ const App: React.FC = () => {
         }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={0.6} /> {/* Slightly adjusted intensity */}
+          <ambientLight intensity={0.6} />
           <directionalLight
             position={[10, 15, 5]}
             intensity={1.0}
             castShadow
-          />{" "}
-          {/* Global State Initializer (Planets) */}
+          />
           <GlobalStateInitializer />
           {renderSceneR3FContent()}
           <UndockingSquares visible={showUndockingSquares} />
         </Suspense>
       </Canvas>
 
-      <div className="overlay">{renderSceneUIComponent()}</div>
+      {/* --- UI Overlay --- */}
+      <div className="overlay">
+        {/* Render the main UI component for the current state */}
+        {renderSceneUIComponent()}
+
+        {/* *** Conditionally render the NEW BottomToolbar *** */}
+        {/* The toolbar component itself checks the state now */}
+        <BottomToolbar />
+
+        {/* NOTE: SpaceFlightScreenUI now renders the BottomHud internally */}
+        {/* Do NOT render BottomHud here globally */}
+      </div>
     </div>
   );
 };

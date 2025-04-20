@@ -63,8 +63,6 @@ const StatsScreen: React.FC = () => {
           <p key={item}>{item}</p>
         ))}
       </div>
-      {/* Render BottomHud without props */}
-      <BottomHud />
     </>
   );
 };
