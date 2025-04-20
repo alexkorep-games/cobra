@@ -1,39 +1,114 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useGameState } from "@/hooks/useGameState";
 import { usePlanetInfos } from "@/hooks/usePlanetInfos"; // Use this hook
-import { useInput } from "@/hooks/useInput";
+import { usePlayerState } from "@/hooks/usePlayerState"; // Need fuel state
+import { useMarketGenerator } from "@/hooks/useMarketGenerator"; // Need market generator
+import { calculateDistance } from "@/classes/PlanetInfo";
+import { JUMP_RANGE } from "@/constants";
 
 export function usePlanetInfoLogic() {
   const isProcessingInput = useRef(false);
   const { gameState, setGameState } = useGameState();
-  // Get selected planet name from shared state
-  const { selectedPlanetName } = usePlanetInfos();
-  const { keysPressed } = useInput();
+  // Get selected planet name and setter for current planet from shared state
+  const {
+    selectedPlanetName,
+    setSelectedPlanetName,
+    setCurrentPlanetName,
+    getCurrentPlanet,
+    getSelectedPlanet,
+  } = usePlanetInfos();
+  const { fuel, setFuelLevel } = usePlayerState(); // Get fuel and setter
+  const generateMarketForPlanet = useMarketGenerator(); // Get the updated generator function
 
-  useEffect(() => {
-    console.log("[usePlanetInfoLogic] Using useInput hook for input state management.");
-    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
-  }, [keysPressed]);
+  // --- Function to Handle the Jump Action ---
+  const handleJumpAction = useCallback(() => {
+    if (isProcessingInput.current) return;
+
+    const targetPlanet = getSelectedPlanet();
+    const originPlanet = getCurrentPlanet();
+
+    if (!targetPlanet || !originPlanet) {
+      console.warn("Jump failed: Origin or Target planet data missing.");
+      return;
+    }
+
+    const distance = calculateDistance(
+      originPlanet.coordinates,
+      targetPlanet.coordinates
+    );
+
+    if (distance > JUMP_RANGE) {
+      console.warn(
+        `Jump failed: Target ${
+          targetPlanet.name
+        } is out of range (${distance.toFixed(1)} LY).`
+      );
+      // TODO: Add sound/visual feedback
+      return;
+    }
+
+    if (fuel < distance) {
+      console.warn(
+        `Jump failed: Insufficient fuel for jump (${fuel.toFixed(
+          1
+        )} LY available, ${distance.toFixed(1)} LY needed).`
+      );
+      // TODO: Add sound/visual feedback
+      return;
+    }
+
+    isProcessingInput.current = true; // Prevent double actions
+
+    console.log(`Jumping from ${originPlanet.name} to ${targetPlanet.name}...`);
+
+    // 1. Consume Fuel
+    setFuelLevel(fuel - distance);
+
+    // 2. Update Current Planet
+    setCurrentPlanetName(targetPlanet.name);
+
+    // 3. Generate Market for the *new* planet IMMEDIATELY
+    //    Pass the targetPlanet object directly to ensure the correct market is generated.
+    generateMarketForPlanet(targetPlanet);
+
+    // 4. Change Game State directly to Stats
+    setGameState("stats");
+
+    // Optional: Clear selection after jump?
+    // setSelectedPlanetName(null);
+
+    // Reset processing flag after a short delay (though changing state might be enough)
+    setTimeout(() => {
+      isProcessingInput.current = false;
+    }, 100);
+  }, [
+    getSelectedPlanet,
+    getCurrentPlanet,
+    fuel,
+    setFuelLevel,
+    setCurrentPlanetName,
+    generateMarketForPlanet,
+    setGameState,
+    setSelectedPlanetName, // Add setSelectedPlanetName if used in future logic here
+  ]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (gameState === "planet_info" && !isProcessingInput.current) {
+        // Already check gameState here
         console.log(`Planet Info KeyDown: ${event.key}`);
         let processed = false;
+        const key = event.key.toLowerCase(); // Use lowercase key
 
-        switch (event.key) {
-          case "j": // Jump key (example) - Action might change
-          case "J":
-            console.log(
-              "Jump initiated from Planet Info (placeholder)... returning to chart."
-            );
-            // TODO: Implement actual jump logic (new state? animation?)
-            setGameState("short_range_chart"); // Go back for now
+        switch (
+          key // Compare with lowercase key
+        ) {
+          case "j": // Jump key
+            handleJumpAction(); // Call the jump handler
             processed = true;
             break;
           case "Escape":
           case "n": // Allow 'n' to close the info too
-          case "N":
             setGameState("short_range_chart"); // Go back to chart
             processed = true;
             break;
@@ -48,7 +123,7 @@ export function usePlanetInfoLogic() {
         }
       }
     },
-    [gameState, setGameState]
+    [gameState, setGameState, handleJumpAction] // Add handleJumpAction dependency
   ); // Add dependencies
 
   useEffect(() => {
@@ -86,6 +161,6 @@ export function usePlanetInfoLogic() {
     // Add selectedPlanetName, gameState, setGameState to dependencies
   }, [gameState, handleKeyDown, selectedPlanetName, setGameState]);
 
-  // No update logic needed
   // Hook doesn't need to return anything for the component if it reads from usePlanetInfos
+  return { handleJumpAction };
 }
