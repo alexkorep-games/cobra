@@ -1,23 +1,25 @@
-// src/features/common/usePlayerState.ts
+// src/hooks/usePlayerState.ts
 import { atom, useAtom } from "jotai";
-import { COMMODITIES } from "@/classes/Market"; // To check units
+import { COMMODITIES, getTonnesPerUnit } from "@/classes/Market"; // Import getTonnesPerUnit
 
 // Define the structure for player state
-interface PlayerState {
-  cash: number;
-  fuel: number; // In Light Years
-  cargoHold: Map<string, number>; // Commodity Key -> Quantity
-  cargoCapacity: number; // Max tonnes
-  shipEquipment: Set<string>; // Names of installed equipment
-  missiles: number;
-  legalStatus: string;
-  rating: string;
-  // currentSystem: string; // Maybe keep in usePlanetInfos to avoid duplication
-}
+// interface PlayerState {
+//   cash: number;
+//   fuel: number; // In Light Years
+//   maxFuel: number; // Max fuel capacity
+//   cargoHold: Map<string, number>; // Commodity Key -> Quantity
+//   cargoCapacity: number; // Max tonnes
+//   shipEquipment: Set<string>; // Names of installed equipment
+//   missiles: number;
+//   legalStatus: string;
+//   rating: string;
+//   // currentSystem: string; // Maybe keep in usePlanetInfos to avoid duplication
+// }
 
 // Define atoms with initial values
 const cashAtom = atom<number>(100.0);
 const fuelAtom = atom<number>(7.0);
+const maxFuelAtom = atom<number>(7.0); // Example: Max 7 LY fuel tank
 const cargoHoldAtom = atom<Map<string, number>>(new Map()); // Start empty
 const cargoCapacityAtom = atom<number>(20); // Example: 20 tonnes capacity
 const shipEquipmentAtom = atom<Set<string>>(
@@ -31,6 +33,7 @@ const ratingAtom = atom<string>("Harmless");
 export function usePlayerState() {
   const [cash, setCash] = useAtom(cashAtom);
   const [fuel, setFuel] = useAtom(fuelAtom);
+  const [maxFuel] = useAtom(maxFuelAtom); // Read-only for now
   const [cargoHold, setCargoHold] = useAtom(cargoHoldAtom);
   const [cargoCapacity] = useAtom(cargoCapacityAtom); // Read-only for now
   const [shipEquipment, setShipEquipment] = useAtom(shipEquipmentAtom);
@@ -42,13 +45,7 @@ export function usePlayerState() {
   const getCargoUsed = (): number => {
     let used = 0;
     cargoHold.forEach((quantity, key) => {
-      const commodityDef = COMMODITIES.find((c) => c.key === key);
-      let tonnesPerUnit = 1; // Default unit is tonnes
-      if (commodityDef) {
-        if (commodityDef.key === "Gold" || commodityDef.key === "Platinum")
-          tonnesPerUnit = 0.001; // 1 kg = 0.001 t
-        if (commodityDef.key === "Gem-Stones") tonnesPerUnit = 0.000001; // 1 g = 0.000001 t
-      }
+      const tonnesPerUnit = getTonnesPerUnit(key); // Use helper function
       used += quantity * tonnesPerUnit;
     });
     // Round to avoid floating point issues, e.g., to 3 decimal places
@@ -86,7 +83,8 @@ export function usePlayerState() {
 
   // Add other actions as needed (e.g., addEquipment, useFuel, changeStatus)
   const setFuelLevel = (newFuel: number) => {
-    setFuel(newFuel);
+    // Clamp fuel level between 0 and maxFuel
+    setFuel(Math.max(0, Math.min(newFuel, maxFuel)));
   };
 
   const addEquipment = (equipmentName: string) => {
@@ -117,7 +115,9 @@ export function usePlayerState() {
 
   return {
     cash,
+    setCash,
     fuel,
+    maxFuel,
     cargoHold,
     cargoCapacity,
     getCargoUsed, // Expose the calculation function

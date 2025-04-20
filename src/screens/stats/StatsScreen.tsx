@@ -1,16 +1,21 @@
 import React from "react";
-import BottomHud from "@/components/hud/BottomHud";
 import "@/components/App.css";
+import "../../components/hud/BottomToolbar.css"; // Import CSS for button styling
 import { useStatsLogic } from "@/screens/stats/useStatsLogic";
 import { usePlayerState } from "@/hooks/usePlayerState";
 import { usePlanetInfos } from "@/hooks/usePlanetInfos";
+
+const FUEL_COST_PER_LY = 10; // Example cost: 10 Credits per Light Year
 
 const StatsScreen: React.FC = () => {
   useStatsLogic();
   // Get player data from the hook
   const {
     cash,
+    setCash, // Need setter
     fuel,
+    maxFuel, // Need max fuel
+    setFuelLevel, // Need setter
     legalStatus,
     rating,
     shipEquipment,
@@ -18,6 +23,30 @@ const StatsScreen: React.FC = () => {
     // currentSystem, // Managed by usePlanetInfos
   } = usePlayerState();
   const { currentPlanetName } = usePlanetInfos(); // Get current system name
+
+  // --- Fuel Purchase Logic ---
+  const fuelNeeded = maxFuel - fuel;
+  const fuelToBuy = Math.max(0, fuelNeeded); // Don't buy negative fuel
+  const totalCost = fuelToBuy * FUEL_COST_PER_LY;
+  const canAffordFuel = cash >= totalCost;
+  const needsFuel = fuelToBuy > 0.01; // Use a small tolerance for floating point
+  const canBuyFuel = needsFuel && canAffordFuel;
+
+  const handleBuyFuel = () => {
+    if (!canBuyFuel) {
+      console.warn("Cannot buy fuel - either full or cannot afford.");
+      // TODO: Add sound/visual feedback
+      return;
+    }
+    console.log(
+      `Buying ${fuelToBuy.toFixed(1)} LY fuel for ${totalCost.toFixed(
+        1
+      )} Credits.`
+    );
+    setFuelLevel(maxFuel); // Fill the tank
+    setCash(cash - totalCost); // Deduct cost
+    // TODO: Add sound/visual feedback for purchase success
+  };
 
   // Convert Set to Array for rendering equipment
   const equipmentList = Array.from(shipEquipment);
@@ -29,9 +58,9 @@ const StatsScreen: React.FC = () => {
 
   return (
     <>
-      <div className="top-bar">
-        <span id="title-text">--- PROJECT COBRA ---</span>
-      </div>
+      {/* <div className="top-bar"> */}
+      {/* Title is often handled by the App layout, might not be needed here */}
+      {/* </div> */}
       <div id="stats-screen" className="center-text small">
         <h2>COMMANDER JAMESON</h2>
         {/* Use data from usePlayerState and usePlanetInfos */}
@@ -43,8 +72,30 @@ const StatsScreen: React.FC = () => {
           {/* Assuming same for now */}
         </p>{" "}
         <p>
-          <strong>Fuel:</strong> {fuel.toFixed(1)} Light Years
+          <strong>Fuel:</strong> {fuel.toFixed(1)} / {maxFuel.toFixed(1)} Light
+          Years
         </p>{" "}
+        {/* --- Add Fuel Button --- */}
+        <div style={{ margin: "10px 0" }}>
+          {" "}
+          {/* Add some spacing */}
+          <button
+            className={`toolbar-button ${!canBuyFuel ? "disabled" : ""}`}
+            onClick={handleBuyFuel}
+            disabled={!canBuyFuel}
+            style={{ minWidth: "120px" }} // Adjust size as needed
+            title={
+              !needsFuel
+                ? "Fuel tank full"
+                : !canAffordFuel
+                ? `Insufficient funds (Need ${totalCost.toFixed(1)} Cr)`
+                : `Buy fuel (${totalCost.toFixed(1)} Cr)`
+            }
+          >
+            BUY FUEL {needsFuel ? `(${totalCost.toFixed(1)} Cr)` : ""}
+          </button>
+        </div>
+        {/* --- End Fuel Button --- */}
         <p>
           <strong>Cash:</strong> {cash.toFixed(1)} Credits
         </p>{" "}
