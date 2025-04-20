@@ -1,0 +1,135 @@
+/* src/features/buy_cargo/Market.css */
+.market-container {
+  position: absolute;
+  top: 5%;
+  left: 5%;
+  right: 5%;
+  bottom: calc(
+    10% + 80px + 10px
+  ); /* Adjust based on bottom HUD height + padding */
+  padding: 15px;
+  color: #ffff00; /* Yellow text */
+  display: flex;
+  flex-direction: column;
+  font-size: 1.1em;
+  box-sizing: border-box;
+}
+
+.buy-screen {
+  border: 2px solid #ff0000; /* Red border for Buy */
+  background-color: rgba(50, 0, 0, 0.8); /* Dark red background */
+}
+
+.sell-screen {
+  border: 2px solid #00ff00; /* Green border for Sell */
+  background-color: rgba(0, 50, 0, 0.8); /* Dark green background */
+}
+
+.market-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ffff00;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.market-title {
+  color: #ffffff; /* White title */
+  font-size: 1.3em;
+}
+
+.market-credits {
+  color: #00ff00; /* Green credits */
+}
+
+.market-instructions {
+  font-size: 0.85em;
+  margin-bottom: 15px;
+  color: #cccccc; /* Lighter gray */
+  line-height: 1.4;
+}
+
+.market-table-container {
+  flex-grow: 1;
+  overflow-y: auto; /* Allow scrolling if needed */
+  border: 1px solid #888800; /* Dim yellow border */
+  margin-bottom: 10px;
+}
+
+.market-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed; /* Helps keep columns aligned */
+}
+
+.market-table th,
+.market-table td {
+  padding: 3px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.market-table th {
+  color: #ffffff; /* White headers */
+  border-bottom: 1px solid #ffff00;
+}
+
+/* Align columns */
+.market-table th:nth-child(1),
+td:nth-child(1) {
+  width: 35%;
+} /* Product */
+.market-table th:nth-child(2),
+td:nth-child(2) {
+  width: 15%;
+  text-align: center;
+} /* Unit */
+.market-table th:nth-child(3),
+td:nth-child(3) {
+  width: 25%;
+  text-align: right;
+} /* Price */
+.market-table th:nth-child(4),
+td:nth-child(4) {
+  width: 25%;
+  text-align: right;
+} /* Qty */
+
+.market-table tbody tr:hover {
+  background-color: rgba(255, 255, 0, 0.1); /* Subtle hover */
+}
+
+.market-table tbody tr.selected {
+  background-color: #ffff00; /* Yellow background */
+  color: #000000; /* Black text */
+}
+.market-table tbody tr.selected td {
+  color: #000000; /* Ensure all cells in selected row are black */
+}
+
+.market-footer {
+  border-top: 1px solid #ffff00;
+  padding-top: 10px;
+  font-size: 0.9em;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.quantity-prompt {
+  color: #ffffff;
+  font-weight: bold;
+}
+.quantity-input {
+  display: inline-block;
+  min-width: 30px; /* Ensure space for cursor */
+  border-bottom: 1px solid #ffff00;
+  padding: 0 2px;
+  animation: blink-animation 1s step-start infinite; /* Blinking cursor effect */
+}
+.market-loading {
+  text-align: center;
+  margin-top: 50px;
+  font-style: italic;
+}

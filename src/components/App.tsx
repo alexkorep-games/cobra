@@ -19,17 +19,21 @@ import SpaceFlightScreenUI from "@/features/space_flight/SpaceFlightScreenUI";
 import ShortRangeChartScreen from "@/features/short_range_chart/ShortRangeChartScreen";
 import PlanetInfoScreen from "@/features/planet_info/PlanetInfoScreen";
 import UndockingScreen from "@/features/undocking/UndockingScreen";
+import BuyCargoScreen from "@/features/buy_cargo/BuyCargoScreen"; // Added
+import SellCargoScreen from "@/features/sell_cargo/SellCargoScreen"; // Added
 
 // Import R3F Scene Content Components
 import UndockingSquares from "@/components/r3f/UndockingSquares";
 import TitleSceneR3F from "@/features/title/TitleSceneR3F";
 import SpaceFlightSceneR3F from "@/features/space_flight/SpaceFlightSceneR3F";
 import { useInputSetup } from "@/hooks/useInput";
+import { useMarketGenerator } from "@/hooks/useMarketGenerator"; // Hook to handle market generation
 
 const GlobalStateInitializer: React.FC = () => {
   useInputSetup();
   const { setPlanetInfos, setCurrentPlanetName } = usePlanetInfos();
   const { isLoadingComplete } = useAssets();
+  const generateMarketForCurrentPlanet = useMarketGenerator(); // Get market generator function
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -40,17 +44,26 @@ const GlobalStateInitializer: React.FC = () => {
       );
       setPlanetInfos(generatedPlanets);
       if (generatedPlanets.length > 0) {
-        setCurrentPlanetName(generatedPlanets[0].name); // Use defined constant
+        setCurrentPlanetName(
+          generatedPlanets[Constants.INITIAL_PLANET_INDEX].name
+        ); // Use defined constant
         console.log(
           `Set initial planet: ${
             generatedPlanets[Constants.INITIAL_PLANET_INDEX].name
           }`
         );
+        // Generate initial market for the starting planet
+        generateMarketForCurrentPlanet();
       } else {
         console.error("No planets generated!");
       }
     }
-  }, [isLoadingComplete, setPlanetInfos, setCurrentPlanetName]);
+  }, [
+    isLoadingComplete,
+    setPlanetInfos,
+    setCurrentPlanetName,
+    generateMarketForCurrentPlanet,
+  ]);
 
   return null;
 };
@@ -83,6 +96,10 @@ const App: React.FC = () => {
           return <ShortRangeChartScreen />;
         case "planet_info":
           return <PlanetInfoScreen />;
+        case "buy_cargo":
+          return <BuyCargoScreen />;
+        case "sell_cargo":
+          return <SellCargoScreen />;
         default:
           return (
             <div className="center-text">Unknown Game State: {gameState}</div>
@@ -111,7 +128,16 @@ const App: React.FC = () => {
       case "space_flight":
         // Render the dedicated R3F scene component
         return <SpaceFlightSceneR3F />; // <-- Use new R3F component
-      // Add other cases if different states have unique 3D scenes
+      case "buy_cargo":
+      case "sell_cargo":
+      case "stats":
+      case "credits":
+      case "loading":
+      case "short_range_chart":
+      case "planet_info":
+        // Render nothing specific for these UI-heavy states, assuming they overlay
+        // or the background doesn't need complex 3D elements unique to them.
+        return null;
       default:
         // Render nothing or a default empty scene
         return null;
@@ -125,6 +151,9 @@ const App: React.FC = () => {
     console.log("Waiting for assets to be set...");
     return <LoadingScreen />;
   }
+
+  // TODO move to a scene
+  const showUndockingSquares = gameState === "undocking";
 
   return (
     <div id="container">
@@ -153,7 +182,7 @@ const App: React.FC = () => {
           {/* Global State Initializer (Planets) */}
           <GlobalStateInitializer />
           {renderSceneR3FContent()}
-          <UndockingSquares visible={gameState === "undocking"} />
+          <UndockingSquares visible={showUndockingSquares} />
         </Suspense>
       </Canvas>
 

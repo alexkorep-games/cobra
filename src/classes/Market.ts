@@ -25,10 +25,12 @@ import { SimplePRNG } from "@/classes/SimplePRNG";
 export interface CommodityDefinition {
   /** Unique key / name */
   key: string;
-  /** Base average price in credits */
+  /** Base average price in credits */
   basePrice: number;
-  /** Base average quantity in t‑onnes */
+  /** Base average quantity available */
   baseQuantity: number;
+  /** Unit of measurement (tonnes, kilograms, grams) */
+  unit: "t" | "kg" | "g"; // Added unit
   /** Economy production map: price∆ / quantity multiplier */
   econEffect?: Partial<Record<EconomyType, { dp: number; qMult: number }>>;
   /** Minimum tech level required before a planet can *ever* stock it */
@@ -36,10 +38,12 @@ export interface CommodityDefinition {
 }
 
 export const COMMODITIES: CommodityDefinition[] = [
+  // Original items + Added from video + Example units
   {
     key: "Food",
     basePrice: 6,
     baseQuantity: 40,
+    unit: "t",
     econEffect: {
       "Poor Agricultural": { dp: -1, qMult: 1.3 },
       Agricultural: { dp: -1, qMult: 1.4 },
@@ -53,6 +57,7 @@ export const COMMODITIES: CommodityDefinition[] = [
     key: "Textiles",
     basePrice: 8,
     baseQuantity: 35,
+    unit: "t",
     econEffect: {
       "Poor Agricultural": { dp: -1, qMult: 1.2 },
       Agricultural: { dp: -1, qMult: 1.2 },
@@ -61,9 +66,60 @@ export const COMMODITIES: CommodityDefinition[] = [
     },
   },
   {
+    key: "Radioactives",
+    basePrice: 20,
+    baseQuantity: 15,
+    unit: "t",
+    minTechLevel: "TL3",
+  },
+  {
+    key: "Slaves",
+    basePrice: 40,
+    baseQuantity: 5,
+    unit: "t",
+    econEffect: {
+      Anarchy: { dp: -5, qMult: 2.0 },
+      Dictatorship: { dp: -3, qMult: 1.5 },
+      Democracy: { dp: +20, qMult: 0.1 },
+    },
+  }, // Example effects
+  {
+    key: "Liquor/Wines",
+    basePrice: 25,
+    baseQuantity: 20,
+    unit: "t",
+    econEffect: {
+      "Rich Agricultural": { dp: -3, qMult: 1.5 },
+      Tourism: { dp: +5, qMult: 1.2 },
+    },
+  },
+  {
+    key: "Luxuries",
+    basePrice: 90,
+    baseQuantity: 5,
+    unit: "t",
+    minTechLevel: "TL4",
+    econEffect: {
+      Tourism: { dp: -10, qMult: 2.0 },
+      "Rich Industrial": { dp: -5, qMult: 1.5 },
+    },
+  },
+  {
+    key: "Narcotics",
+    basePrice: 70,
+    baseQuantity: 8,
+    unit: "t",
+    minTechLevel: "TL2",
+    econEffect: {
+      Anarchy: { dp: -10, qMult: 2.5 },
+      "Poor Industrial": { dp: -5, qMult: 1.8 },
+    },
+  },
+  {
     key: "Computers",
     basePrice: 100,
     baseQuantity: 4,
+    unit: "t",
     minTechLevel: "TL3",
     econEffect: {
       "High Tech": { dp: -20, qMult: 3.0 },
@@ -74,9 +130,21 @@ export const COMMODITIES: CommodityDefinition[] = [
     },
   },
   {
+    key: "Machinery",
+    basePrice: 60,
+    baseQuantity: 10,
+    unit: "t",
+    minTechLevel: "TL2",
+    econEffect: {
+      Industrial: { dp: -5, qMult: 1.8 },
+      "Rich Industrial": { dp: -8, qMult: 2.2 },
+    },
+  },
+  {
     key: "Alloys",
     basePrice: 32,
     baseQuantity: 25,
+    unit: "t",
     econEffect: {
       Refinery: { dp: -5, qMult: 1.8 },
       "Poor Industrial": { dp: -2, qMult: 1.3 },
@@ -85,9 +153,22 @@ export const COMMODITIES: CommodityDefinition[] = [
     },
   },
   {
+    key: "Firearms",
+    basePrice: 75,
+    baseQuantity: 8,
+    unit: "t",
+    minTechLevel: "TL4",
+    econEffect: {
+      Anarchy: { dp: -10, qMult: 1.5 },
+      Dictatorship: { dp: -5, qMult: 1.2 },
+      "Rich Industrial": { dp: -8, qMult: 1.4 },
+    },
+  },
+  {
     key: "Furs",
     basePrice: 70,
     baseQuantity: 6,
+    unit: "t",
     econEffect: {
       "Poor Agricultural": { dp: -8, qMult: 2.2 },
       "Rich Agricultural": { dp: -10, qMult: 2.5 },
@@ -96,15 +177,60 @@ export const COMMODITIES: CommodityDefinition[] = [
     },
   },
   {
+    key: "Minerals",
+    basePrice: 12,
+    baseQuantity: 30,
+    unit: "t",
+    econEffect: {
+      Extraction: { dp: -2, qMult: 1.5 },
+      Refinery: { dp: -1, qMult: 1.2 },
+    },
+  },
+  {
     key: "Gold",
     basePrice: 160,
     baseQuantity: 1,
+    unit: "kg", // Changed unit
     econEffect: {
       Extraction: { dp: -25, qMult: 4 },
       Refinery: { dp: -10, qMult: 2 },
       Tourism: { dp: +20, qMult: 0.5 },
     },
+    minTechLevel: "TL5",
   },
+  {
+    key: "Platinum",
+    basePrice: 200,
+    baseQuantity: 0.5,
+    unit: "kg",
+    minTechLevel: "TL6",
+    econEffect: {
+      Extraction: { dp: -30, qMult: 4 },
+      Refinery: { dp: -15, qMult: 2 },
+    },
+  }, // Example
+  {
+    key: "Gem-Stones",
+    basePrice: 20,
+    baseQuantity: 10,
+    unit: "g",
+    minTechLevel: "TL4",
+    econEffect: {
+      Extraction: { dp: -5, qMult: 2.0 },
+      Tourism: { dp: +5, qMult: 1.5 },
+    },
+  }, // Example
+  {
+    key: "Alien Items",
+    basePrice: 60,
+    baseQuantity: 2,
+    unit: "t",
+    minTechLevel: "TL7",
+    econEffect: {
+      "High Tech": { dp: -10, qMult: 1.5 },
+      Anarchy: { dp: 0, qMult: 1.2 },
+    },
+  }, // Example
 ];
 
 // ---------------------------------------------------------------------------
