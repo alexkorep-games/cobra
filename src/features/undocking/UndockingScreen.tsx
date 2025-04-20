@@ -1,8 +1,19 @@
+// src/features/undocking/UndockingScreen.tsx
 import React from "react";
-import BottomHud from "../../components/hud/BottomHud";
-import "../../components/App.css";
+import BottomHud from "@/components/hud/BottomHud";
+import "@/components/App.css";
+import { useUndockingLogic } from "./useUndockingLogic";
 
-const UndockingScreen: React.FC = () => {
+// Define props interface
+interface UndockingScreenProps {
+  undockSoundRef: React.RefObject<HTMLAudioElement | null>;
+}
+
+// Accept props
+const UndockingScreen: React.FC<UndockingScreenProps> = ({
+  undockSoundRef,
+}) => {
+  useUndockingLogic(undockSoundRef);
   return (
     <>
       <div className="top-bar">
@@ -11,7 +22,7 @@ const UndockingScreen: React.FC = () => {
       <div id="leaving-text" className="center-text small">
         Leaving Space Station
       </div>
-      <BottomHud /> {/* Show basic HUD frame */}
+      <BottomHud />
     </>
   );
 };

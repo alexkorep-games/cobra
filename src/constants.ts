@@ -1,4 +1,3 @@
-// src/constants.ts
 import * as THREE from "three";
 
 export const SHIP_DISPLAY_DURATION = 10.0; // Seconds
@@ -29,7 +28,7 @@ export const MAX_VISUAL_PITCH_RATE = Math.PI * 0.3; // Radians/sec (Used for HUD
 // Space Station Constants
 export const STATION_PLANET_OFFSET_MIN = 1000; // Min distance from planet surface/center
 export const STATION_PLANET_OFFSET_MAX = 5000; // Max distance from planet surface/center
-export const STATION_DOCKING_RADIUS = 150; // Distance to trigger docking/return to title
+export const STATION_DOCKING_RADIUS = 10; // Distance to trigger docking/return to title
 
 // Pirate Constants
 export const PIRATE_COUNT = 3;
@@ -39,17 +38,13 @@ export const PIRATE_ATTACK_RANGE = 1500; // Distance within which pirates attack
 export const PIRATE_SPEED = 25.0; // Speed when attacking
 export const PIRATE_TURN_RATE = 0.5; // Radians per second towards player
 
-// Laser Constants
-export const LASER_RANGE = 2000; // Max distance the laser travels
-export const LASER_COOLDOWN = 0.15; // Seconds between shots
-export const LASER_HEAT_INCREASE = 15; // Heat added per shot
-export const LASER_HEAT_DECREASE_RATE = 20; // Heat lost per second when not firing
-export const LASER_MAX_HEAT = 100; // Max heat before overheating
-export const LASER_COLOR = 0xff0000; // Red laser
-export const LASER_DURATION = 0.1; // How long the beam is visible per shot
 
 // Planets
 export const PLANET_COUNT = 100; // Number of planets to generate
 export const PLANET_SEED = 73791;
 export const JUMP_RANGE = 7.0; // Max jump distance in Light Years (example)
 export const INITIAL_PLANET_INDEX = 0; // Start at the first planet
+
+export const SHIP_SCALE = 6;
+export const CAMERA_FAR_PLANE = 10_000_000; //
+export const RADAR_DISTANCE = 2000; // Distance to show objects on radar, meters?

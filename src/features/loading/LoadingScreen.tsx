@@ -1,30 +1,19 @@
-import React, { useState, useEffect } from "react";
-import "../../components/App.css";
+import React from "react";
+import { useLoadingLogic } from "./useLoadingLogic";
+import { useAssets } from "@/hooks/useAssets";
 
-interface LoadingScreenProps {
-  isLoadingComplete: boolean;
-}
-
-const LoadingScreen: React.FC<LoadingScreenProps> = ({ isLoadingComplete }) => {
-  const [showContinuePrompt, setShowContinuePrompt] = useState(false);
-
-  useEffect(() => {
-    setShowContinuePrompt(false);
-
-    if (isLoadingComplete) {
-      const timer = setTimeout(() => {
-        setShowContinuePrompt(true); // Show prompt slightly after load complete
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoadingComplete]);
+const LoadingScreen: React.FC = () => {
+  const { isLoadingComplete } = useAssets();
+  const { showContinuePrompt } = useLoadingLogic(isLoadingComplete);
 
   return (
     <>
       <div className="top-bar" style={{ visibility: "hidden" }}></div>
 
       <div id="loader-screen" className="center-text">
-        {!showContinuePrompt && <p id="loader-progress-text">LOADING...</p>}
+        {!isLoadingComplete && !showContinuePrompt && (
+          <p id="loader-progress-text">LOADING...</p>
+        )}
         {showContinuePrompt && (
           <p id="loader-continue-text">
             GAME LOADED
