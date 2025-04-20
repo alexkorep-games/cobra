@@ -54,7 +54,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
   const tempQuaternion = useRef(new THREE.Quaternion()).current;
   const forwardVector = useRef(new THREE.Vector3()).current;
   const rightVector = useRef(new THREE.Vector3()).current;
-  const upVector = useRef(new THREE.Vector3()).current; // Although we use world up for pitch usually? Let's use rightVector for pitch axis.
 
   useEffect(() => {
     if (!assets) {
@@ -130,14 +129,14 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
     // --- Calculate Target Angular Rates based on Input ---
     const rollAccelInput = shipControls.rollLeft
-      ? Constants.ROLL_ACCELERATION
-      : shipControls.rollRight
       ? -Constants.ROLL_ACCELERATION
+      : shipControls.rollRight
+      ? Constants.ROLL_ACCELERATION
       : 0;
     const pitchAccelInput = shipControls.pitchUp
-      ? Constants.PITCH_ACCELERATION
-      : shipControls.pitchDown
       ? -Constants.PITCH_ACCELERATION
+      : shipControls.pitchDown
+      ? Constants.PITCH_ACCELERATION
       : 0;
 
     // --- Update Angular Velocity (Roll/Pitch Rates) ---
