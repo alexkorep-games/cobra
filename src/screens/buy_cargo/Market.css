@@ -111,6 +111,7 @@ td:nth-child(4) {
 
 .market-table tbody tr:hover {
   background-color: rgba(255, 255, 0, 0.1); /* Subtle hover */
+  cursor: pointer; /* Add hand cursor on hover */
 }
 
 .market-table tbody tr.selected {

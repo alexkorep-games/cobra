@@ -2,7 +2,7 @@
 import React from "react";
 import { useBuyCargoLogic } from "@/screens/buy_cargo/useBuyCargoLogic";
 import { usePlayerState } from "@/hooks/usePlayerState";
-import { COMMODITIES } from "@/classes/Market"; // To get units easily
+import { getCommodityUnit } from "@/classes/Market";
 import "../../components/App.css";
 import "./Market.css";
 
@@ -12,20 +12,10 @@ const BuyCargoScreen: React.FC = () => {
     selectedCommodityKey,
     quantityInput,
     isEnteringQuantity,
+    handleItemClick,
     cargoSpaceLeft,
   } = useBuyCargoLogic();
   const { cash } = usePlayerState();
-
-  // Helper to find unit for a commodity
-  const getUnit = (key: string): string => {
-    const commodityDef = COMMODITIES.find((c) => c.key === key);
-    if (!commodityDef) return "t"; // Default to tonnes
-    // Map base units for display
-    if (commodityDef.key === "Gold" || commodityDef.key === "Platinum")
-      return "kg";
-    if (commodityDef.key === "Gem-Stones") return "g";
-    return "t"; // Default
-  };
 
   if (!market) {
     return (
@@ -43,7 +33,7 @@ const BuyCargoScreen: React.FC = () => {
         <div className="market-credits">{cash.toFixed(1)} Credits</div>
       </div>
       <div className="market-instructions">
-        Use Up/Down keys or device to select item. Press 'B' to buy the item.
+        Use Up/Down keys or click to select item. Press 'B' to buy multiple.
         <br />
         Press 'S' to switch to Sell Screen, ESC to exit market.
       </div>
@@ -64,18 +54,18 @@ const BuyCargoScreen: React.FC = () => {
                 className={
                   commodityKey === selectedCommodityKey ? "selected" : ""
                 }
+                onClick={() => handleItemClick(commodityKey)}
               >
                 <td>{commodityKey}</td>
-                <td>{getUnit(commodityKey)}</td>
+                <td>{getCommodityUnit(commodityKey)}</td>
                 <td>{state.price.toFixed(1)}</td>
                 <td>
                   {state.quantity > 0
-                    ? `${state.quantity}${getUnit(commodityKey)}`
+                    ? `${state.quantity}${getCommodityUnit(commodityKey)}`
                     : "-"}
                 </td>
               </tr>
             ))}
-            {/* Add filler rows if needed */}
           </tbody>
         </table>
       </div>

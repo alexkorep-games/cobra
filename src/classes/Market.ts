@@ -234,6 +234,24 @@ export const COMMODITIES: CommodityDefinition[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Utility Helpers
+// ---------------------------------------------------------------------------
+
+/** Helper to get the unit definition for a commodity */
+export const getCommodityUnit = (key: string): CommodityDefinition["unit"] => {
+  const commodityDef = COMMODITIES.find((c) => c.key === key);
+  return commodityDef?.unit || "t"; // Default to tonnes if not found
+};
+
+/** Helper to get the weight in tonnes for 1 unit of a commodity */
+export const getTonnesPerUnit = (key: string): number => {
+  const unit = getCommodityUnit(key);
+  if (unit === "kg") return 0.001; // 1 kg = 0.001 t
+  if (unit === "g") return 0.000001; // 1 g = 0.000001 t
+  return 1; // Default: 1 unit = 1 tonne
+};
+
+// ---------------------------------------------------------------------------
 // 2. Market snapshot returned to the game UI
 // ---------------------------------------------------------------------------
 export interface CommodityState {

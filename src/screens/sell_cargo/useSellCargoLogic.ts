@@ -49,6 +49,36 @@ export function useSellCargoLogic() {
     }
   }, [selectedIndex, cargoItems]);
 
+  // Handler for clicking an item row (Sells all units if possible)
+  const handleItemClick = useCallback(
+    (key: string) => {
+      if (!market || isProcessingInput.current) return;
+
+      setSelectedCommodityKey(key); // Select the clicked item
+      const marketInfo = market.get(key);
+      const currentHolding = cargoHold.get(key) || 0;
+
+      if (currentHolding <= 0) {
+        console.warn(`Sell failed: No ${key} in cargo hold.`);
+        return;
+      }
+      if (!marketInfo || marketInfo.price <= 0) {
+        console.warn(`Sell failed: Market does not buy ${key} here.`);
+        // TODO: Add sound/visual feedback
+        return;
+      }
+
+      const sellPricePerUnit = marketInfo.price;
+      const amountToSell = currentHolding; // Sell all
+      const earnings = amountToSell * sellPricePerUnit;
+
+      sellCargo(key, amountToSell, earnings); // Update player state
+      console.log(`Sold ${amountToSell} ${key} for ${earnings.toFixed(1)}`);
+      // Selection will update automatically via useEffect on cargoHold change
+    },
+    [market, cargoHold, sellCargo, setSelectedCommodityKey]
+  );
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (
@@ -72,42 +102,12 @@ export function useSellCargoLogic() {
           setSelectedIndex((prev) => Math.min(cargoItems.length - 1, prev + 1));
           processed = true;
           break;
-        case "s": // Sell
+        case "s": // Sell (all)
           const currentKey = selectedCommodityKey;
-          const marketInfo = currentKey ? market?.get(currentKey) : undefined;
-          const currentHolding = currentKey ? cargoHold.get(currentKey) : 0;
-
-          // Check if the market actually buys this item (has a price > 0)
-          if (
-            currentKey &&
-            currentHolding &&
-            currentHolding > 0 &&
-            marketInfo &&
-            marketInfo.price > 0
-          ) {
-            const sellPricePerUnit = marketInfo.price;
-            const amountToSell = currentHolding; // Sell all for now
-            const earnings = amountToSell * sellPricePerUnit;
-
-            sellCargo(currentKey, amountToSell, earnings); // Update player state
-            console.log(
-              `Sold ${amountToSell} of ${currentKey} for ${earnings}`
-            );
-
-            // Selection will update automatically via useEffect on cargoHold change
-            // Might need to reset index if the list becomes empty
-            if (
-              cargoHold.size === 1 &&
-              cargoHold.get(currentKey) === amountToSell
-            ) {
-              // Check if this was the last item type
-              setSelectedIndex(0); // Reset index if needed
-            }
+          if (currentKey) {
+            handleItemClick(currentKey); // Reuse click logic
           } else {
-            console.warn(
-              "Sell failed: Item not selected, not held, or market doesn't buy it."
-            );
-            // TODO: Add error sound/visual feedback
+            console.warn("Sell failed: No item selected.");
           }
           processed = true;
           break;
@@ -116,8 +116,7 @@ export function useSellCargoLogic() {
           processed = true;
           break;
         case "escape": // Exit market
-          // Assuming back to stats for now
-          setGameState("stats"); // Or maybe 'docked_services'
+          setGameState("stats");
           processed = true;
           break;
       }
@@ -131,13 +130,11 @@ export function useSellCargoLogic() {
     },
     [
       gameState,
-      market,
       selectedIndex,
       selectedCommodityKey,
       cargoItems,
-      cargoHold,
       setGameState,
-      sellCargo,
+      handleItemClick,
     ]
   );
 
@@ -155,6 +152,7 @@ export function useSellCargoLogic() {
   return {
     market,
     cargoItems, // Pass derived items to component
+    handleItemClick,
     selectedCommodityKey,
   };
 }

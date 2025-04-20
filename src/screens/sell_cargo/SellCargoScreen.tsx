@@ -2,7 +2,7 @@
 import React from "react";
 import { useSellCargoLogic } from "@/screens/sell_cargo/useSellCargoLogic";
 import { usePlayerState } from "@/hooks/usePlayerState";
-import { COMMODITIES } from "@/classes/Market"; // To get units easily
+import { getCommodityUnit } from "@/classes/Market";
 import "../../components/App.css";
 import "../buy_cargo/Market.css"; // Reuse market styles
 
@@ -10,21 +10,11 @@ const SellCargoScreen: React.FC = () => {
   const {
     market,
     cargoItems, // Get items directly from the hook
+    handleItemClick,
     selectedCommodityKey,
     // Add quantity input/state if partial selling is implemented
   } = useSellCargoLogic();
   const { cash } = usePlayerState();
-
-  // Helper to find unit for a commodity
-  const getUnit = (key: string): string => {
-    const commodityDef = COMMODITIES.find((c) => c.key === key);
-    if (!commodityDef) return "t"; // Default to tonnes
-    // Map base units for display
-    if (commodityDef.key === "Gold" || commodityDef.key === "Platinum")
-      return "kg";
-    if (commodityDef.key === "Gem-Stones") return "g";
-    return "t"; // Default
-  };
 
   if (!market) {
     return (
@@ -42,7 +32,7 @@ const SellCargoScreen: React.FC = () => {
         <div className="market-credits">{cash.toFixed(1)} Credits</div>
       </div>
       <div className="market-instructions">
-        Use Up/Down keys or device to select item. Press 'S' to sell the item.
+        Use Up/Down keys or click to select item. Press 'S' to sell all.
         <br />
         Press 'B' to switch to Buy Screen, ESC to exit market.
       </div>
@@ -60,11 +50,12 @@ const SellCargoScreen: React.FC = () => {
             {cargoItems.map(([key, holding]) => {
               const marketState = market.get(key);
               const sellPrice = marketState ? marketState.price : 0; // Or some indication if not sold here
-              const unit = getUnit(key);
+              const unit = getCommodityUnit(key);
               return (
                 <tr
                   key={key}
                   className={key === selectedCommodityKey ? "selected" : ""}
+                  onClick={() => handleItemClick(key)}
                 >
                   <td>{key}</td>
                   <td>{unit}</td>

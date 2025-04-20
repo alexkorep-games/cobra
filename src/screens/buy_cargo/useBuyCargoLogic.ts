@@ -2,10 +2,11 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useMarketState } from "@/hooks/useMarketState";
 import { usePlayerState } from "@/hooks/usePlayerState";
 import { useGameState } from "@/hooks/useGameState";
+import { getTonnesPerUnit } from "@/classes/Market";
 
 export function useBuyCargoLogic() {
   const { market } = useMarketState(); // Get market data generated on dock
-  const { cash, cargoHold, buyCargo, cargoCapacity, getCargoUsed } =
+  const { cash, buyCargo, cargoCapacity, getCargoUsed } =
     usePlayerState();
   const { gameState, setGameState } = useGameState();
   const commodityKeys = useRef<string[]>([]); // Store keys present in the market
@@ -21,7 +22,9 @@ export function useBuyCargoLogic() {
   // Update commodity keys and selection when market data changes
   useEffect(() => {
     if (market) {
-      const keys = Array.from(Object.keys(market));
+      const keys = Array.from(market.entries())
+        .filter(([_key, state]) => state.quantity > 0 || state.price > 0) // Include items with price even if 0 qty
+        .map(([key]) => key);
       commodityKeys.current = keys;
       if (keys.length > 0) {
         // Try to maintain selection or default to first
@@ -56,6 +59,44 @@ export function useBuyCargoLogic() {
     setQuantityInput("");
   }, [selectedIndex]);
 
+  // Handler for clicking an item row (Buys 1 unit if possible)
+  const handleItemClick = useCallback(
+    (key: string) => {
+      if (!market || isProcessingInput.current || isEnteringQuantity) return;
+
+      setSelectedCommodityKey(key); // Select the clicked item
+      const itemState = market.get(key);
+      const spaceNeeded = getTonnesPerUnit(key); // Get space needed for 1 unit
+
+      if (!itemState || itemState.quantity <= 0) {
+        console.warn(`Buy failed: ${key} is out of stock.`);
+        // TODO: Add sound/visual feedback
+        return;
+      }
+      if (cargoSpaceLeft < spaceNeeded) {
+        console.warn(`Buy failed: Not enough cargo space for 1 ${key}.`);
+        // TODO: Add sound/visual feedback
+        return;
+      }
+      if (cash < itemState.price) {
+        console.warn(`Buy failed: Insufficient credits for 1 ${key}.`);
+        // TODO: Add sound/visual feedback
+        return;
+      }
+
+      buyCargo(key, 1, itemState.price); // Buy 1 unit
+      console.log(`Bought 1 ${key} for ${itemState.price.toFixed(1)}`);
+    },
+    [
+      market,
+      cash,
+      cargoSpaceLeft,
+      buyCargo,
+      isEnteringQuantity,
+      setSelectedCommodityKey,
+    ]
+  );
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (gameState !== "buy_cargo" || isProcessingInput.current) return;
@@ -76,23 +117,22 @@ export function useBuyCargoLogic() {
           const itemState = currentKey ? market?.get(currentKey) : undefined;
 
           if (!isNaN(quantity) && quantity > 0 && currentKey && itemState) {
+            const spaceNeeded = quantity * getTonnesPerUnit(currentKey);
             const cost = quantity * itemState.price;
-            const spaceNeeded = quantity; // Assuming 1t for now - needs adjustment for kg/g later
 
-            if (
-              cash >= cost &&
-              cargoSpaceLeft >= spaceNeeded &&
-              quantity <= itemState.quantity
-            ) {
-              buyCargo(currentKey, quantity, cost); // Update player state
-              // Refresh market potentially (or assume it's static until undock)
-              console.log(`Bought ${quantity} of ${currentKey} for ${cost}`);
-              // Need market refresh logic here if quantities should update immediately
+            if (cash < cost) {
+              console.warn("Buy failed: Insufficient credits.");
+            } else if (cargoSpaceLeft < spaceNeeded) {
+              console.warn("Buy failed: Insufficient cargo space.");
+            } else if (quantity > itemState.quantity) {
+              console.warn("Buy failed: Insufficient stock.");
             } else {
-              console.warn(
-                "Buy failed: Insufficient credits, space, or stock."
+              buyCargo(currentKey, quantity, cost); // Update player state
+              console.log(
+                `Bought ${quantity} of ${currentKey} for ${cost.toFixed(1)}`
               );
-              // TODO: Add sound effect for failure
+              // Need market refresh logic here if quantities should update immediately
+              // For now, player state updates, market visually remains static until re-dock
             }
           }
           setIsEnteringQuantity(false);
@@ -118,24 +158,29 @@ export function useBuyCargoLogic() {
             );
             processed = true;
             break;
-          case "b": // Buy
+          case "b": // Buy (multiple)
             const currentKey = selectedCommodityKey;
             const itemState = currentKey ? market?.get(currentKey) : undefined;
+            const spaceForOneUnit = currentKey
+              ? getTonnesPerUnit(currentKey)
+              : 1;
+
             if (
               currentKey &&
               itemState &&
               itemState.quantity > 0 &&
-              cargoSpaceLeft > 0
+              cargoSpaceLeft >= spaceForOneUnit && // Must have space for at least one
+              cash >= itemState.price // Must have cash for at least one
             ) {
               setIsEnteringQuantity(true);
               setQuantityInput("");
               processed = true;
             } else {
-              // Cannot buy (out of stock or no space)
-              // TODO: Add error sound/visual feedback
+              // Cannot buy (out of stock or no space/cash for even one)
               console.log(
-                "Cannot initiate buy - out of stock or no cargo space."
+                "Cannot initiate buy - out of stock, no cargo space, or insufficient funds."
               );
+              // TODO: Add error sound/visual feedback
             }
             break;
           case "s": // Switch to sell screen
@@ -143,9 +188,7 @@ export function useBuyCargoLogic() {
             processed = true;
             break;
           case "escape": // Exit market
-            // Need to decide where to go - back to stats? space flight? docked menu?
-            // Assuming back to stats for now based on video flow
-            setGameState("stats"); // Or maybe 'docked_services' if that exists
+            setGameState("stats"); // Back to stats screen
             processed = true;
             break;
         }
@@ -188,6 +231,7 @@ export function useBuyCargoLogic() {
     selectedCommodityKey,
     quantityInput,
     isEnteringQuantity,
+    handleItemClick, // Export click handler
     cargoSpaceLeft,
   };
 }

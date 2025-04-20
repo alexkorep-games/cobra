@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Coordinates, calculateDistance } from "@/classes/PlanetInfo";
-import BottomHud from "@/components/hud/BottomHud";
 import { useShortRangeChartLogic } from "./useShortRangeChartLogic"; // Import hook
 import { usePlanetInfos } from "../../hooks/usePlanetInfos"; // Import shared state hook
 import { JUMP_RANGE } from "@/constants"; // Import jump range
@@ -12,7 +11,7 @@ const MAX_COORD = 500; // Match the generation range in PlanetInfo.ts for scalin
 
 const ShortRangeChartScreen: React.FC = () => {
   // Call the hook to manage logic and selection state
-  const { reachablePlanets, selectedIndexInReachable, handleKeyDown } =
+  const { reachablePlanets, selectedIndexInReachable } =
     useShortRangeChartLogic();
 
   // Get data from shared state hook
@@ -42,14 +41,6 @@ const ShortRangeChartScreen: React.FC = () => {
     window.addEventListener("resize", updateSize);
     return () => window.removeEventListener("resize", updateSize);
   }, []);
-
-  // Add keydown listener managed by the hook
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [handleKeyDown]);
 
   if (!currentPlanet) {
     return (
@@ -111,7 +102,9 @@ const ShortRangeChartScreen: React.FC = () => {
   const { keysPressed } = useInput();
 
   useEffect(() => {
-    console.log("[ShortRangeChartScreen] Using useInput hook for input state management.");
+    console.log(
+      "[ShortRangeChartScreen] Using useInput hook for input state management."
+    );
     // Cleanup logic for keysPressed is no longer needed as useInput handles it.
   }, [keysPressed]);
 
