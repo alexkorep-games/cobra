@@ -5,7 +5,7 @@ import { useGameState } from "@/hooks/useGameState";
 import { getTonnesPerUnit } from "@/classes/Market";
 
 export function useBuyCargoLogic() {
-  const { market } = useMarketState(); // Get market data generated on dock
+  const { market, updateMarketQuantity } = useMarketState(); // Get market data generated on dock
   const { cash, buyCargo, cargoCapacity, getCargoUsed } =
     usePlayerState();
   const { gameState, setGameState } = useGameState();
@@ -85,6 +85,8 @@ export function useBuyCargoLogic() {
       }
 
       buyCargo(key, 1, itemState.price); // Buy 1 unit
+      updateMarketQuantity(key, -1); // <-- DECREASE market quantity by 1
+
       console.log(`Bought 1 ${key} for ${itemState.price.toFixed(1)}`);
     },
     [
@@ -94,6 +96,7 @@ export function useBuyCargoLogic() {
       buyCargo,
       isEnteringQuantity,
       setSelectedCommodityKey,
+      updateMarketQuantity,
     ]
   );
 
@@ -128,6 +131,7 @@ export function useBuyCargoLogic() {
               console.warn("Buy failed: Insufficient stock.");
             } else {
               buyCargo(currentKey, quantity, cost); // Update player state
+              updateMarketQuantity(currentKey, -quantity); 
               console.log(
                 `Bought ${quantity} of ${currentKey} for ${cost.toFixed(1)}`
               );
@@ -212,6 +216,7 @@ export function useBuyCargoLogic() {
       cargoSpaceLeft,
       setGameState,
       buyCargo,
+      updateMarketQuantity,
     ]
   );
 

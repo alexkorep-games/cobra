@@ -5,7 +5,7 @@ import { usePlayerState } from "../../hooks/usePlayerState";
 import { useGameState } from "../../hooks/useGameState";
 
 export function useSellCargoLogic() {
-  const { market } = useMarketState(); // Get market data generated on dock
+  const { market, updateMarketQuantity } = useMarketState(); // Get market data generated on dock
   const { cargoHold, sellCargo } = usePlayerState();
   const { gameState, setGameState } = useGameState();
 
@@ -73,10 +73,17 @@ export function useSellCargoLogic() {
       const earnings = amountToSell * sellPricePerUnit;
 
       sellCargo(key, amountToSell, earnings); // Update player state
+      updateMarketQuantity(key, +amountToSell);
       console.log(`Sold ${amountToSell} ${key} for ${earnings.toFixed(1)}`);
       // Selection will update automatically via useEffect on cargoHold change
     },
-    [market, cargoHold, sellCargo, setSelectedCommodityKey]
+    [
+      market,
+      cargoHold,
+      sellCargo,
+      setSelectedCommodityKey,
+      updateMarketQuantity,
+    ]
   );
 
   const handleKeyDown = useCallback(
