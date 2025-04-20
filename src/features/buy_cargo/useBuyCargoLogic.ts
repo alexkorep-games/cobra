@@ -21,7 +21,7 @@ export function useBuyCargoLogic() {
   // Update commodity keys and selection when market data changes
   useEffect(() => {
     if (market) {
-      const keys = Array.from(market.keys());
+      const keys = Array.from(Object.keys(market));
       commodityKeys.current = keys;
       if (keys.length > 0) {
         // Try to maintain selection or default to first

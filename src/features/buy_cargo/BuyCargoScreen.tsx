@@ -58,17 +58,19 @@ const BuyCargoScreen: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {Array.from(market.entries()).map((key, state) => (
+            {Array.from(market.entries()).map(([commodityKey, state]) => (
               <tr
-                key={key}
-                className={key === selectedCommodityKey ? "selected" : ""}
+                key={commodityKey}
+                className={
+                  commodityKey === selectedCommodityKey ? "selected" : ""
+                }
               >
-                <td>{key}</td>
-                <td>{getUnit(key)}</td>
+                <td>{commodityKey}</td>
+                <td>{getUnit(commodityKey)}</td>
                 <td>{state.price.toFixed(1)}</td>
                 <td>
                   {state.quantity > 0
-                    ? `${state.quantity}${getUnit(key)}`
+                    ? `${state.quantity}${getUnit(commodityKey)}`
                     : "-"}
                 </td>
               </tr>
