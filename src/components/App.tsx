@@ -1,6 +1,6 @@
 // src/components/App.tsx
 import React, { Suspense, useEffect } from "react";
-import { Canvas, extend } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import "./App.css";
 import { useGameState } from "@/features/common/useGameState";
 import { usePlanetInfos } from "@/features/common/usePlanetInfos";
@@ -25,12 +25,6 @@ import UndockingSquares from "@/components/r3f/UndockingSquares";
 import TitleSceneR3F from "@/features/title/TitleSceneR3F";
 import SpaceFlightSceneR3F from "@/features/space_flight/SpaceFlightSceneR3F";
 import { useInputSetup } from "@/hooks/useInput";
-
-// Extend Three.js with Line2, etc
-import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry';
-import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial';
-import { Line2 } from 'three/examples/jsm/lines/Line2';
-extend({ LineGeometry, LineMaterial, Line2 });
 
 const GlobalStateInitializer: React.FC = () => {
   useInputSetup();

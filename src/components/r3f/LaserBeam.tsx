@@ -1,71 +1,64 @@
 // src/components/r3f/LaserBeam.tsx
 import React, { useRef, useEffect, useMemo } from "react";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import { LineGeometry } from "three/examples/jsm/lines/LineGeometry";
-import { LineMaterial } from "three/examples/jsm/lines/LineMaterial";
-import { Line2 } from "three/examples/jsm/lines/Line2"; // Note the import!
 import { useInput } from "@/hooks/useInput";
 
 // --- Laser Constants Adjusted ---
-const LASER_COOLDOWN = 0.12;
-const LASER_HEAT_INCREASE = 6;
+const LASER_COOLDOWN = 0.12; // Slightly faster cooldown might feel better with dual beams
+const LASER_HEAT_INCREASE = 6; // Lower heat per shot since we fire pairs (adjust balance)
 const LASER_HEAT_DECREASE_RATE = 25;
 const LASER_MAX_HEAT = 100;
-const LASER_COLOR_1 = 0xff4040;
-const LASER_COLOR_2 = 0xddee40;
-const LASER_DURATION = 0.06;
+// --- Define the two alternating colors ---
+const LASER_COLOR_1 = 0xff4040; // Reddish-Pink (adjust as needed)
+const LASER_COLOR_2 = 0xddee40; // Yellowish-Green (adjust as needed)
+const LASER_DURATION = 0.06; // Keep it very short
 const LASER_LENGTH = 180;
-const LASER_LINE_WIDTH = 2;
+const LASER_LINE_WIDTH = 400;
 const LASER_SIDE_OFFSET = 0.4;
 const LASER_VERTICAL_OFFSET = -0.1;
-const LASER_PAIR_OFFSET = 0.02;
+// Optional small offset for the second beam in each pair if desired
+const LASER_PAIR_OFFSET = 0.02; // Tiny vertical separation for the pair
 
 interface LaserBeamProps {
   camera: THREE.Camera;
   onHeatUpdate: (heatPercentage: number) => void;
 }
 
-// Extend THREE namespace for JSX components (if using TypeScript)
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      line2: React.DetailedHTMLProps<any, Line2>;
-      lineGeometry: React.DetailedHTMLProps<any, LineGeometry>;
-      lineMaterial: React.DetailedHTMLProps<any, LineMaterial>;
-    }
-  }
-}
-
 const LaserBeam: React.FC<LaserBeamProps> = ({ camera, onHeatUpdate }) => {
-  // Get viewport size for LineMaterial resolution
-  const { size } = useThree(); // Get width/height
+  // Refs for FOUR laser beams
+  const leftLaserRef1 = useRef<THREE.LineSegments>(null);
+  const leftLaserRef2 = useRef<THREE.LineSegments>(null);
+  const rightLaserRef1 = useRef<THREE.LineSegments>(null);
+  const rightLaserRef2 = useRef<THREE.LineSegments>(null);
 
-  // Refs for FOUR laser beams (now Line2)
-  const leftLaserRef1 = useRef<Line2>(null);
-  const leftLaserRef2 = useRef<Line2>(null);
-  const rightLaserRef1 = useRef<Line2>(null);
-  const rightLaserRef2 = useRef<Line2>(null);
-
-  // SHARED geometry (now LineGeometry)
-  const laserGeometryRef = useRef<LineGeometry>(null);
-  // TWO materials (now LineMaterial)
-  const laserMaterialRef1 = useRef<LineMaterial>(null);
-  const laserMaterialRef2 = useRef<LineMaterial>(null);
+  // SHARED geometry
+  const laserGeometryRef = useRef<THREE.BufferGeometry>(null);
+  // TWO materials for alternating colors
+  const laserMaterialRef1 = useRef<THREE.LineBasicMaterial>(null);
+  const laserMaterialRef2 = useRef<THREE.LineBasicMaterial>(null);
 
   const currentLaserHeat = useRef(0);
   const laserCooldownTimer = useRef(0);
+  // Timers now control pairs
   const leftPairHideTimer = useRef(0);
   const rightPairHideTimer = useRef(0);
   const nextLaserSide = useRef<"left" | "right">("left");
   const { shipControls } = useInput();
   const fireInput = shipControls.fire;
 
-  // --- Geometry Points (for LineGeometry) ---
-  // LineGeometry expects a flat array: [x1, y1, z1, x2, y2, z2, ...]
-  const laserPositionsArray = useMemo(() => [0, 0, 0, 0, 0, -LASER_LENGTH], []);
+  // --- Geometry Points (Shared) ---
+  const laserBeamPoints = useMemo(
+    () => [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -LASER_LENGTH)],
+    []
+  );
+  const laserPositionsArray = useMemo(
+    () => new Float32Array(laserBeamPoints.flatMap((p) => p.toArray())),
+    [laserBeamPoints]
+  );
 
   // --- Offset Positions ---
+  // Base offsets
   const leftOffsetBase = useMemo(
     () => new THREE.Vector3(-LASER_SIDE_OFFSET, LASER_VERTICAL_OFFSET, -1),
     []
@@ -74,6 +67,7 @@ const LaserBeam: React.FC<LaserBeamProps> = ({ camera, onHeatUpdate }) => {
     () => new THREE.Vector3(LASER_SIDE_OFFSET, LASER_VERTICAL_OFFSET, -1),
     []
   );
+  // Offsets for the second beam in each pair (optional slight separation)
   const leftOffsetPair = useMemo(
     () =>
       new THREE.Vector3(
@@ -99,25 +93,18 @@ const LaserBeam: React.FC<LaserBeamProps> = ({ camera, onHeatUpdate }) => {
   const tempWorldOffset1 = useMemo(() => new THREE.Vector3(), []);
   const tempWorldOffset2 = useMemo(() => new THREE.Vector3(), []);
 
-  // Initialize geometry
+  // Initialize geometry attributes
   useEffect(() => {
     if (laserGeometryRef.current) {
-      // Set positions for LineGeometry
-      laserGeometryRef.current.setPositions(laserPositionsArray);
+      laserGeometryRef.current.setAttribute(
+        "position",
+        new THREE.BufferAttribute(laserPositionsArray, 3)
+      );
+      laserGeometryRef.current.attributes.position.needsUpdate = true;
     }
     onHeatUpdate(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [laserPositionsArray]);
-
-  // Update material resolution if canvas size changes
-  useEffect(() => {
-    if (laserMaterialRef1.current) {
-      laserMaterialRef1.current.resolution.set(size.width, size.height);
-    }
-    if (laserMaterialRef2.current) {
-      laserMaterialRef2.current.resolution.set(size.width, size.height);
-    }
-  }, [size]);
 
   useFrame((_state, delta) => {
     const dt = Math.min(delta, 0.05);
@@ -159,20 +146,15 @@ const LaserBeam: React.FC<LaserBeamProps> = ({ camera, onHeatUpdate }) => {
             .applyQuaternion(camera.quaternion);
           tempWorldPos2.copy(camera.position).add(tempWorldOffset2);
 
-          // Assign geometry AND material (needed for Line2)
-          leftLaserRef1.current.geometry = laserGeometryRef.current!;
-          leftLaserRef1.current.material = laserMaterialRef1.current; // Assign Color 1
           leftLaserRef1.current.position.copy(tempWorldPos1);
           leftLaserRef1.current.quaternion.copy(camera.quaternion);
+          leftLaserRef1.current.material = laserMaterialRef1.current; // Assign Color 1
           leftLaserRef1.current.visible = true;
-          leftLaserRef1.current.computeLineDistances(); // Important for Line2
 
-          leftLaserRef2.current.geometry = laserGeometryRef.current!;
-          leftLaserRef2.current.material = laserMaterialRef1.current; // Assign Color 1
           leftLaserRef2.current.position.copy(tempWorldPos2); // Use slightly offset position
           leftLaserRef2.current.quaternion.copy(camera.quaternion);
+          leftLaserRef2.current.material = laserMaterialRef1.current; // Assign Color 1
           leftLaserRef2.current.visible = true;
-          leftLaserRef2.current.computeLineDistances(); // Important for Line2
         }
         nextLaserSide.current = "right"; // Alternate
       } else {
@@ -194,19 +176,15 @@ const LaserBeam: React.FC<LaserBeamProps> = ({ camera, onHeatUpdate }) => {
             .applyQuaternion(camera.quaternion);
           tempWorldPos2.copy(camera.position).add(tempWorldOffset2);
 
-          rightLaserRef1.current.geometry = laserGeometryRef.current!;
-          rightLaserRef1.current.material = laserMaterialRef2.current; // Assign Color 2
           rightLaserRef1.current.position.copy(tempWorldPos1);
           rightLaserRef1.current.quaternion.copy(camera.quaternion);
+          rightLaserRef1.current.material = laserMaterialRef2.current; // Assign Color 2
           rightLaserRef1.current.visible = true;
-          rightLaserRef1.current.computeLineDistances(); // Important for Line2
 
-          rightLaserRef2.current.geometry = laserGeometryRef.current!;
-          rightLaserRef2.current.material = laserMaterialRef2.current; // Assign Color 2
           rightLaserRef2.current.position.copy(tempWorldPos2); // Use slightly offset position
           rightLaserRef2.current.quaternion.copy(camera.quaternion);
+          rightLaserRef2.current.material = laserMaterialRef2.current; // Assign Color 2
           rightLaserRef2.current.visible = true;
-          rightLaserRef2.current.computeLineDistances(); // Important for Line2
         }
         nextLaserSide.current = "left"; // Alternate
       }
@@ -226,6 +204,7 @@ const LaserBeam: React.FC<LaserBeamProps> = ({ camera, onHeatUpdate }) => {
     }
 
     // --- Visibility Update ---
+    // Hide pairs if their timer runs out
     const leftVisible = leftPairHideTimer.current > 0;
     if (leftLaserRef1.current) leftLaserRef1.current.visible = leftVisible;
     if (leftLaserRef2.current) leftLaserRef2.current.visible = leftVisible;
@@ -242,54 +221,51 @@ const LaserBeam: React.FC<LaserBeamProps> = ({ camera, onHeatUpdate }) => {
 
   return (
     <>
-      {/* SHARED Geometry (use <lineGeometry>, args for constructor if needed) */}
-      <lineGeometry ref={laserGeometryRef} attach="geometry" />
+      {/* SHARED Geometry */}
+      <bufferGeometry ref={laserGeometryRef} key={LASER_LENGTH}>
+        {/* Attribute set in useEffect */}
+      </bufferGeometry>
 
-      {/* TWO Materials (use <lineMaterial>) */}
-      <lineMaterial
+      {/* TWO Materials */}
+      <lineBasicMaterial
         ref={laserMaterialRef1}
-        attach="material" // Attach if it's the direct child of the mesh
         color={LASER_COLOR_1}
-        linewidth={LASER_LINE_WIDTH} // This will work now!
-        resolution={[size.width, size.height]} // Pass resolution
-        // worldUnits={false} // Default: width is in screen pixels
-        // worldUnits={true} // Alternative: width is in world units
-        dashed={false} // Add other LineMaterial props if needed
+        linewidth={LASER_LINE_WIDTH}
       />
-      <lineMaterial
+      <lineBasicMaterial
         ref={laserMaterialRef2}
-        attach="material"
         color={LASER_COLOR_2}
         linewidth={LASER_LINE_WIDTH}
-        resolution={[size.width, size.height]}
-        dashed={false}
       />
 
-      {/* FOUR Laser Beams (use <line2>) */}
-      {/* We assign geometry/material dynamically, so don't attach here */}
-      <line2
+      {/* FOUR Laser Beams (using shared geometry) */}
+      <lineSegments
         ref={leftLaserRef1}
         visible={false}
         frustumCulled={false}
-        // Geometry and Material assigned in useFrame
+        geometry={laserGeometryRef.current!}
+        // Material assigned dynamically
       />
-      <line2
+      <lineSegments
         ref={leftLaserRef2}
         visible={false}
         frustumCulled={false}
-        // Geometry and Material assigned in useFrame
+        geometry={laserGeometryRef.current!}
+        // Material assigned dynamically
       />
-      <line2
+      <lineSegments
         ref={rightLaserRef1}
         visible={false}
         frustumCulled={false}
-        // Geometry and Material assigned in useFrame
+        geometry={laserGeometryRef.current!}
+        // Material assigned dynamically
       />
-      <line2
+      <lineSegments
         ref={rightLaserRef2}
         visible={false}
         frustumCulled={false}
-        // Geometry and Material assigned in useFrame
+        geometry={laserGeometryRef.current!}
+        // Material assigned dynamically
       />
     </>
   );
