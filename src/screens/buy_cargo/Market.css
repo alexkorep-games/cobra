@@ -1,18 +1,12 @@
 /* src/features/buy_cargo/Market.css */
 .market-container {
-  position: absolute;
-  top: 5%;
-  left: 5%;
-  right: 5%;
-  bottom: calc(
-    10% + 80px + 10px
-  ); /* Adjust based on bottom HUD height + padding */
   padding: 15px;
   color: #ffff00; /* Yellow text */
   display: flex;
   flex-direction: column;
   font-size: 1.1em;
   box-sizing: border-box;
+  height: 100%;
 }
 
 .buy-screen {
@@ -32,6 +26,7 @@
   border-bottom: 1px solid #ffff00;
   padding-bottom: 10px;
   margin-bottom: 10px;
+  flex-shrink: 0;
 }
 
 .market-title {
@@ -48,13 +43,15 @@
   margin-bottom: 15px;
   color: #cccccc; /* Lighter gray */
   line-height: 1.4;
+  flex-shrink: 0;
 }
 
 .market-table-container {
   flex-grow: 1;
-  overflow-y: auto; /* Allow scrolling if needed */
+  overflow-y: auto;
   border: 1px solid #888800; /* Dim yellow border */
   margin-bottom: 10px;
+  min-height: 100px;
 }
 
 .market-table {
@@ -73,6 +70,22 @@
 .market-table th {
   color: #ffffff; /* White headers */
   border-bottom: 1px solid #ffff00;
+  position: sticky; /* Make header sticky */
+  top: 0; /* Stick to the top of the container */
+  background-color: rgba(
+    0,
+    0,
+    0,
+    0.9
+  ); /* Match background slightly darker if needed */
+  /* Adjust background based on buy/sell screen */
+  .buy-screen & {
+    background-color: rgba(50, 0, 0, 0.9);
+  }
+  .sell-screen & {
+    background-color: rgba(0, 50, 0, 0.9);
+  }
+  z-index: 1; /* Ensure header is above table content */
 }
 
 /* Align columns */
@@ -108,6 +121,14 @@ td:nth-child(4) {
   color: #000000; /* Ensure all cells in selected row are black */
 }
 
+/* Styling for empty cargo state in sell screen */
+.market-table tbody tr td[colspan="4"] {
+  text-align: center;
+  font-style: italic;
+  color: #aaaaaa;
+  padding: 20px 0; /* Add some padding */
+}
+
 .market-footer {
   border-top: 1px solid #ffff00;
   padding-top: 10px;
@@ -115,6 +136,7 @@ td:nth-child(4) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0; /* Prevent footer from shrinking */
 }
 
 .quantity-prompt {

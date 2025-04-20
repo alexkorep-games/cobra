@@ -5,7 +5,7 @@ export function useCreditsLogic() {
   const { setGameState } = useGameState();
   useInput({
     onInputStart: () => {
-      setGameState("stats");
+      setGameState("buy_cargo");
     },
   });
 }

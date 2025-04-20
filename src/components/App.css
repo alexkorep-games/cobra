@@ -286,7 +286,6 @@ canvas {
   padding: 20px;
   font-size: 1.2em;
   box-sizing: border-box;
-  height: 100%; /* Fill the available space */
 }
 #stats-screen h2 {
   color: #ffffff;
@@ -306,6 +305,20 @@ canvas {
 #stats-screen .equipment {
   margin-top: 15px;
   color: #ffff00;
+}
+
+/* Optional: Style the scrollbar for a more retro look (Webkit browsers) */
+#stats-screen::-webkit-scrollbar {
+  width: 8px;
+}
+
+#stats-screen::-webkit-scrollbar-track {
+  background: #222; /* Dark track */
+}
+
+#stats-screen::-webkit-scrollbar-thumb {
+  background: #cc66ff; /* Magenta thumb */
+  border: 1px solid #ffff00; /* Yellow border */
 }
 
 /* Pirate radar styles (part of BottomHud) */
