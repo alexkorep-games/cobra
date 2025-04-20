@@ -256,12 +256,12 @@ export const getTonnesPerUnit = (key: string): number => {
 // ---------------------------------------------------------------------------
 export interface CommodityState {
   price: number; // in credits
-  quantity: number; // tonnes available
+  quantity: number; // units available
 }
 
 export class MarketSnapshot {
   readonly timestamp: number; // visit serial (0,1,2,…)
-  private readonly table: Map<string, CommodityState>;
+  readonly table: Map<string, CommodityState>;
 
   constructor(timestamp: number, table: Map<string, CommodityState>) {
     this.timestamp = timestamp;
@@ -338,7 +338,21 @@ export class MarketGenerator {
       // If quantity is zero *and* the base quantity was zero (non‑producing), skip
       if (quantity === 0 && c.baseQuantity === 0) continue;
 
-      table.set(c.key, { price, quantity });
+      // Ensure non-producers *never* have stock if econ effect didn't add it
+      if (c.baseQuantity === 0 && qMult <= 1 && quantity > 0) {
+        quantity = 0;
+      }
+      // Ensure producers always have at least *some* chance of stock if qMult > 0
+      // But allow 0 if jitter rolls low. Skip adding if zero.
+      if (quantity === 0 && qMult > 0) {
+        // table.set(c.key, { price, quantity }); // Still list price even if 0 qty
+        continue; // Or maybe don't list it at all if qty is 0? Let's not list.
+      }
+
+      // Only add to market if quantity > 0 or price > 0 (should always be true for price)
+      if (quantity > 0 || price > 0) {
+        table.set(c.key, { price, quantity });
+      }
     }
 
     return new MarketSnapshot(visitSerial, table);

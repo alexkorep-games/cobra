@@ -99,15 +99,6 @@ const ShortRangeChartScreen: React.FC = () => {
     (pd) => pd.distance > JUMP_RANGE
   );
 
-  const { keysPressed } = useInput();
-
-  useEffect(() => {
-    console.log(
-      "[ShortRangeChartScreen] Using useInput hook for input state management."
-    );
-    // Cleanup logic for keysPressed is no longer needed as useInput handles it.
-  }, [keysPressed]);
-
   return (
     <>
       <div className="short-range-chart-container">
@@ -157,10 +148,8 @@ const ShortRangeChartScreen: React.FC = () => {
                         // Only allow clicking reachable planets
                         if (isInRange) {
                           setSelectedPlanetName(planet.name); // Update shared state
-                          // Optional: Immediately switch to planet info on click?
-                          // handleKeyDown({ key: 'Enter' } as KeyboardEvent); // Simulate Enter press
                         } else {
-                          console.log(`${planet.name} is out of range.`);
+                          console.log(`${planet.name} is out of range. Distance:`, distance);
                         }
                       }}
                     >

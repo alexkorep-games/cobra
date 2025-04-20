@@ -78,15 +78,6 @@ const App: React.FC = () => {
     load();
   }, [load]);
 
-  // Define which states show the new bottom toolbar
-  const toolbarVisibleStates: GameState[] = [
-    "buy_cargo",
-    "sell_cargo",
-    "planet_info",
-    "stats",
-    "short_range_chart", // Decide if chart needs it too
-  ];
-
   const renderSceneUIComponent = () => {
     // No changes needed inside this function itself,
     // the toolbar is rendered *outside* based on gameState
