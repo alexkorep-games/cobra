@@ -257,6 +257,7 @@ export function generatePlanets(
   const rng = new SimplePRNG(seed);
   const planets: PlanetInfo[] = [];
   const usedCoords = new Set<string>(); // Ensure unique coordinates
+  const galaxyRadius = Math.sqrt(count)*2;
 
   for (let i = 0; i < count; i++) {
     const name = generatePlanetName(rng);
@@ -269,8 +270,8 @@ export function generatePlanets(
 
     let x: number, y: number, coordKey: string;
     do {
-      x = rng.nextInt(-500, 500);
-      y = rng.nextInt(-500, 500);
+      x = rng.nextInt(-galaxyRadius, galaxyRadius);
+      y = rng.nextInt(-galaxyRadius, galaxyRadius);
       coordKey = `${x},${y}`;
     } while (usedCoords.has(coordKey)); // Find unique coordinates
     usedCoords.add(coordKey);

@@ -1,20 +1,12 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Coordinates, calculateDistance } from "@/classes/PlanetInfo";
-import { useShortRangeChartLogic } from "./useShortRangeChartLogic"; // Import hook
-import { usePlanetInfos } from "../../hooks/usePlanetInfos"; // Import shared state hook
-import { JUMP_RANGE } from "@/constants"; // Import jump range
-import { useInput } from "@/hooks/useInput";
+import { useShortRangeChartLogic } from "./useShortRangeChartLogic";
+import { usePlanetInfos } from "../../hooks/usePlanetInfos";
+import { JUMP_RANGE } from "@/constants";
 
-// Chart dimensions and scaling
-const CHART_PADDING = 30; // Px padding inside the chart area
-const MAX_COORD = 500; // Match the generation range in PlanetInfo.ts for scaling
+const CHART_PADDING = 30;
 
 const ShortRangeChartScreen: React.FC = () => {
-  // Call the hook to manage logic and selection state
-  const { reachablePlanets, selectedIndexInReachable } =
-    useShortRangeChartLogic();
-
-  // Get data from shared state hook
   const {
     planetInfos,
     currentPlanetName,
@@ -37,10 +29,52 @@ const ShortRangeChartScreen: React.FC = () => {
         });
       }
     };
+    let resizeTimer: NodeJS.Timeout;
+    const debouncedUpdateSize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(updateSize, 50); // Short debounce
+    };
+
     updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+    window.addEventListener("resize", debouncedUpdateSize);
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener("resize", debouncedUpdateSize);
+    };
   }, []);
+
+  const minChartDimension = Math.min(chartSize.width, chartSize.height);
+  const validMinDimension = Math.max(1, minChartDimension);
+  const targetCircleDiameter = validMinDimension / 2;
+  const effectiveScale =
+    JUMP_RANGE > 0 ? targetCircleDiameter / (JUMP_RANGE * 2) : 1;
+
+  // Function to convert planet coordinates to chart position (PIXELS)
+  const getChartPositionPx = (
+    planetCoords: Coordinates
+  ): { left: number; top: number } | null => {
+    // Return null if invalid
+    if (
+      !currentPlanet ||
+      chartSize.width <= 0 ||
+      chartSize.height <= 0 ||
+      effectiveScale <= 0
+    ) {
+      return null; // Indicate invalid position
+    }
+
+    const chartCenterX = chartSize.width / 2;
+    const chartCenterY = chartSize.height / 2;
+    const dx = planetCoords.x - currentPlanet.coordinates.x;
+    const dy = planetCoords.y - currentPlanet.coordinates.y;
+    const pixelOffsetX = dx * effectiveScale;
+    const pixelOffsetY = -dy * effectiveScale; // Y screen coordinate is inverted from cartesian Y
+
+    const finalPosX = chartCenterX + pixelOffsetX;
+    const finalPosY = chartCenterY + pixelOffsetY;
+
+    return { left: finalPosX, top: finalPosY };
+  };
 
   if (!currentPlanet) {
     return (
@@ -50,39 +84,6 @@ const ShortRangeChartScreen: React.FC = () => {
     );
   }
 
-  // Calculate scaling factors
-  const availableWidth = chartSize.width - CHART_PADDING * 2;
-  const availableHeight = chartSize.height - CHART_PADDING * 2;
-  const scaleX = availableWidth / (MAX_COORD * 2);
-  const scaleY = availableHeight / (MAX_COORD * 2);
-  const scale = Math.min(scaleX, scaleY);
-  const circleDiameter = JUMP_RANGE * 2 * scale;
-
-  // Function to convert planet coordinates to chart position (percentage)
-  const getChartPosition = (
-    planetCoords: Coordinates
-  ): { left: string; top: string } => {
-    const chartCenterX = chartSize.width / 2;
-    const chartCenterY = chartSize.height / 2;
-    const dx = planetCoords.x - currentPlanet.coordinates.x;
-    const dy = planetCoords.y - currentPlanet.coordinates.y;
-    const posX = chartCenterX + dx * scale;
-    const posY = chartCenterY - dy * scale;
-    const clampedX = Math.max(
-      CHART_PADDING / 2,
-      Math.min(chartSize.width - CHART_PADDING / 2, posX)
-    );
-    const clampedY = Math.max(
-      CHART_PADDING / 2,
-      Math.min(chartSize.height - CHART_PADDING / 2, posY)
-    );
-    return {
-      left: `${(clampedX / chartSize.width) * 100}%`,
-      top: `${(clampedY / chartSize.height) * 100}%`,
-    };
-  };
-
-  // Get all planets excluding current, calculate distance, sort
   const sortedPlanets = planetInfos
     .filter((p) => p.name !== currentPlanet.name)
     .map((p) => ({
@@ -91,7 +92,6 @@ const ShortRangeChartScreen: React.FC = () => {
     }))
     .sort((a, b) => a.distance - b.distance);
 
-  // Separate into reachable and unreachable based on distance
   const displayReachablePlanets = sortedPlanets.filter(
     (pd) => pd.distance <= JUMP_RANGE
   );
@@ -103,66 +103,111 @@ const ShortRangeChartScreen: React.FC = () => {
     <>
       <div className="short-range-chart-container">
         <div className="chart-title">SHORT RANGE CHART</div>
-        <div className="chart-area" ref={chartAreaRef}>
-          {chartSize.width > 0 && currentPlanet && (
-            <>
-              {/* Jump Range Circle */}
-              <div
-                className="chart-range-circle"
-                style={{
-                  width: `${circleDiameter}px`,
-                  height: `${circleDiameter}px`,
-                }}
-              ></div>
+        <div
+          className="chart-area"
+          ref={chartAreaRef}
+          style={{ position: "relative", overflow: "hidden" }}
+        >
+          {chartSize.width > 0 &&
+            chartSize.height > 0 &&
+            currentPlanet &&
+            effectiveScale > 0 && (
+              <>
+                {/* Jump Range Circle */}
+                <div
+                  className="chart-range-circle"
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    top: "50%",
+                    width: `${targetCircleDiameter}px`,
+                    height: `${targetCircleDiameter}px`,
+                    transform: "translate(-50%, -50%)",
+                    border: "1px dashed rgba(0, 255, 0, 0.5)",
+                    borderRadius: "50%",
+                    boxSizing: "border-box",
+                    pointerEvents: "none",
+                  }}
+                ></div>
 
-              {/* Current Location Crosshair */}
-              <div className="chart-crosshair"></div>
-              <div
-                className="planet-marker current-location"
-                style={{ left: "50%", top: "50%" }}
-              >
-                <span
-                  className="planet-label"
-                  style={{ marginLeft: "15px", color: "#00ff00" }}
+                {/* Current Location Crosshair */}
+                <div className="chart-crosshair"></div>
+
+                {/* Current Planet Marker Label */}
+                <div
+                  className="planet-marker current-location"
+                  style={{
+                    position: "absolute",
+                    left: "50%",
+                    top: "50%",
+                    transform: "translate(0, -50%)" /* Adjust label offset */,
+                  }}
                 >
-                  {currentPlanet.name}
-                </span>
-              </div>
+                  <span
+                    className="planet-label"
+                    style={{ marginLeft: "15px", color: "#00ff00" }}
+                  >
+                    {currentPlanet.name}
+                  </span>
+                </div>
 
-              {/* Planet Markers */}
-              {displayReachablePlanets
-                .concat(displayUnreachablePlanets)
-                .map(({ planet, distance }) => {
-                  const isInRange = distance <= JUMP_RANGE;
-                  const isSelected = planet.name === selectedPlanetName; // Check against shared state
-                  const pos = getChartPosition(planet.coordinates);
+                {/* Planet Markers */}
+                {displayReachablePlanets
+                  .concat(displayUnreachablePlanets)
+                  .map(({ planet, distance }) => {
+                    const isInRange = distance <= JUMP_RANGE;
+                    const isSelected = planet.name === selectedPlanetName;
+                    const posPx = getChartPositionPx(planet.coordinates); // Get { left: number, top: number } or null
 
-                  return (
-                    <div
-                      key={planet.name}
-                      className={`planet-marker ${
-                        isInRange ? "in-range" : "out-range"
-                      } ${isSelected ? "selected" : ""}`}
-                      style={{ left: pos.left, top: pos.top }}
-                      onClick={() => {
-                        // Only allow clicking reachable planets
-                        if (isInRange) {
-                          setSelectedPlanetName(planet.name); // Update shared state
-                        } else {
-                          console.log(`${planet.name} is out of range. Distance:`, distance);
-                        }
-                      }}
-                    >
-                      <div className="planet-dot"></div>
-                      <span className="planet-label">{planet.name}</span>
-                    </div>
-                  );
-                })}
-            </>
+                    if (!posPx) return null;
+
+                    return (
+                      <div
+                        key={planet.name}
+                        className={`planet-marker ${
+                          isInRange ? "in-range" : "out-range"
+                        } ${isSelected ? "selected" : ""}`}
+                        // Apply calculated PIXEL positions
+                        style={{
+                          position: "absolute",
+                          left: `${posPx.left}px`,
+                          top: `${posPx.top}px`,
+                          transform: "translate(-50%, -50%)",
+                        }}
+                        onClick={() => {
+                          if (isInRange) {
+                            setSelectedPlanetName(planet.name);
+                          } else {
+                            console.log(
+                              `${planet.name} is out of range. Distance:`,
+                              distance.toFixed(2)
+                            );
+                          }
+                        }}
+                      >
+                        <div className="planet-dot"></div>
+                        <span className="planet-label">{planet.name}</span>
+                      </div>
+                    );
+                  })}
+              </>
+            )}
+          {(chartSize.width <= 0 || !currentPlanet || effectiveScale <= 0) && (
+            <div
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                color: "grey",
+              }}
+            >
+              Initializing Chart...
+            </div>
           )}
         </div>
         <div className="chart-info-bar">
-          <span>Current System: {currentPlanet.name}</span>
+          <span>Current System: {currentPlanet?.name ?? "N/A"}</span>
           <span>Target: {selectedPlanetName ?? "NONE"}</span>
           <span>Fuel: {JUMP_RANGE.toFixed(1)} LY</span>
         </div>
