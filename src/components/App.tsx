@@ -11,7 +11,6 @@ import * as Constants from "@/constants";
 import { useInputSetup } from "@/hooks/useInput";
 import { MarketGenerator } from "@/classes/Market";
 import { useMarketState } from "@/hooks/useMarketState";
-import { useMarketGenerator } from "@/hooks/useMarketGenerator"; // Import the hook
 
 // Import Scene UI Overlay Components
 import LoadingScreen from "@/screens/loading/LoadingScreen";
@@ -36,8 +35,7 @@ const GlobalStateInitializer: React.FC = () => {
   useInputSetup();
   const { setPlanetInfos, setCurrentPlanetName } = usePlanetInfos();
   const { isLoadingComplete } = useAssets();
-  const { setMarket } = useMarketState();
-  const generateMarket = useMarketGenerator(); // Get the market generator function
+  const { setMarket } = useMarketState(); // Get the market setter directly
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -49,28 +47,24 @@ const GlobalStateInitializer: React.FC = () => {
       setPlanetInfos(generatedPlanets);
       if (generatedPlanets.length > 0) {
         const initialPlanet = generatedPlanets[Constants.INITIAL_PLANET_INDEX];
-        setCurrentPlanetName(initialPlanet.name);
+        setCurrentPlanetName(initialPlanet.name); // Update current planet name state
         console.log(`Set initial planet: ${initialPlanet.name}`);
 
-        // Generate initial market data *after* setting the planet
-        // We call this here OR rely on the navigation logic (e.g., in useStatsLogic)
-        // Calling it here ensures it's ready for the first 'stats' view.
         console.log(`Generating initial market for ${initialPlanet.name}...`);
-        generateMarket(); // Call the hook's function
+        const visitSerial = 0;
+        const initialMarket = MarketGenerator.generate(
+          initialPlanet,
+          Constants.PLANET_SEED,
+          visitSerial
+        );
+        setMarket(initialMarket);
         console.log("Initial market generated and set.");
-
       } else {
         console.error("No planets generated!");
         setMarket(null);
       }
     }
-  }, [
-    isLoadingComplete,
-    setPlanetInfos,
-    setCurrentPlanetName,
-    setMarket,
-    generateMarket, // Add generateMarket to dependencies
-  ]);
+  }, [isLoadingComplete, setPlanetInfos, setCurrentPlanetName, setMarket]);
 
   return null;
 };
@@ -90,7 +84,7 @@ const App: React.FC = () => {
     "sell_cargo",
     "planet_info",
     "stats",
-    "short_range_chart" // Decide if chart needs it too
+    "short_range_chart", // Decide if chart needs it too
   ];
 
   const renderSceneUIComponent = () => {
@@ -184,11 +178,7 @@ const App: React.FC = () => {
       >
         <Suspense fallback={null}>
           <ambientLight intensity={0.6} />
-          <directionalLight
-            position={[10, 15, 5]}
-            intensity={1.0}
-            castShadow
-          />
+          <directionalLight position={[10, 15, 5]} intensity={1.0} castShadow />
           <GlobalStateInitializer />
           {renderSceneR3FContent()}
           <UndockingSquares visible={showUndockingSquares} />
