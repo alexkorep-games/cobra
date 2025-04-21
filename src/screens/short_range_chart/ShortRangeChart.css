@@ -85,84 +85,67 @@
 
 /* Container for each planet (dot + label) */
 /* Its top-left corner is positioned via inline style (left, top) */
-/* NOW, we give it size and center it */
 .planet-marker {
   position: absolute;
   cursor: pointer;
   pointer-events: auto; /* Allow clicks on markers */
-  /* Add dimensions to create a clickable area */
   width: 16px; /* Adjust size as needed - make it large enough for easy clicking */
   height: 16px;
-  /* Add transform back to center THIS marker div at the coords */
   transform: translate(-50%, -50%);
-  /* Optional: Add a border during debugging to see the clickable area */
-  /* border: 1px dotted red; */
+  /* border: 1px dotted red; */ /* Debugging */
 }
 
-/* Style for markers representing the current location (label only usually) */
+/* Style for markers representing the current location */
 .planet-marker.current-location {
-  pointer-events: none; /* Don't allow clicking the current location marker */
-  /* No transform needed here as it's positioned differently */
+  /* *** Ensure it's clickable *** */
+  pointer-events: auto; /* Override if previously none */
+  cursor: pointer; /* Indicate clickability */
   transform: none; /* Override the marker transform */
   width: auto; /* Reset size */
   height: auto;
-  /* Positioned via inline style (left: 50%, top: 50%) */
+  z-index: 2; /* Ensure it's clickable above range circle if needed */
 }
 
 /* The visible dot representing the planet */
-/* Position it in the center of the now-sized .planet-marker */
 .planet-dot {
   position: absolute;
-  /* Position dot's center at the parent marker's center */
   left: 50%;
   top: 50%;
-  /* Center the dot itself */
   transform: translate(-50%, -50%);
-  /* Visual styling */
-  width: 6px; /* Slightly smaller dot */
+  width: 6px;
   height: 6px;
   border-radius: 50%;
-  border: 1px solid #ffffff; /* White border */
-  pointer-events: none; /* Allow clicks to pass through to parent marker */
+  border: 1px solid #ffffff;
+  pointer-events: none;
   box-sizing: border-box;
 }
 
 /* The text label next to the planet dot */
-/* Position it relative to the center of the .planet-marker */
 .planet-label {
   position: absolute;
-  /* Position relative to the parent marker's center */
-  left: 50%; /* Start from horizontal center */
-  top: 50%; /* Start from vertical center */
-
-  /* Offset the label from the center dot */
-  /* Adjust these values to position the label relative to the dot's center */
-  margin-left: 8px; /* Move right from center */
-  transform: translateY(-50%); /* Vertically center the label */
-
-  /* Visual styling */
+  left: 50%;
+  top: 50%;
+  margin-left: 8px;
+  transform: translateY(-50%);
   font-size: 0.8em;
   color: white;
-  background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent background */
+  background-color: rgba(0, 0, 0, 0.6);
   padding: 1px 4px;
   border-radius: 3px;
-  white-space: nowrap; /* Prevent label text wrapping */
+  white-space: nowrap;
 }
 
 /* Specific style for the current planet label */
 /* Keep this positioning relative to the center of the chart */
 .planet-marker.current-location .planet-label {
-  /* Position relative to the center crosshair (handled by parent inline style) */
-  position: absolute; /* Ensure absolute positioning */
+  position: absolute;
   left: 15px; /* Offset from the parent's left (50%) */
   top: 0; /* Align vertically with parent's top (50%) */
-  transform: translateY(-50%); /* Center vertically */
+  transform: translateY(-50%);
   margin-left: 0; /* Reset margin */
-
-  /* Visuals */
   color: #00ff00; /* Bright Green */
   font-weight: bold;
-  background-color: transparent; /* No background for current label */
+  background-color: transparent;
   padding: 0;
 }
 
@@ -171,7 +154,6 @@
 .planet-marker.in-range .planet-dot {
   background-color: #00ff00; /* Green dot for reachable */
 }
-/* Make the cursor indicate clickability only for in-range markers */
 .planet-marker.in-range {
   cursor: pointer;
 }
@@ -180,27 +162,37 @@
 }
 
 .planet-marker.out-range {
-  cursor: not-allowed; /* Indicate not clickable */
+  cursor: not-allowed;
 }
 .planet-marker.out-range .planet-dot {
-  background-color: #ff4444; /* Reddish dot for unreachable */
-  border-color: #ffaaaa; /* Lighter red border */
+  background-color: #ff4444; /* Reddish dot */
+  border-color: #ffaaaa;
 }
 .planet-marker.out-range .planet-label {
   color: #ff8888; /* Lighter red label */
 }
 
+/* --- Selection Styling --- */
+/* Apply to the DOT inside the selected marker */
 .planet-marker.selected .planet-dot {
-  /* Add outline/animation to the dot for selection */
   outline: 2px solid cyan;
   outline-offset: 2px;
   animation: blink-animation 0.8s step-start infinite;
 }
-/* Optional: Style label of selected planet */
+
+/* Style label of selected planet */
 .planet-marker.selected .planet-label {
   color: cyan;
   font-weight: bold;
 }
+
+/* *** Ensure selected style applies to current location label when selected *** */
+.planet-marker.current-location.selected .planet-label {
+  color: cyan; /* Apply cyan color */
+  /* Add blinking or outline to the label itself if desired */
+  /* animation: blink-animation 0.8s step-start infinite; */
+}
+
 /* Ensure selected marker keeps pointer cursor if in range */
 .planet-marker.selected.in-range {
   cursor: pointer;

@@ -41,7 +41,10 @@ const PlanetInfoScreen: React.FC = () => {
       ? calculateDistance(currentPlanet.coordinates, selectedPlanet.coordinates)
       : Infinity; // Treat as infinite if planets are missing
 
-  const canJump = distance <= JUMP_RANGE && fuel >= distance;
+  const canJump =
+    distance <= JUMP_RANGE &&
+    fuel >= distance &&
+    selectedPlanet.name !== currentPlanet?.name;
 
   // Format population nicely
   const formatPopulation = (popMillions: number): string => {
