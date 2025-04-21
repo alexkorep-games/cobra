@@ -20,6 +20,7 @@ import { useAssets } from "@/hooks/useAssets";
 import { usePlanetInfos } from "../../hooks/usePlanetInfos";
 import LaserBeam from "@/components/r3f/LaserBeam";
 import { useAtomValue } from "jotai"; // << Import useAtomValue
+import ParticleCloud from "@/components/r3f/ParticleCloud"; // <-- IMPORT ParticleCloud
 
 const SpaceFlightSceneR3F: React.FC = () => {
   const { assets } = useAssets();
@@ -60,7 +61,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
   const stationPosition = useMemo(() => {
     if (assets?.planet) {
-      console.log('assets.planet.radius', assets.planet.radius);
+      console.log("assets.planet.radius", assets.planet.radius);
       return new THREE.Vector3(0, 0, assets.planet.radius * 4);
     }
     return new THREE.Vector3(0, 0, 10000);
@@ -452,7 +453,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
           visible={true}
         />
       )}
-
       {/* Space Station */}
       {assets.spaceStation && assets.planet && (
         <group
@@ -469,7 +469,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
           />
         </group>
       )}
-
       {/* Pirates */}
       {assets.pirateShips &&
         assets.pirateShips.length > 0 &&
@@ -481,9 +480,10 @@ const SpaceFlightSceneR3F: React.FC = () => {
             onPirateRadarUpdate={handlePirateRadarUpdate}
           />
         )}
-
       {/* Laser Beam */}
       <LaserBeam camera={camera} onHeatUpdate={handleLaserHeatUpdate} />
+      {/* Particle Cloud */}
+      <ParticleCloud /> {/* <-- ADD PARTICLE CLOUD COMPONENT */}
     </>
   );
 };

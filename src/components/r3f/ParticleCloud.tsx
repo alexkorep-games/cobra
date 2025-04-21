@@ -1,7 +1,7 @@
 import React from "react";
 import * as Constants from "@/constants";
 
-export const ParticleCloud: React.FC = () => {
+const ParticleCloud: React.FC = () => {
   // Cloud of particles that surrounds the ship
   // As the ship moves, it goes through the particles
   // The particles that get too far away are removed
@@ -10,3 +10,4 @@ export const ParticleCloud: React.FC = () => {
   console.log('Constants.PARTICLE_CLOUD_SIZE', Constants.PARTICLE_CLOUD_SIZE);
   return null;
 };
+export default ParticleCloud;

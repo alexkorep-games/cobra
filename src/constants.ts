@@ -64,5 +64,8 @@ export const JUMP_FOV_DURATION = 0.2; // Duration of the FOV effect in seconds
 export const JUMP_FOV_LERP_SPEED = 8; // How fast FOV interpolates back to normal
 
 // Particles
-export const PARTICLE_COUNT = 1000; // Number of particles in the system
-export const PARTICLE_CLOUD_SIZE = 1; // Size of the particle cloud in units
+export const PARTICLE_COUNT = 1; // Number of particles in the system (Adjust for performance)
+export const PARTICLE_CLOUD_SIZE = 20; // Size of the cloud volume around the player (e.g., 2km cube)
+export const PARTICLE_RESPAWN_FACTOR = 1.0; // How far behind/ahead particles respawn relative to cloud size/2
+export const PARTICLE_SIZE = 1.0; // Size of each particle (Adjust based on units/visuals)
+export const PARTICLE_COLOR = 0xaaaaaa; // Color of the particles (e.g., dim white/grey)
