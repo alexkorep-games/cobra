@@ -1,6 +1,7 @@
 /* src/features/buy_cargo/Market.css */
 .market-container {
   padding: 15px;
+  padding-bottom: var(--bottom-offset);
   color: #ffff00; /* Yellow text */
   display: flex;
   flex-direction: column;
