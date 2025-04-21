@@ -1,5 +1,3 @@
-// src/constants.ts
-/* src/constants.ts */
 import * as THREE from "three";
 
 export const SHIP_DISPLAY_DURATION = 10.0; // Seconds
@@ -15,8 +13,10 @@ export const TOTAL_CYCLE_DURATION = SHIP_DISPLAY_DURATION;
 export const START_Z = -150;
 export const TARGET_POS = new THREE.Vector3(-3, 0, 0);
 
+// ALL UNITS ARE KILOMETERS
+
 // Flight Dynamics
-export const HYPERSPACE_SPEED = 500000.0;
+export const JUMP_SPEED = 500000.0;
 export const MAX_SPEED = 500.0;
 export const MIN_SPEED = 0.0;
 export const ACCELERATION = 150.0; // Units per second^2
@@ -29,7 +29,6 @@ export const MAX_VISUAL_ROLL_RATE = Math.PI * 0.5; // Radians/sec (Used for HUD 
 export const MAX_VISUAL_PITCH_RATE = Math.PI * 0.3; // Radians/sec (Used for HUD Normalization)
 
 // Space Station Constants
-// export const STATION_POSITION = new THREE.Vector3(0, 0, 0); // REMOVED - Position is now dynamic
 export const STATION_DOCKING_RADIUS = 10; // Distance to trigger docking/return to title
 export const UNDOCK_DISTANCE = 10;
 
@@ -51,7 +50,7 @@ export const INITIAL_PLANET_INDEX = 0; // Start at the first planet
 
 // Rendering & Radar
 export const SHIP_SCALE = 6;
-export const CAMERA_FAR_PLANE = 10_000_000; //
+export const CAMERA_FAR_PLANE = 10_000_000;
 export const RADAR_DISTANCE = 2000; // Distance to show objects on radar, meters?
 export const RADAR_DISTANCE_SQUARED = RADAR_DISTANCE * RADAR_DISTANCE;
 
