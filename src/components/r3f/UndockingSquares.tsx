@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 
 interface UndockingSquaresProps {
   count?: number;
@@ -23,6 +23,7 @@ const UndockingSquares: React.FC<UndockingSquaresProps> = ({
   visible = false, // Default to hidden, hook will control this
 }) => {
   const groupRef = useRef<THREE.Group>(null!);
+  const { camera } = useThree(); // Get camera object
 
   // Define the square geometry vertices once
   const squareVertices = useMemo(() => {
@@ -81,16 +82,29 @@ const UndockingSquares: React.FC<UndockingSquaresProps> = ({
     }
   });
 
-  // Control group visibility and reset position based on the prop
+  // Control group visibility, reset its position, AND RESET CAMERA ORIENTATION
   useEffect(() => {
     if (groupRef.current) {
       groupRef.current.visible = visible;
       if (visible) {
-        // Reset position when becoming visible
-        groupRef.current.position.z = 0;
+        // Reset squares group position relative to camera's new forward
+        groupRef.current.position.set(0, 0, 0); // Squares start relative to camera origin
+
+        // *** Reset Camera Position & Orientation ***
+        console.log(
+          "UndockingSquares visible: Resetting camera position and orientation."
+        );
+        // Position camera slightly behind origin, looking forward
+        camera.position.set(0, 0, 5); // Start slightly back
+        // Reset rotation/look direction (identity quaternion looks down -Z)
+        camera.quaternion.set(0, 0, 0, 1);
+        // Also reset Euler rotation just in case it was used elsewhere
+        camera.rotation.set(0, 0, 0);
+        // Ensure the camera's matrix is updated if other components rely on it immediately
+        camera.updateMatrixWorld(true);
       }
     }
-  }, [visible]);
+  }, [visible, camera]);
 
   return (
     <group ref={groupRef} visible={visible}>
