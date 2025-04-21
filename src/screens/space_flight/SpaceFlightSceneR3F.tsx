@@ -444,6 +444,8 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
   return (
     <>
+      {/* Stars */}
+      <StarsSphere />
       {/* Planet */}
       {assets.planet && (
         <PlanetComponent
@@ -482,8 +484,6 @@ const SpaceFlightSceneR3F: React.FC = () => {
         )}
       {/* Laser Beam */}
       <LaserBeam camera={camera} onHeatUpdate={handleLaserHeatUpdate} />
-      {/* Stars */}
-      <StarsSphere />
     </>
   );
 };

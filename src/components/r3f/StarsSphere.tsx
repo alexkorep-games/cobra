@@ -1,7 +1,11 @@
 // src/components/r3f/StarsSphere.tsx
-import React, { useRef, useMemo } from "react";
+// (Keep this component largely the same, maybe revert position generation
+// to be on the surface if you prefer, or keep volume - visually similar effect now)
+
+import React, { useRef, useMemo, useEffect } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import * as Constants from "@/constants"; // Import constants
+import * as Constants from "@/constants";
 
 interface StarsSphereProps {
   radius?: number;
@@ -11,33 +15,36 @@ interface StarsSphereProps {
 }
 
 export const StarsSphere: React.FC<StarsSphereProps> = ({
-  radius = Constants.STARS_RADIUS, // Use constant for radius
-  count = 5000, // Number of stars
-  size = 0.5, // Size of each star point
-  color = 0xffffff, // White stars
+  radius = Constants.STARS_RADIUS, // Or camera.far / 2, doesn't matter hugely
+  count = 1000,
+  size = 1,
+  color = 0xffffff,
 }) => {
   const pointsRef = useRef<THREE.Points>(null!);
+  const { camera } = useThree(); // Get the default camera
 
-  // Memoize the positions array generation
   const positions = useMemo(() => {
     const posArray = new Float32Array(count * 3);
+    const vec = new THREE.Vector3();
+
     for (let i = 0; i < count; i++) {
-      // Generate points on the surface of a sphere
-      const phi = Math.acos(-1 + (2 * i) / count); // Distribute points more evenly
-      const theta = Math.sqrt(count * Math.PI) * phi;
+        // Get a random point on the surface
+        vec.set(
+            Math.random() * 2 - 1,
+            Math.random() * 2 - 1,
+            Math.random() * 2 - 1
+        );
+        vec.normalize().multiplyScalar(radius); // Normalize to get direction, scale by radius
 
-      const x = radius * Math.sin(phi) * Math.cos(theta);
-      const y = radius * Math.sin(phi) * Math.sin(theta);
-      const z = radius * Math.cos(phi);
-
-      posArray[i * 3] = x;
-      posArray[i * 3 + 1] = y;
-      posArray[i * 3 + 2] = z;
+        posArray[i * 3] = vec.x;
+        posArray[i * 3 + 1] = vec.y;
+        posArray[i * 3 + 2] = vec.z;
     }
+
     return posArray;
   }, [count, radius]);
 
-  // Memoize geometry and material
+  // --- Geometry ---
   const geometry = useMemo(() => {
     const geom = new THREE.BufferGeometry();
     geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
@@ -48,21 +55,26 @@ export const StarsSphere: React.FC<StarsSphereProps> = ({
     return new THREE.PointsMaterial({
       color: color,
       size: size,
-      sizeAttenuation: false, // Stars should have a constant size regardless of distance
-      depthWrite: false, // Render behind opaque objects
-      blending: THREE.AdditiveBlending, // Make stars brighter when overlapping
-      transparent: true, // Needed for additive blending usually
-      opacity: 0.8, // Slight transparency
+      sizeAttenuation: false, // Important: Keep size constant
+      depthWrite: false,     // Important: Don't block objects behind
+      depthTest: false,      // Important: Render regardless of depth buffer
+      blending: THREE.AdditiveBlending,
     });
   }, [color, size]);
+
+  useFrame(() => {
+    if (pointsRef.current) {
+      pointsRef.current.position.copy(camera.position);
+    }
+  });
 
   return (
     <points
       ref={pointsRef}
       geometry={geometry}
       material={material}
-      renderOrder={-1} // Hint to render early (behind other things)
-      frustumCulled={false} // Ensure stars are always rendered, even if camera is inside the sphere bounds slightly
+      renderOrder={-1} // Render early, but depthTest=false ensures it's behind
+      frustumCulled={false} // Still useful
     />
   );
 };
