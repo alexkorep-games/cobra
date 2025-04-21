@@ -1,0 +1,54 @@
+/* src/components/hud/SpaceFlightToolbar.css */
+.space-flight-toolbar {
+  position: fixed; /* Use fixed to ensure it stays at the bottom */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--bottom-toolbar-height, 45px); /* Use variable or default */
+  background-color: rgba(0, 0, 0, 0.85);
+  border-top: 2px solid #ff00ff; /* Magenta border for flight controls */
+  display: flex;
+  justify-content: space-around; /* Distribute space AROUND buttons */
+  align-items: center;
+  padding: 0 10px;
+  box-sizing: border-box;
+  z-index: 20; /* Ensure it's above other overlays */
+  pointer-events: auto; /* Enable clicks */
+  font-family: "Press Start 2P", cursive;
+}
+
+/* Reuse button styles from BottomToolbar.css if desired, or define specific ones */
+.space-flight-toolbar .toolbar-button {
+  font-family: inherit;
+  font-size: 10px;
+  color: #ff00ff; /* Magenta text */
+  background-color: transparent;
+  border: 1px solid #ff00ff; /* Magenta border */
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  text-transform: uppercase;
+  min-width: 90px; /* Slightly wider buttons? */
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.space-flight-toolbar .toolbar-button:hover {
+  background-color: rgba(255, 0, 255, 0.2); /* Magenta glow on hover */
+}
+
+/* Keep disabled style consistent */
+.space-flight-toolbar .toolbar-button.disabled,
+.space-flight-toolbar .toolbar-button:disabled {
+  border-color: #880088; /* Dim magenta */
+  color: #880088;
+  cursor: not-allowed;
+  background-color: transparent;
+}
+
+.space-flight-toolbar .toolbar-button.disabled:hover,
+.space-flight-toolbar .toolbar-button:disabled:hover {
+  background-color: transparent;
+}
+
+/* No 'active' state needed for these buttons as they trigger actions/transitions */

@@ -12,30 +12,36 @@ import { useInputSetup } from "@/hooks/useInput";
 import { MarketGenerator } from "@/classes/Market";
 import { useMarketState } from "@/hooks/useMarketState";
 
-// Import Scene UI Overlay Components
+// --- Import Scene UI Overlay Components ---
 import LoadingScreen from "@/screens/loading/LoadingScreen";
 import TitleScreen from "@/screens/title/TitleScreen";
 import CreditsScreen from "@/screens/credits/CreditsScreen";
 import StatsScreen from "@/screens/stats/StatsScreen";
-import SpaceFlightScreenUI from "@/screens/space_flight/SpaceFlightScreenUI"; // Includes Coordinates and BottomHud
+import SpaceFlightScreenUI from "@/screens/space_flight/SpaceFlightScreenUI";
 import ShortRangeChartScreen from "@/screens/short_range_chart/ShortRangeChartScreen";
 import PlanetInfoScreen from "@/screens/planet_info/PlanetInfoScreen";
 import UndockingScreen from "@/screens/undocking/UndockingScreen";
 import BuyCargoScreen from "@/screens/buy_cargo/BuyCargoScreen";
 import SellCargoScreen from "@/screens/sell_cargo/SellCargoScreen";
-import TargetPlanetPricesScreen from "@/screens/target_planet_prices/TargetPlanetPricesScreen"; // <-- Import new screen
-import BottomToolbar from "@/components/hud/BottomToolbar"; // *** IMPORT THE NEW TOOLBAR ***
+import TargetPlanetPricesScreen from "@/screens/target_planet_prices/TargetPlanetPricesScreen";
+import HyperspaceScreen from "@/screens/hyperspace_jump/HyperspaceScreen"; // <-- Import Hyperspace UI
+import BottomToolbar from "@/components/hud/BottomToolbar"; // Docked Toolbar
+import SpaceFlightToolbar from "@/components/hud/SpaceFlightToolbar"; // <-- Import Flight Toolbar
 
-// Import R3F Scene Content Components
+// --- Import R3F Scene Content Components ---
 import UndockingSquares from "@/components/r3f/UndockingSquares";
 import TitleSceneR3F from "@/screens/title/TitleSceneR3F";
 import SpaceFlightSceneR3F from "@/screens/space_flight/SpaceFlightSceneR3F";
+import HyperspaceAnimation from "@/components/r3f/HyperspaceAnimation"; // <-- Import Hyperspace Animation
+
+// --- Import Logic Hooks for States ---
+import { useHyperspaceLogic } from "@/screens/hyperspace_jump/useHyperspaceLogic"; // <-- Import Hyperspace Logic
 
 const GlobalStateInitializer: React.FC = () => {
   useInputSetup();
   const { setPlanetInfos, setCurrentPlanetName } = usePlanetInfos();
   const { isLoadingComplete } = useAssets();
-  const { setMarket } = useMarketState(); // Get the market setter directly
+  const { setMarket } = useMarketState();
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -47,7 +53,7 @@ const GlobalStateInitializer: React.FC = () => {
       setPlanetInfos(generatedPlanets);
       if (generatedPlanets.length > 0) {
         const initialPlanet = generatedPlanets[Constants.INITIAL_PLANET_INDEX];
-        setCurrentPlanetName(initialPlanet.name); // Update current planet name state
+        setCurrentPlanetName(initialPlanet.name);
         console.log(`Set initial planet: ${initialPlanet.name}`);
 
         console.log(`Generating initial market for ${initialPlanet.name}...`);
@@ -74,13 +80,16 @@ const App: React.FC = () => {
   const { load, assets, isLoadingComplete } = useAssets();
   const { introMusicRef, undockSoundRef } = useAudioManager();
 
+  // --- Initialize State Logic Hooks ---
+  // Initialize hooks for states that need continuous logic or setup/cleanup
+  // Note: Some hooks might be called directly within their respective screen components if simpler
+  useHyperspaceLogic(); // Initialize hyperspace logic
+
   useEffect(() => {
     load();
   }, [load]);
 
   const renderSceneUIComponent = () => {
-    // No changes needed inside this function itself,
-    // the toolbar is rendered *outside* based on gameState
     try {
       switch (gameState) {
         case "loading":
@@ -90,22 +99,23 @@ const App: React.FC = () => {
         case "credits":
           return <CreditsScreen />;
         case "stats":
-          return <StatsScreen />; // Will render content, toolbar rendered below
+          return <StatsScreen />;
         case "undocking":
           return <UndockingScreen undockSoundRef={undockSoundRef} />;
         case "space_flight":
-          // SpaceFlightScreenUI now implicitly includes CoordinatesDisplay and BottomHud
           return <SpaceFlightScreenUI />;
         case "short_range_chart":
-          return <ShortRangeChartScreen />; // Will render content, toolbar rendered below
+          return <ShortRangeChartScreen />;
         case "planet_info":
-          return <PlanetInfoScreen />; // Will render content, toolbar rendered below
+          return <PlanetInfoScreen />;
         case "buy_cargo":
-          return <BuyCargoScreen />; // Will render content, toolbar rendered below
+          return <BuyCargoScreen />;
         case "sell_cargo":
-          return <SellCargoScreen />; // Will render content, toolbar rendered below
-        case "target_planet_prices": // <-- Add case for new screen
+          return <SellCargoScreen />;
+        case "target_planet_prices":
           return <TargetPlanetPricesScreen />;
+        case "hyperspace_jump": // <-- Handle new state
+          return <HyperspaceScreen />;
         default:
           return (
             <div className="center-text">Unknown Game State: {gameState}</div>
@@ -128,11 +138,11 @@ const App: React.FC = () => {
     switch (gameState) {
       case "title":
         return <TitleSceneR3F assets={assets} introMusicRef={introMusicRef} />;
-      case "undocking":
-        return null;
       case "space_flight":
         return <SpaceFlightSceneR3F />;
-      // R3F content for docked/info screens is likely null or minimal
+      // R3F content for docked/info/animation screens
+      case "undocking": // UndockingSquares are handled separately below
+      case "hyperspace_jump": // HyperspaceAnimation handled separately below
       case "buy_cargo":
       case "sell_cargo":
       case "stats":
@@ -151,7 +161,21 @@ const App: React.FC = () => {
     return <LoadingScreen />;
   }
 
+  // Determine visibility for special R3F effects based on state
   const showUndockingSquares = gameState === "undocking";
+  const showHyperspaceAnimation = gameState === "hyperspace_jump";
+
+  // Determine which toolbar to show
+  const showDockedToolbar = [
+    "buy_cargo",
+    "sell_cargo",
+    "planet_info",
+    "stats",
+    "short_range_chart",
+    "target_planet_prices", // Show docked toolbar for target prices too? Or none? Let's add it.
+  ].includes(gameState);
+
+  const showFlightToolbar = gameState === "space_flight";
 
   return (
     <div id="container">
@@ -175,7 +199,9 @@ const App: React.FC = () => {
           <directionalLight position={[10, 15, 5]} intensity={1.0} castShadow />
           <GlobalStateInitializer />
           {renderSceneR3FContent()}
+          {/* Conditionally render specific R3F animations */}
           <UndockingSquares visible={showUndockingSquares} />
+          <HyperspaceAnimation visible={showHyperspaceAnimation} />
         </Suspense>
       </Canvas>
 
@@ -184,12 +210,12 @@ const App: React.FC = () => {
         {/* Render the main UI component for the current state */}
         {renderSceneUIComponent()}
 
-        {/* *** Conditionally render the NEW BottomToolbar *** */}
-        {/* The toolbar component itself checks the state now */}
-        <BottomToolbar />
+        {/* Conditionally render the correct Bottom Toolbar */}
+        {showDockedToolbar && <BottomToolbar />}
+        {showFlightToolbar && <SpaceFlightToolbar />}
 
-        {/* NOTE: SpaceFlightScreenUI now renders the BottomHud internally */}
-        {/* Do NOT render BottomHud here globally */}
+        {/* NOTE: SpaceFlightScreenUI renders BottomHud internally */}
+        {/* Ensure BottomHud is NOT rendered globally here */}
       </div>
     </div>
   );

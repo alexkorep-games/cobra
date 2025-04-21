@@ -4,11 +4,13 @@ import "../../components/hud/BottomToolbar.css"; // Import CSS for button stylin
 import { useStatsLogic } from "@/screens/stats/useStatsLogic";
 import { usePlayerState } from "@/hooks/usePlayerState";
 import { usePlanetInfos } from "@/hooks/usePlanetInfos";
+import { useGameState } from "@/hooks/useGameState"; // <-- Import useGameState
 
 const FUEL_COST_PER_LY = 10; // Example cost: 10 Credits per Light Year
 
 const StatsScreen: React.FC = () => {
   useStatsLogic();
+  const { setGameState } = useGameState(); // <-- Get setGameState
   // Get player data from the hook
   const {
     cash,
@@ -46,6 +48,12 @@ const StatsScreen: React.FC = () => {
     setFuelLevel(maxFuel); // Fill the tank
     setCash(cash - totalCost); // Deduct cost
     // TODO: Add sound/visual feedback for purchase success
+  };
+
+  // --- Undock Logic ---
+  const handleUndock = () => {
+    console.log("Undocking initiated...");
+    setGameState("undocking"); // <-- Change state to undocking
   };
 
   // Convert Set to Array for rendering equipment
@@ -113,6 +121,18 @@ const StatsScreen: React.FC = () => {
         {generalEquipment.map((item) => (
           <p key={item}>{item}</p>
         ))}
+        {/* --- Add Undock Button --- */}
+        <div style={{ marginTop: "20px" }}>
+          <button
+            className={`toolbar-button`} // Always enabled when docked
+            onClick={handleUndock}
+            style={{ minWidth: "120px" }} // Adjust size as needed
+            title="Undock from station and launch into space"
+          >
+            UNDOCK
+          </button>
+        </div>
+        {/* --- End Undock Button --- */}
       </div>
     </>
   );

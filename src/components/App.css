@@ -45,17 +45,21 @@ canvas {
   height: 100%;
   display: flex;
   flex-direction: column;
-  pointer-events: none;
+  pointer-events: none; /* Overlay itself doesn't catch events */
   box-sizing: border-box;
   padding: 10px;
+  /* Remove padding-bottom here, manage spacing via --bottom-offset on content */
   z-index: 1;
 }
 
 .top-bar,
-.bottom-bar {
+.bottom-bar, /* This is the space flight HUD */
+.bottom-toolbar, /* This is the DOCKED toolbar */
+.space-flight-toolbar /* This is the FLIGHT toolbar */ {
   width: 100%;
   box-sizing: border-box;
-  pointer-events: auto;
+  pointer-events: auto; /* Toolbars and HUD need events */
+  flex-shrink: 0; /* Prevent bars/toolbars from shrinking */
 }
 
 .top-bar {
@@ -66,7 +70,7 @@ canvas {
   text-align: center;
   padding: 5px 0;
   border-bottom: 2px solid #ffff00;
-  z-index: 10;
+  z-index: 10; /* Below toolbars */
 }
 
 .top-left-coords {
@@ -76,7 +80,7 @@ canvas {
   color: #00ff00;
   font-size: 0.9em;
   pointer-events: none;
-  z-index: 10;
+  z-index: 10; /* Below toolbars */
 }
 
 .center-text {
@@ -89,7 +93,7 @@ canvas {
   color: #00ff00;
   width: 80%;
   pointer-events: auto;
-  z-index: 10;
+  z-index: 10; /* Below toolbars */
 }
 .center-text.small {
   font-size: 1.2em;
@@ -97,9 +101,11 @@ canvas {
   color: #ffffff;
 }
 
+/* Styles for the Space Flight HUD (Bottom Bar) */
 .bottom-bar {
   position: absolute;
-  bottom: 10px;
+  /* Position it *above* the space flight toolbar */
+  bottom: var(--bottom-toolbar-height);
   left: 10px;
   right: 10px;
   border: 2px solid #ffff00;
@@ -108,7 +114,7 @@ canvas {
   justify-content: space-between;
   padding: 5px;
   min-height: 80px;
-  z-index: 10;
+  z-index: 15; /* Above general overlay, below toolbars */
 }
 
 .hud-left,
@@ -255,35 +261,48 @@ canvas {
   display: none;
 }
 
-.overlay
-  > div:not(.top-bar):not(.bottom-bar):not(.bottom-toolbar):not(
-    .top-left-coords
-  ):not(.center-text) {
-  flex-grow: 1;
-  margin-bottom: var(--bottom-offset);
-  position: relative;
-  overflow: hidden;
-  pointer-events: auto;
-  display: flex;
+/* --- Content Area Management --- */
+/* Selects direct div children of .overlay intended as main content areas */
+/* Excludes specific bars, toolbars, and floating elements */
+.overlay > div:not(.top-bar):not(.bottom-bar):not(.bottom-toolbar):not(
+    .space-flight-toolbar /* Exclude new toolbar */
+  ):not(.top-left-coords):not(.center-text) {
+  flex-grow: 1; /* Allow content to fill space */
+  margin-bottom: var(
+    --bottom-offset
+  ); /* Add space ABOVE the potential bottom toolbar */
+  position: relative; /* Needed for potential internal absolute positioning */
+  overflow: hidden; /* Prevent content overflow */
+  pointer-events: auto; /* Allow interaction with content */
+  display: flex; /* Use flex for internal layout */
   flex-direction: column;
   box-sizing: border-box;
+  /* border: 1px dotted lime; */ /* Debugging */
 }
 
+/* --- Special cases where margin-bottom should be 0 --- */
+/* Screens that should fill the entire area without margin (often full-screen overlays) */
 .overlay > #loader-screen,
 .overlay > #credits-text,
-.overlay > #title-screen-container,
-.overlay > #space-flight-ui-container,
-.overlay > #undocking-screen-container,
-.overlay > #target-prices-screen {
-  margin-bottom: 0;
+.overlay > #title-screen-container, /* Assuming title uses this ID */
+.overlay > #space-flight-ui-container, /* Assuming flight UI uses this ID */
+.overlay > #undocking-screen-container, /* Assuming undocking uses this ID */
+.overlay > #hyperspace-jump-container /* Assuming hyperspace uses this ID */ {
+  margin-bottom: 0; /* Remove bottom margin for these */
+  /* border: 1px dotted red; */ /* Debugging */
 }
 
+/* --- Specific Screen Styles --- */
+
+/* Fallback if content area doesn't have a specific ID container */
+/* This might apply to StatsScreen, ChartScreen etc. if not wrapped */
 .screen-content-area {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  /* border: 1px dotted blue; */ /* Debugging */
 }
 
 #stats-screen {
@@ -294,6 +313,8 @@ canvas {
   font-size: 1.2em;
   box-sizing: border-box;
   overflow-y: auto;
+  /* Takes full height from .screen-content-area or parent div */
+  height: 100%;
 }
 #stats-screen h2 {
   color: #ffffff;
@@ -376,7 +397,8 @@ canvas {
 
 .market-container {
   padding: 15px;
-  color: #ffff00;
+  /* Padding bottom removed - handled by parent margin */
+  color: #ffff00; /* Yellow text */
   display: flex;
   flex-direction: column;
   font-size: 1.1em;
@@ -396,11 +418,12 @@ canvas {
   box-sizing: border-box;
 }
 
+/* --- Radar Styles --- */
 .pirate-radar-line {
   position: absolute;
   width: 0;
-  height: 16px;
-  border-left-width: 2px;
+  height: 16px; /* Default height, might be overridden by style */
+  border-left: 2px solid #00ff00; /* Default style */
   transform: translateX(-1px);
   z-index: 5;
 }

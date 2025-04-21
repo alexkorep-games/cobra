@@ -13,7 +13,8 @@ export type GameState =
   | "planet_info"
   | "buy_cargo"
   | "sell_cargo"
-  | "target_planet_prices";
+  | "target_planet_prices"
+  | "hyperspace_jump";
 
 // Interface describing the structure of loaded game assets (configuration)
 // Remains largely the same
