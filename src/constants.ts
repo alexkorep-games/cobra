@@ -1,3 +1,4 @@
+// src/constants.ts
 /* src/constants.ts */
 import * as THREE from "three";
 
@@ -28,7 +29,7 @@ export const MAX_VISUAL_ROLL_RATE = Math.PI * 0.5; // Radians/sec (Used for HUD 
 export const MAX_VISUAL_PITCH_RATE = Math.PI * 0.3; // Radians/sec (Used for HUD Normalization)
 
 // Space Station Constants
-export const STATION_POSITION = new THREE.Vector3(0, 0, 0);
+// export const STATION_POSITION = new THREE.Vector3(0, 0, 0); // REMOVED - Position is now dynamic
 export const STATION_DOCKING_RADIUS = 10; // Distance to trigger docking/return to title
 export const UNDOCK_DISTANCE = 10;
 

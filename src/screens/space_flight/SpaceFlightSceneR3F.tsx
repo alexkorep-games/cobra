@@ -1,5 +1,12 @@
+// src/screens/space_flight/SpaceFlightSceneR3F.tsx
 /* src/screens/space_flight/SpaceFlightSceneR3F.tsx */
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, {
+  useRef,
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+} from "react"; // Import useMemo
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useGameState } from "@/hooks/useGameState";
@@ -40,6 +47,17 @@ const SpaceFlightSceneR3F: React.FC = () => {
   const stationRef = useRef<THREE.Group>(null);
   const initialPlayerPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
   const isInitializedRef = useRef(false); // Track if initialization has run for this activation
+
+  // --- Calculate Station Position Dynamically ---
+  const stationPosition = useMemo(() => {
+    if (assets?.planet) {
+      return new THREE.Vector3(0, 0, assets.planet.radius * 4);
+    }
+    // Return a default or fallback position if planet assets aren't loaded yet
+    // Or maybe wait until assets are ready before rendering station?
+    // Let's return a default, potentially far-off position if assets are missing.
+    return new THREE.Vector3(0, 0, 10000); // Fallback position
+  }, [assets?.planet]); // Recompute only when planet assets change
 
   // --- Temporary Objects for Calculations (useRef for reuse) ---
   const tempVector = useRef(new THREE.Vector3()).current;
@@ -85,10 +103,10 @@ const SpaceFlightSceneR3F: React.FC = () => {
     let startLookAt: THREE.Vector3 | null = null;
 
     if (previousGameState === "undocking") {
-      // Position 10km behind the station
+      // Position 10km behind the station (use calculated station position)
       const undockOffset = new THREE.Vector3(0, 0, Constants.UNDOCK_DISTANCE); // Assuming station back is +Z
       startPos = new THREE.Vector3()
-        .copy(Constants.STATION_POSITION)
+        .copy(stationPosition) // Use calculated station position
         .add(undockOffset);
       // Look away from the station (e.g., towards +Z from the new position)
       startLookAt = new THREE.Vector3()
@@ -172,6 +190,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
     currentPlanet,
     previousGameState,
     camera,
+    stationPosition, // Add calculated stationPosition as dependency
     setGameState,
     setCoordinates,
     setSpeed,
@@ -307,9 +326,10 @@ const SpaceFlightSceneR3F: React.FC = () => {
     currentCamera.position.addScaledVector(velocity.current, dt);
 
     // --- Docking Check ---
+    // Use the calculated stationPosition for the check
     if (stationRef.current) {
       const distanceToStationSq = currentCamera.position.distanceToSquared(
-        Constants.STATION_POSITION // Station position is now hardcoded in constants
+        stationPosition // Use the calculated station position
       );
       const dockingRadiusSq =
         Constants.STATION_DOCKING_RADIUS * Constants.STATION_DOCKING_RADIUS;
@@ -358,7 +378,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
     let stationDirData = null;
     if (stationRef.current) {
       // Calculate station position relative to camera
-      tempVector.copy(Constants.STATION_POSITION).applyMatrix4(cameraMatrix);
+      tempVector.copy(stationPosition).applyMatrix4(cameraMatrix); // Use calculated position
       const distToStation = tempVector.length();
 
       // Check if station is within radar range
@@ -401,36 +421,35 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
   return (
     <>
-      {/* Planet - Render only if far away or based on other logic */}
-      {assets.planet &&
-        camera.position.lengthSq() > 10000 * 10000 && ( // Example: Only render if >10k units away
-          <PlanetComponent
-            radius={assets.planet.radius}
-            color={assets.planet.color}
-            // Use a fixed position very far away, relative to the system origin (0,0,0)
-            position={[0, -assets.planet.radius - 50000, -100000]} // Example very distant position
-            visible={true} // Controls whether to render at all
-          />
-        )}
+      {/* Planet - Render at origin */}
+      {assets.planet && (
+        <PlanetComponent
+          radius={assets.planet.radius}
+          color={assets.planet.color}
+          position={[0, 0, 0]} // <-- Set position to origin
+          visible={true} // <-- Render always (remove distance check)
+        />
+      )}
 
       {/* Space Station */}
-      {assets.spaceStation && (
-        // Use a group to apply the constant station position
-        <group
-          ref={stationRef}
-          position={Constants.STATION_POSITION}
-          name="SpaceStationGroup"
-        >
-          <SpaceStationComponent
-            modelPath={assets.spaceStation.modelPath}
-            initialScale={Constants.SHIP_SCALE * 2} // Make station larger
-            wireframeColor={0xffff00} // Yellow
-            rotationSpeed={0.01} // Slow rotation
-            visible={true}
-            // Position and rotation are handled by the parent group now
-          />
-        </group>
-      )}
+      {assets.spaceStation &&
+        assets.planet && ( // Also check planet exists for radius
+          // Use a group to apply the DYNAMIC station position
+          <group
+            ref={stationRef}
+            position={stationPosition} // Apply the calculated position
+            name="SpaceStationGroup"
+          >
+            <SpaceStationComponent
+              modelPath={assets.spaceStation.modelPath}
+              initialScale={Constants.SHIP_SCALE * 2} // Make station larger
+              wireframeColor={0xffff00} // Yellow
+              rotationSpeed={0.01} // Slow rotation
+              visible={true}
+              // Position and rotation are handled by the parent group now
+            />
+          </group>
+        )}
 
       {/* Pirates */}
       {/* Conditionally render pirates only after initialization */}
