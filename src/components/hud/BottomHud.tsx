@@ -17,6 +17,7 @@ const BottomHud: React.FC = () => {
     stationDirection = null,
     laserHeat = 0,
     radarPositions = [], // Use the array name from the hook
+    isJumpSpeedActive = false, // Get the new state
   } = useHudState();
 
   // Calculate marker positions (0% to 100%) based on -1 to 1 range
@@ -230,9 +231,17 @@ const BottomHud: React.FC = () => {
           <span className="hud-label">SPEED</span>
           <div className="hud-bar">
             {/* Speed uses fill */}
+            {/* Force 100% width if jump speed is active */}
             <div
-              className="hud-bar-fill"
-              style={{ width: `${Math.max(0, Math.min(100, speed))}%` }}
+              className={`hud-bar-fill ${
+                isJumpSpeedActive ? "jump-speed-active" : ""
+              }`} // Add class if jumping
+              style={{
+                width: isJumpSpeedActive
+                  ? "100%"
+                  : `${Math.max(0, Math.min(100, speed))}%`,
+              }}
+              // Clamp regular speed 0-100
             ></div>{" "}
             {/* Clamp speed 0-100 */}
           </div>

@@ -62,3 +62,7 @@ export const LASER_MAX_HEAT = 100;
 export const JUMP_FOV_INCREASE = 20; // How much FOV increases during jump speed engage
 export const JUMP_FOV_DURATION = 0.2; // Duration of the FOV effect in seconds
 export const JUMP_FOV_LERP_SPEED = 8; // How fast FOV interpolates back to normal
+
+// Particles
+export const PARTICLE_COUNT = 1000; // Number of particles in the system
+export const PARTICLE_CLOUD_SIZE = 1; // Size of the particle cloud in units

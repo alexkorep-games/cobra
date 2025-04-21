@@ -15,6 +15,7 @@ const stationDirectionAtom = atom<{
   isInFront: boolean;
 } | null>(null);
 const radarPositionsAtom = atom<RadarPosition[]>([]);
+const isJumpSpeedActiveAtom = atom<boolean>(false); // New atom for jump speed state
 
 // --- Hook ---
 export function useHudState() {
@@ -26,6 +27,9 @@ export function useHudState() {
   const [altitude, setAltitude] = useAtom(altitudeAtom);
   const [stationDirection, setStationDirection] = useAtom(stationDirectionAtom);
   const [radarPositions, setRadarPositions] = useAtom(radarPositionsAtom);
+  const [isJumpSpeedActive, setIsJumpSpeedActive] = useAtom(
+    isJumpSpeedActiveAtom
+  );
 
   return {
     coordinates,
@@ -44,6 +48,8 @@ export function useHudState() {
     setStationDirection,
     radarPositions, // Note: This is the array from the atom
     setRadarPositions,
+    isJumpSpeedActive, // Expose jump speed state
+    setIsJumpSpeedActive, // Expose setter for jump speed state
     // Rename radarPositions to radarPosition for BottomHud consistency if needed elsewhere
     // radarPosition: radarPositions,
   };

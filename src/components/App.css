@@ -198,6 +198,11 @@ canvas {
 .hud-bar-fill.red {
   background-color: #ff0000;
 }
+/* Add style for speed bar during jump */
+.hud-bar-fill.jump-speed-active {
+  background-color: #ff00ff; /* Magenta for jump speed? */
+  /* animation: blink-animation 0.5s step-start infinite; /* Optional blinking */
+}
 .direction-indicator-container {
   border: 1px solid #ffff00;
   border-radius: 50%;

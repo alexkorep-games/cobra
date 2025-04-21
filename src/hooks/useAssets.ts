@@ -29,6 +29,7 @@ export function useAssets() {
       ];
       const spaceStationPath = "assets/ships/spacestation.gltf";
       const pirateShipPath = "assets/ships/ship-pirate.gltf";
+      // TODO use planet radius from PlanetInfo
       const planetRadius = Constants.CAMERA_FAR_PLANE * 0.05;
 
       const configuredAssets: GameAssets = {

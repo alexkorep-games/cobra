@@ -34,6 +34,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
     setLaserHeat,
     setStationDirection,
     setRadarPositions,
+    setIsJumpSpeedActive,
   } = useHudState();
   const { getCurrentPlanet } = usePlanetInfos();
   const currentPlanet = getCurrentPlanet();
@@ -59,6 +60,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
   const stationPosition = useMemo(() => {
     if (assets?.planet) {
+      console.log('assets.planet.radius', assets.planet.radius);
       return new THREE.Vector3(0, 0, assets.planet.radius * 4);
     }
     return new THREE.Vector3(0, 0, 10000);
@@ -168,6 +170,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
     setRadarPositions([]);
     setPirateRadarPositions([]);
     setLaserHeat(0);
+    setIsJumpSpeedActive(false);
 
     isInitializedRef.current = true;
 
@@ -179,6 +182,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
       targetFovRef.current = originalFovRef.current;
       camera.updateProjectionMatrix();
       fovResetTimerRef.current = 0;
+      setIsJumpSpeedActive(false);
     };
   }, [
     gameState,
@@ -195,6 +199,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
     setLaserHeat,
     setStationDirection,
     setRadarPositions,
+    setIsJumpSpeedActive,
   ]);
 
   const handlePirateRadarUpdate = useCallback(
@@ -252,6 +257,8 @@ const SpaceFlightSceneR3F: React.FC = () => {
       // Stop angular rotation when jumping
       rollRate.current = 0;
       pitchRate.current = 0;
+      // Update HUD state
+      setIsJumpSpeedActive(true);
     } else {
       // --- Calculate Target Angular Rates based on Input ---
       const rollAccelInput = shipControls.rollLeft
@@ -372,9 +379,10 @@ const SpaceFlightSceneR3F: React.FC = () => {
 
     // --- Update HUD State ---
     const speedValue = velocity.current.length();
+    // Normalize speed based on MAX_SPEED for the regular bar display
     const normalizedSpeed = Math.min(
       100,
-      (speedValue / Math.max(Constants.MAX_SPEED, Constants.JUMP_SPEED)) * 100 // Normalize based on higher speed limit
+      (speedValue / Constants.MAX_SPEED) * 100
     );
     const normalizedRoll = THREE.MathUtils.clamp(
       rollRate.current / Constants.MAX_VISUAL_ROLL_RATE,
@@ -395,6 +403,11 @@ const SpaceFlightSceneR3F: React.FC = () => {
     setSpeed(normalizedSpeed);
     setRoll(normalizedRoll);
     setPitch(normalizedPitch);
+
+    // Ensure jump speed state is false if not actively jumping
+    if (!jumpSpeedEngaged) {
+      setIsJumpSpeedActive(false);
+    }
 
     // --- Radar and Direction Indicator ---
     const combinedRadarPositions: RadarPosition[] = [];
