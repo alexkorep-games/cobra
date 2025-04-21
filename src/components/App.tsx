@@ -24,18 +24,19 @@ import UndockingScreen from "@/screens/undocking/UndockingScreen";
 import BuyCargoScreen from "@/screens/buy_cargo/BuyCargoScreen";
 import SellCargoScreen from "@/screens/sell_cargo/SellCargoScreen";
 import TargetPlanetPricesScreen from "@/screens/target_planet_prices/TargetPlanetPricesScreen";
-import HyperspaceScreen from "@/screens/hyperspace_jump/HyperspaceScreen"; // <-- Import Hyperspace UI
-import BottomToolbar from "@/components/hud/BottomToolbar"; // Docked Toolbar
-import SpaceFlightToolbar from "@/components/hud/SpaceFlightToolbar"; // <-- Import Flight Toolbar
+import HyperspaceScreen from "@/screens/hyperspace_jump/HyperspaceScreen";
+import BottomToolbar from "@/components/hud/BottomToolbar";
+import SpaceFlightToolbar from "@/components/hud/SpaceFlightToolbar";
+import TouchControlsOverlay from "@/components/touch/TouchControlsOverlay";
 
 // --- Import R3F Scene Content Components ---
 import UndockingSquares from "@/components/r3f/UndockingSquares";
 import TitleSceneR3F from "@/screens/title/TitleSceneR3F";
 import SpaceFlightSceneR3F from "@/screens/space_flight/SpaceFlightSceneR3F";
-import HyperspaceAnimation from "@/components/r3f/HyperspaceAnimation"; // <-- Import Hyperspace Animation
+import HyperspaceAnimation from "@/components/r3f/HyperspaceAnimation";
 
 // --- Import Logic Hooks for States ---
-import { useHyperspaceLogic } from "@/screens/hyperspace_jump/useHyperspaceLogic"; // <-- Import Hyperspace Logic
+import { useHyperspaceLogic } from "@/screens/hyperspace_jump/useHyperspaceLogic";
 
 const GlobalStateInitializer: React.FC = () => {
   useInputSetup();
@@ -114,7 +115,7 @@ const App: React.FC = () => {
           return <SellCargoScreen />;
         case "target_planet_prices":
           return <TargetPlanetPricesScreen />;
-        case "hyperspace_jump": // <-- Handle new state
+        case "hyperspace_jump":
           return <HyperspaceScreen />;
         default:
           return (
@@ -172,7 +173,7 @@ const App: React.FC = () => {
     "planet_info",
     "stats",
     "short_range_chart",
-    "target_planet_prices", // Show docked toolbar for target prices too? Or none? Let's add it.
+    "target_planet_prices",
   ].includes(gameState);
 
   const showFlightToolbar = gameState === "space_flight";
@@ -199,7 +200,6 @@ const App: React.FC = () => {
           <directionalLight position={[10, 15, 5]} intensity={1.0} castShadow />
           <GlobalStateInitializer />
           {renderSceneR3FContent()}
-          {/* Conditionally render specific R3F animations */}
           <UndockingSquares visible={showUndockingSquares} />
           <HyperspaceAnimation visible={showHyperspaceAnimation} />
         </Suspense>
@@ -209,13 +209,11 @@ const App: React.FC = () => {
       <div className="overlay">
         {/* Render the main UI component for the current state */}
         {renderSceneUIComponent()}
-
+        {/* Render Touch Controls Overlay (handles its own mobile visibility) */}
+        <TouchControlsOverlay />
         {/* Conditionally render the correct Bottom Toolbar */}
         {showDockedToolbar && <BottomToolbar />}
         {showFlightToolbar && <SpaceFlightToolbar />}
-
-        {/* NOTE: SpaceFlightScreenUI renders BottomHud internally */}
-        {/* Ensure BottomHud is NOT rendered globally here */}
       </div>
     </div>
   );

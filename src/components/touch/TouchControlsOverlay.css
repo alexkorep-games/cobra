@@ -1,0 +1,62 @@
+/* src/components/touch/TouchControlsOverlay.css */
+
+.touch-overlay-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Important: Allows touches to pass through to the global listeners */
+  z-index: 5; /* Below HUD elements but above the canvas */
+  opacity: 0; /* Hidden by default */
+  transition: opacity 0.3s ease-in-out; /* Smooth fade */
+  /* border: 1px solid blue; */ /* Debugging */
+}
+
+/* Make visible only when the 'visible' class is added */
+.touch-overlay-container.visible {
+  opacity: 1;
+}
+
+.touch-zone {
+  position: absolute;
+  box-sizing: border-box;
+  border-style: dashed;
+  border-width: 1px;
+  border-radius: 5px; /* Slightly rounded corners */
+}
+
+.steering-zone {
+  left: 1%; /* Small gap from edge */
+  top: 1%;
+  bottom: calc(
+    var(--bottom-offset, 55px) + 2%
+  ); /* Leave space above bottom toolbars */
+  width: 48%; /* Slightly less than half */
+  border-color: rgba(0, 255, 255, 0.2); /* Faint cyan */
+}
+
+.action-zone {
+  right: 1%; /* Small gap from edge */
+  width: 48%; /* Slightly less than half */
+  border-color: rgba(255, 0, 255, 0.2); /* Faint magenta */
+}
+
+.accel-zone {
+  top: 1%;
+  height: 39%; /* Corresponds to 0.0 to 0.4 */
+}
+
+.fire-zone {
+  top: 41%; /* Corresponds to 0.4 to 0.6 */
+  height: 18%;
+  border-style: solid; /* Make fire zone slightly different */
+  border-color: rgba(255, 255, 0, 0.25); /* Faint yellow */
+}
+
+.brake-zone {
+  bottom: calc(
+    var(--bottom-offset, 55px) + 2%
+  ); /* Leave space above bottom toolbars */
+  height: 39%; /* Corresponds to 0.6 to 1.0 */
+}
