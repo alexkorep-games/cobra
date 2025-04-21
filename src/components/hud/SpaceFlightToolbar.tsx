@@ -8,6 +8,8 @@ import { JUMP_RANGE } from "@/constants";
 import { useMarketGenerator } from "@/hooks/useMarketGenerator";
 import "./SpaceFlightToolbar.css"; // Import styles specific to this toolbar
 import "../hud/BottomToolbar.css"; // Re-use general button styles
+import { useSetAtom } from "jotai"; // <<<<<<<<<<<< ADDED <<<<<<<<<<<<
+import { jumpSpeedButtonTriggerAtom } from "@/hooks/useInput"; // <<<<<<<<<<<< ADDED <<<<<<<<<<<<
 
 const SpaceFlightToolbar: React.FC = () => {
   const { gameState, setGameState } = useGameState();
@@ -19,6 +21,7 @@ const SpaceFlightToolbar: React.FC = () => {
   } = usePlanetInfos();
   const { fuel, setFuelLevel } = usePlayerState();
   const generateMarketForPlanet = useMarketGenerator();
+  const triggerJumpSpeed = useSetAtom(jumpSpeedButtonTriggerAtom); // <<<<<<<<<<<< ADDED <<<<<<<<<<<<
 
   const currentPlanet = getCurrentPlanet();
   const targetPlanet = getSelectedPlanet();
@@ -26,7 +29,11 @@ const SpaceFlightToolbar: React.FC = () => {
   // --- Hyperspace Eligibility Check ---
   let canHyperspace = false;
   let hyperspaceDistance = Infinity;
-  if (targetPlanet && currentPlanet && targetPlanet.name !== currentPlanet.name) {
+  if (
+    targetPlanet &&
+    currentPlanet &&
+    targetPlanet.name !== currentPlanet.name
+  ) {
     hyperspaceDistance = calculateDistance(
       currentPlanet.coordinates,
       targetPlanet.coordinates
@@ -54,16 +61,7 @@ const SpaceFlightToolbar: React.FC = () => {
     setFuelLevel(fuel - hyperspaceDistance);
 
     // 2. Trigger Hyperspace Animation State
-    // Store necessary info for after the jump (e.g., target planet object)
-    // This could be stored in a temporary atom or passed via state transition logic if more complex
-    // For now, we rely on usePlanetInfos having the targetPlanet available after animation.
     setGameState("hyperspace_jump");
-
-    // The useHyperspaceLogic hook (to be created) will handle:
-    // - The animation duration
-    // - Setting the new currentPlanetName
-    // - Generating the market for the new planet
-    // - Setting the state back to 'space_flight'
   }, [
     canHyperspace,
     targetPlanet,
@@ -72,11 +70,16 @@ const SpaceFlightToolbar: React.FC = () => {
     setFuelLevel,
     fuel,
     setGameState,
-    // Note: setCurrentPlanetName and generateMarketForPlanet are called *after* the animation
   ]);
 
-  // --- Jump Button Handler (Opens Chart) ---
-  const handleJumpButton = () => {
+  // --- JUMP Speed Button Handler ---
+  const handleJumpSpeedButton = useCallback(() => {
+    console.log("Jump speed button pressed");
+    triggerJumpSpeed((c) => c + 1); // Increment the trigger atom
+  }, [triggerJumpSpeed]);
+
+  // --- Chart Button Handler ---
+  const handleChartButton = () => {
     console.log("Opening Short Range Chart...");
     setGameState("short_range_chart");
   };
@@ -121,12 +124,20 @@ const SpaceFlightToolbar: React.FC = () => {
       >
         HYPERSPACE
       </button>
+      {/* Changed JUMP button to trigger jump speed, added CHART button */}
       <button
         className="toolbar-button"
-        onClick={handleJumpButton}
-        title="Open Navigation Chart (J)"
+        onClick={handleJumpSpeedButton} // <<<<< CHANGED handler
+        title="Engage Jump Speed (J)" // <<<<< CHANGED title
       >
-        JUMP {/* Label matches key, action is chart */}
+        JUMP {/* Label implies speed */}
+      </button>
+      <button
+        className="toolbar-button"
+        onClick={handleChartButton} // <<<<< NEW handler for chart
+        title="Open Navigation Chart (N)" // <<<<< NEW title
+      >
+        CHART {/* New button label */}
       </button>
       <button
         className="toolbar-button"

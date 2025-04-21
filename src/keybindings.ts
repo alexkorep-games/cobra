@@ -8,18 +8,19 @@ export const KEYBINDINGS = {
     PITCH_UP: ["arrowup"],
     PITCH_DOWN: ["arrowdown"],
     FIRE: [" "], // Space bar
+    JUMP_SPEED: ["j"], // <<<<<<<<<<<< ADDED JUMP_SPEED binding <<<<<<<<<<<<
   },
   UI: {
     UP: ["arrowup", "w"],
     DOWN: ["arrowdown", "s"],
     LEFT: ["arrowleft", "a"],
     RIGHT: ["arrowright", "d"],
-    CONFIRM: ["enter", " ", "j"], // Space, Enter, J
+    CONFIRM: ["enter", " "], // Removed 'j' from UI confirm
     CANCEL: ["escape", "n"], // Escape, N
     NEXT_WEAPON: ["m"], // Example
     PREV_WEAPON: [","], // Example
     TOGGLE_CHART: ["n"], // N key used in multiple contexts
-    JUMP: ["j"], // J key used in multiple contexts
+    // JUMP: ["j"], // Removed UI.JUMP, 'J' is now SHIP.JUMP_SPEED
   },
   GENERAL: {
     ANY_KEY_IGNORE: ["shift", "control", "alt", "meta"], // Keys ignored by 'any key' press

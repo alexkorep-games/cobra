@@ -1,3 +1,4 @@
+// src/hooks/useInput.ts
 import { atom, useAtomValue, useSetAtom } from "jotai";
 import { useEffect, useCallback, useRef } from "react";
 import { KEYBINDINGS, checkBinding } from "@/keybindings"; // Assuming this path is correct
@@ -10,6 +11,7 @@ export interface ShipControlState {
   pitchUp: boolean;
   pitchDown: boolean;
   fire: boolean;
+  jumpSpeed: boolean; // <<<<<<<<<<<< ADDED <<<<<<<<<<<<
 }
 
 export interface UIControlState {
@@ -20,7 +22,7 @@ export interface UIControlState {
   confirm: boolean;
   cancel: boolean;
   toggleChart: boolean;
-  jump: boolean;
+  // jump: boolean; // Removed
 }
 
 export interface InputState {
@@ -31,6 +33,9 @@ export interface InputState {
 // --- Primitive Atoms ---
 export const keysPressedAtom = atom<Set<string>>(new Set<string>());
 export const isTouchedAtom = atom<boolean>(false);
+
+// Atom to trigger the jump speed effect from button presses
+export const jumpSpeedButtonTriggerAtom = atom(0); // <<<<<<<<<<<< ADDED <<<<<<<<<<<<
 
 const inputActivityTriggerAtom = atom(0);
 
@@ -44,6 +49,7 @@ export const shipControlsAtom = atom<ShipControlState>((get) => {
     pitchUp: checkBinding(keys, KEYBINDINGS.SHIP.PITCH_UP),
     pitchDown: checkBinding(keys, KEYBINDINGS.SHIP.PITCH_DOWN),
     fire: checkBinding(keys, KEYBINDINGS.SHIP.FIRE),
+    jumpSpeed: checkBinding(keys, KEYBINDINGS.SHIP.JUMP_SPEED), // <<<<<<<<<<<< ADDED <<<<<<<<<<<<
   };
 });
 
@@ -57,7 +63,7 @@ export const uiControlsAtom = atom<UIControlState>((get) => {
     confirm: checkBinding(keys, KEYBINDINGS.UI.CONFIRM),
     cancel: checkBinding(keys, KEYBINDINGS.UI.CANCEL),
     toggleChart: checkBinding(keys, KEYBINDINGS.UI.TOGGLE_CHART),
-    jump: checkBinding(keys, KEYBINDINGS.UI.JUMP),
+    // jump: checkBinding(keys, KEYBINDINGS.UI.JUMP), // Removed
   };
 });
 
@@ -112,12 +118,18 @@ export function useInputSetup(): void {
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
+      if (event.repeat) return; // Ignore repeated keydown events for single actions
       const key = event.key.toLowerCase();
+
+      // Ignore modifier keys for the 'any key' trigger
+      if (!KEYBINDINGS.GENERAL.ANY_KEY_IGNORE.includes(key)) {
+        triggerInputActivity((c) => c + 1); // Increment trigger only for non-modifier keys
+      }
+
       setKeysPressed((prevKeys) => {
         if (prevKeys.has(key)) {
           return prevKeys; // Key already pressed, do nothing extra
         }
-        triggerInputActivity((c) => c + 1); // Increment trigger
         const newKeys = new Set(prevKeys);
         newKeys.add(key);
         return newKeys;

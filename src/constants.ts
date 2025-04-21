@@ -1,3 +1,4 @@
+// src/constants.ts
 import * as THREE from "three";
 
 export const SHIP_DISPLAY_DURATION = 10.0; // Seconds
@@ -16,7 +17,7 @@ export const TARGET_POS = new THREE.Vector3(-3, 0, 0);
 // ALL UNITS ARE KILOMETERS
 
 // Flight Dynamics
-export const JUMP_SPEED = 500000.0;
+export const JUMP_SPEED = 5000.0; // <<<<<<<<<<<< ADDED JUMP SPEED <<<<<<<<<<<<
 export const MAX_SPEED = 500.0;
 export const MIN_SPEED = 0.0;
 export const ACCELERATION = 150.0; // Units per second^2
@@ -56,3 +57,8 @@ export const RADAR_DISTANCE_SQUARED = RADAR_DISTANCE * RADAR_DISTANCE;
 
 // Lasers
 export const LASER_MAX_HEAT = 100;
+
+// Jump Effect
+export const JUMP_FOV_INCREASE = 20; // How much FOV increases during jump speed engage
+export const JUMP_FOV_DURATION = 0.2; // Duration of the FOV effect in seconds
+export const JUMP_FOV_LERP_SPEED = 8; // How fast FOV interpolates back to normal
