@@ -20,7 +20,7 @@ import { useAssets } from "@/hooks/useAssets";
 import { usePlanetInfos } from "../../hooks/usePlanetInfos";
 import LaserBeam from "@/components/r3f/LaserBeam";
 import { useAtomValue } from "jotai"; // << Import useAtomValue
-import ParticleCloud from "@/components/r3f/ParticleCloud"; // <-- IMPORT ParticleCloud
+import { StarsSphere } from "@/components/r3f/StarsSphere";
 
 const SpaceFlightSceneR3F: React.FC = () => {
   const { assets } = useAssets();
@@ -482,8 +482,8 @@ const SpaceFlightSceneR3F: React.FC = () => {
         )}
       {/* Laser Beam */}
       <LaserBeam camera={camera} onHeatUpdate={handleLaserHeatUpdate} />
-      {/* Particle Cloud */}
-      <ParticleCloud /> {/* <-- ADD PARTICLE CLOUD COMPONENT */}
+      {/* Stars */}
+      <StarsSphere />
     </>
   );
 };

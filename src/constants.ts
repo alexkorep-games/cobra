@@ -17,7 +17,7 @@ export const TARGET_POS = new THREE.Vector3(-3, 0, 0);
 // ALL UNITS ARE KILOMETERS
 
 // Flight Dynamics
-export const JUMP_SPEED = 5000.0; // <<<<<<<<<<<< ADDED JUMP SPEED <<<<<<<<<<<<
+export const JUMP_SPEED = 500000.0;
 export const MAX_SPEED = 500.0;
 export const MIN_SPEED = 0.0;
 export const ACCELERATION = 150.0; // Units per second^2
@@ -64,8 +64,12 @@ export const JUMP_FOV_DURATION = 0.2; // Duration of the FOV effect in seconds
 export const JUMP_FOV_LERP_SPEED = 8; // How fast FOV interpolates back to normal
 
 // Particles
-export const PARTICLE_COUNT = 1; // Number of particles in the system (Adjust for performance)
-export const PARTICLE_CLOUD_SIZE = 20; // Size of the cloud volume around the player (e.g., 2km cube)
-export const PARTICLE_RESPAWN_FACTOR = 1.0; // How far behind/ahead particles respawn relative to cloud size/2
-export const PARTICLE_SIZE = 1.0; // Size of each particle (Adjust based on units/visuals)
-export const PARTICLE_COLOR = 0xaaaaaa; // Color of the particles (e.g., dim white/grey)
+export const PARTICLE_COUNT = 10; // Number of particles (Adjust for performance/density)
+export const PARTICLE_CLOUD_SIZE = 200; // Size (width, height, depth) of the cloud volume around the player (in world units - km)
+export const PARTICLE_RESPAWN_MARGIN = PARTICLE_CLOUD_SIZE / 20; // How far ahead (in -Z) to respawn particles
+export const PARTICLE_SIZE = 1.5; // Visual size of each particle (adjust based on visuals)
+export const PARTICLE_COLOR = 0xaaaaaa; // Color (dim white/grey)
+
+// Stars
+export const STARS_RADIUS = CAMERA_FAR_PLANE * 0.9; // Keep stars well within the far plane but very large
+export const STARS_COUNT = 8000; // Number 
