@@ -1,9 +1,10 @@
+/* src/screens/space_flight/SpaceFlightSceneR3F.tsx */
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useGameState } from "@/hooks/useGameState";
 import { useHudState } from "@/hooks/useHudState";
-import { RadarPosition,  } from "@/types";
+import { RadarPosition } from "@/types";
 import * as Constants from "@/constants";
 import { useInput } from "@/hooks/useInput";
 import PlanetComponent from "@/components/r3f/PlanetComponent";
@@ -17,7 +18,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
   const { assets } = useAssets();
   const { camera } = useThree();
   const { shipControls } = useInput();
-  const { setGameState } = useGameState();
+  const { gameState, setGameState, previousGameState } = useGameState();
   const {
     setCoordinates,
     setSpeed,
@@ -38,6 +39,7 @@ const SpaceFlightSceneR3F: React.FC = () => {
   >([]);
   const stationRef = useRef<THREE.Group>(null);
   const initialPlayerPositionRef = useRef<THREE.Vector3>(new THREE.Vector3());
+  const isInitializedRef = useRef(false); // Track if initialization has run for this activation
 
   // --- Temporary Objects for Calculations (useRef for reuse) ---
   const tempVector = useRef(new THREE.Vector3()).current;
@@ -47,37 +49,138 @@ const SpaceFlightSceneR3F: React.FC = () => {
   const rightVector = useRef(new THREE.Vector3()).current;
 
   useEffect(() => {
+    // Explicitly check if we are in the correct game state
+    if (gameState !== "space_flight") {
+      // If we're not in space flight, ensure the initialized flag is false
+      // so that initialization runs when we *do* enter space_flight.
+      isInitializedRef.current = false;
+      return; // Don't run initialization logic if not in space flight
+    }
+
+    // This effect now manages initialization based on how we entered the space_flight state
     if (!assets || !currentPlanet) {
-      console.error("[SpaceFlightSceneR3F] Assets or planet not ready!");
-      // Consider setting a default state or returning to title
-      // setGameState('title');
+      console.warn(
+        "[SpaceFlightSceneR3F] Assets or planet not ready for initialization."
+      );
+      isInitializedRef.current = false; // Mark as not initialized
       return;
     }
 
-    // --- Reset State on Entering Space Flight ---
-    console.log("[SpaceFlightSceneR3F] Initializing flight state.");
+    // Prevent re-initialization if already done for this activation
+    if (isInitializedRef.current) return;
+
+    console.log(
+      `[SpaceFlightSceneR3F] Initializing flight state (Previous: ${previousGameState})`
+    ); // Line 64
+
+    // --- Reset Common State ---
     velocity.current.set(0, 0, 0);
     rollRate.current = 0;
     pitchRate.current = 0;
-
-    // Set initial position and rotation based on planet data
-    const pos = currentPlanet.playerSpawnPosition;
-    const startPos = new THREE.Vector3(pos.x, pos.y, pos.z);
-    initialPlayerPositionRef.current.copy(startPos);
-    camera.position.copy(startPos);
-    camera.rotation.set(0, 0, 0); // Reset rotation
+    camera.rotation.set(0, 0, 0); // Reset rotation euler first
     camera.quaternion.identity(); // Ensure quaternion is reset
 
+    // --- Determine Initial Position/Rotation ---
+    let startPos: THREE.Vector3;
+    let startLookAt: THREE.Vector3 | null = null;
+
+    if (previousGameState === "undocking") {
+      // Position 10km behind the station
+      const undockOffset = new THREE.Vector3(0, 0, Constants.UNDOCK_DISTANCE); // Assuming station back is +Z
+      startPos = new THREE.Vector3()
+        .copy(Constants.STATION_POSITION)
+        .add(undockOffset);
+      // Look away from the station (e.g., towards +Z from the new position)
+      startLookAt = new THREE.Vector3()
+        .copy(startPos)
+        .add(new THREE.Vector3(0, 0, 1));
+      console.log(
+        `Initializing after undock. Pos: ${startPos.toArray()}, LookAt: ${startLookAt?.toArray()}`
+      ); // Line 92
+    } else if (previousGameState === "hyperspace_jump") {
+      // Position at the planet's designated spawn point
+      const spawnPosData = currentPlanet.playerSpawnPosition;
+      startPos = new THREE.Vector3(
+        spawnPosData.x,
+        spawnPosData.y,
+        spawnPosData.z
+      );
+      // Default look direction (e.g., towards origin)
+      startLookAt = new THREE.Vector3(0, 0, 0); // Look towards system origin after jump
+      console.log(
+        `Initializing after hyperspace. Pos: ${startPos.toArray()}, LookAt: ${startLookAt?.toArray()}`
+      );
+    } else {
+      // Default/Initial Load: Use planet's spawn point (if currentPlanet exists)
+      // This case might need adjustment if there's no initial planet on first load yet
+      if (currentPlanet.playerSpawnPosition) {
+        const spawnPosData = currentPlanet.playerSpawnPosition;
+        startPos = new THREE.Vector3(
+          spawnPosData.x,
+          spawnPosData.y,
+          spawnPosData.z
+        );
+        startLookAt = new THREE.Vector3(0, 0, 0); // Look towards system origin
+        console.log(
+          `Initializing default. Pos: ${startPos.toArray()}, LookAt: ${startLookAt?.toArray()}`
+        );
+      } else {
+        console.error(
+          "Cannot initialize default position: currentPlanet.playerSpawnPosition is missing!"
+        );
+        startPos = new THREE.Vector3(0, 0, 5000); // Fallback position
+        startLookAt = new THREE.Vector3(0, 0, 0);
+      }
+    }
+
+    camera.position.copy(startPos);
+    initialPlayerPositionRef.current.copy(startPos); // Store for pirates
+
+    // Apply lookAt if defined
+    if (startLookAt) {
+      camera.lookAt(startLookAt);
+    } else {
+      // Default orientation if no lookAt is specified
+      camera.rotation.set(0, 0, 0);
+      camera.quaternion.identity();
+    }
+
+    // --- Reset HUD State ---
     setCoordinates([camera.position.x, camera.position.y, camera.position.z]);
     setSpeed(0);
     setRoll(0);
     setPitch(0);
     setStationDirection(null);
     setRadarPositions([]);
-setPirateRadarPositions([]); // Reset pirate radar data specifically
+    setPirateRadarPositions([]); // Reset pirate radar data specifically
+    setLaserHeat(0); // Reset laser heat
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assets, currentPlanet, setGameState]); // Rerun ONLY when assets or current planet changes
+    isInitializedRef.current = true; // Mark as initialized for this activation
+
+    // Cleanup function to reset the initialization flag when leaving the state
+    return () => {
+      console.log("[SpaceFlightSceneR3F] Cleaning up initialization flag."); // Line 148
+      isInitializedRef.current = false;
+    };
+    // *** REDUCED DEPENDENCIES ***
+    // Only re-run initialization if the game state changes,
+    // assets load, the current planet changes, or the previous state changes.
+    // Camera and HUD setters are removed as dependencies for *initialization*.
+  }, [
+    gameState,
+    assets,
+    currentPlanet,
+    previousGameState,
+    camera,
+    setGameState,
+    setCoordinates,
+    setSpeed,
+    setRoll,
+    setPitch,
+    setLaserHeat,
+    setStationDirection,
+    setRadarPositions,
+  ]); // Keep setters needed *inside* the effect
 
   const handlePirateRadarUpdate = useCallback(
     (positions: RadarPosition[]) => {
@@ -90,17 +193,27 @@ setPirateRadarPositions([]); // Reset pirate radar data specifically
   );
 
   // Callback for the LaserBeam component to update the HUD state
-  const handleLaserHeatUpdate = useCallback((heatPercentage: number) => {
-    setLaserHeat(heatPercentage);
-  }, [setLaserHeat]); // Dependency on the setter function
+  const handleLaserHeatUpdate = useCallback(
+    (heatPercentage: number) => {
+      setLaserHeat(heatPercentage);
+    },
+    [setLaserHeat]
+  ); // Dependency on the setter function
 
   useFrame((state, delta) => {
-    if (!assets || !currentPlanet) return; // Ensure assets and planet are loaded
+    // Ensure initialization has run before starting frame updates
+    // Also check gameState ensures updates stop if we leave space_flight
+    if (
+      gameState !== "space_flight" ||
+      !assets ||
+      !currentPlanet ||
+      !isInitializedRef.current
+    )
+      return;
 
     const { camera: currentCamera } = state;
     // Clamp delta time to prevent physics instability with large frame drops
     const dt = Math.min(delta, 0.05); // Max 50ms step
-
 
     // --- Calculate Target Angular Rates based on Input ---
     const rollAccelInput = shipControls.rollLeft
@@ -193,20 +306,20 @@ setPirateRadarPositions([]); // Reset pirate radar data specifically
     // --- Apply Velocity to Camera Position ---
     currentCamera.position.addScaledVector(velocity.current, dt);
 
-
     // --- Docking Check ---
     if (stationRef.current) {
       const distanceToStationSq = currentCamera.position.distanceToSquared(
-        stationRef.current.position
+        Constants.STATION_POSITION // Station position is now hardcoded in constants
       );
       const dockingRadiusSq =
         Constants.STATION_DOCKING_RADIUS * Constants.STATION_DOCKING_RADIUS;
 
       if (distanceToStationSq < dockingRadiusSq) {
-        console.log("Docking proximity detected. Returning to title.");
-        setGameState("title"); // Transition back to title screen
+        console.log("Docking proximity detected. Returning to stats screen.");
+        setGameState("stats"); // Transition back to stats (docked) screen
         velocity.current.set(0, 0, 0); // Stop the ship immediately
-        // Additional reset logic might be needed here or handled by useEffect on state change
+        // Reset initialization flag so next flight starts fresh
+        isInitializedRef.current = false;
       }
     }
 
@@ -245,7 +358,7 @@ setPirateRadarPositions([]); // Reset pirate radar data specifically
     let stationDirData = null;
     if (stationRef.current) {
       // Calculate station position relative to camera
-      tempVector.copy(stationRef.current.position).applyMatrix4(cameraMatrix);
+      tempVector.copy(Constants.STATION_POSITION).applyMatrix4(cameraMatrix);
       const distToStation = tempVector.length();
 
       // Check if station is within radar range
@@ -279,59 +392,61 @@ setPirateRadarPositions([]); // Reset pirate radar data specifically
     combinedRadarPositions.push(...pirateRadarPositions);
 
     // Update the radar positions state (used by BottomHud)
-    // Simple optimization: Check if the array content changed before setting
-    // (This might require a deeper comparison if object references change frequently)
-    // For now, just set it every frame. Could optimize later if performance requires.
     setRadarPositions(combinedRadarPositions);
   }); // End useFrame
 
   // --- Render Scene Content ---
-  if (!assets || !currentPlanet) return null; // Don't render if assets/planet not ready
+  // Render only if assets are loaded
+  if (!assets) return null;
 
   return (
     <>
-      {/* Planet */}
-      {assets.planet && (
-        <PlanetComponent
-          radius={assets.planet.radius}
-          color={assets.planet.color}
-          // Example fixed position relative to origin (or could use currentPlanet.coordinates?)
-          // For space flight, planets are usually very far away unless approaching
-          position={[0, -assets.planet.radius - 15000, -30000]} // Example distant position
-          visible={true} // Always visible in space flight? Or based on distance?
-        />
-      )}
+      {/* Planet - Render only if far away or based on other logic */}
+      {assets.planet &&
+        camera.position.lengthSq() > 10000 * 10000 && ( // Example: Only render if >10k units away
+          <PlanetComponent
+            radius={assets.planet.radius}
+            color={assets.planet.color}
+            // Use a fixed position very far away, relative to the system origin (0,0,0)
+            position={[0, -assets.planet.radius - 50000, -100000]} // Example very distant position
+            visible={true} // Controls whether to render at all
+          />
+        )}
 
       {/* Space Station */}
       {assets.spaceStation && (
-        // Wrap station in a group to easily access its world position via ref
-        <group ref={stationRef} position={[0, 0, 0]} name="SpaceStationGroup">
+        // Use a group to apply the constant station position
+        <group
+          ref={stationRef}
+          position={Constants.STATION_POSITION}
+          name="SpaceStationGroup"
+        >
           <SpaceStationComponent
             modelPath={assets.spaceStation.modelPath}
             initialScale={Constants.SHIP_SCALE * 2} // Make station larger
             wireframeColor={0xffff00} // Yellow
             rotationSpeed={0.01} // Slow rotation
             visible={true}
+            // Position and rotation are handled by the parent group now
           />
         </group>
       )}
 
       {/* Pirates */}
-      {assets.pirateShips && assets.pirateShips.length > 0 && (
-        <PiratesComponent
-          playerCamera={camera} // Pass the R3F camera object
-          pirateConfigs={assets.pirateShips}
-          initialPlayerPosition={initialPlayerPositionRef.current} // Pass initial player position
-          onPirateRadarUpdate={handlePirateRadarUpdate} // Pass callback
-        />
-      )}
+      {/* Conditionally render pirates only after initialization */}
+      {assets.pirateShips &&
+        assets.pirateShips.length > 0 &&
+        isInitializedRef.current && (
+          <PiratesComponent
+            playerCamera={camera} // Pass the R3F camera object
+            pirateConfigs={assets.pirateShips}
+            initialPlayerPosition={initialPlayerPositionRef.current} // Use the stored initial position
+            onPirateRadarUpdate={handlePirateRadarUpdate} // Pass callback
+          />
+        )}
 
       {/* Laser Beam Component */}
-      <LaserBeam
-        camera={camera}
-        onHeatUpdate={handleLaserHeatUpdate}
-      />
-
+      <LaserBeam camera={camera} onHeatUpdate={handleLaserHeatUpdate} />
     </>
   );
 };
