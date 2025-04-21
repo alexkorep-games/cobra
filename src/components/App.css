@@ -1,7 +1,7 @@
 /* src/components/App.css */
 :root {
-  --bottom-toolbar-height: 45px; /* Height defined in BottomToolbar.css */
-  --bottom-toolbar-margin: 10px; /* Optional margin below content */
+  --bottom-toolbar-height: 45px;
+  --bottom-toolbar-margin: 10px;
   --bottom-offset: calc(
     var(--bottom-toolbar-height) + var(--bottom-toolbar-margin)
   );
@@ -11,19 +11,18 @@ body {
   margin: 0;
   overflow: hidden;
   background-color: #000;
-  color: #ffff00; /* Bright Yellow */
+  color: #ffff00;
   font-family: "Press Start 2P", cursive;
-  font-size: 10px; /* Base size, scale as needed */
+  font-size: 10px;
   line-height: 1.6;
   user-select: none;
-  touch-action: manipulation; /* Allows panning/pinch-zoom, disables double-tap zoom */
+  touch-action: manipulation;
 }
 
 #container {
   position: relative;
   width: 100vw;
-  height: 100vh; /* Keep 100vh, fixed toolbar is independent */
-  /* overflow: hidden; */ /* Test with/without this */
+  height: 100vh;
 }
 
 canvas {
@@ -33,9 +32,9 @@ canvas {
   left: 0;
   width: 100%;
   height: 100%;
-  image-rendering: pixelated; /* Attempt pixelated look */
+  image-rendering: pixelated;
   image-rendering: crisp-edges;
-  z-index: 0; /* Ensure canvas is behind overlay */
+  z-index: 0;
 }
 
 .overlay {
@@ -43,45 +42,40 @@ canvas {
   top: 0;
   left: 0;
   width: 100%;
-  height: 100%; /* Make overlay fill the container */
+  height: 100%;
   display: flex;
   flex-direction: column;
-  /* justify-content: flex-end; */ /* Removed */
-  pointer-events: none; /* Allow clicks through to canvas if needed */
+  pointer-events: none;
   box-sizing: border-box;
-  padding: 10px; /* Add padding around the overlay */
-  /* padding-bottom: var(--bottom-offset); */ /* Removed */
-  z-index: 1; /* Ensure overlay is above canvas */
-  /* overflow-y: auto; */ /* Add only if necessary */
+  padding: 10px;
+  z-index: 1;
 }
 
 .top-bar,
 .bottom-bar {
-  /* Note: .bottom-bar is the space flight HUD, not the toolbar */
   width: 100%;
   box-sizing: border-box;
-  pointer-events: auto; /* Allow interaction with HUD */
+  pointer-events: auto;
 }
 
 .top-bar {
-  position: absolute; /* Position relative to overlay */
-  top: 10px; /* Align with overlay padding */
+  position: absolute;
+  top: 10px;
   left: 10px;
   right: 10px;
   text-align: center;
   padding: 5px 0;
-  border-bottom: 2px solid #ffff00; /* Yellow border */
-  /* Removed margin-bottom as it's absolutely positioned now */
-  z-index: 10; /* Ensure above other overlay content if needed */
+  border-bottom: 2px solid #ffff00;
+  z-index: 10;
 }
 
 .top-left-coords {
   position: absolute;
   top: 10px;
   left: 10px;
-  color: #00ff00; /* Bright Green */
+  color: #00ff00;
   font-size: 0.9em;
-  pointer-events: none; /* Allow clicks through */
+  pointer-events: none;
   z-index: 10;
 }
 
@@ -92,31 +86,29 @@ canvas {
   transform: translate(-50%, -50%);
   text-align: center;
   font-size: 1.5em;
-  color: #00ff00; /* Bright Green */
-  width: 80%; /* Prevent very long lines */
-  pointer-events: auto; /* Allow interaction if needed */
+  color: #00ff00;
+  width: 80%;
+  pointer-events: auto;
   z-index: 10;
 }
 .center-text.small {
   font-size: 1.2em;
   line-height: 1.8;
-  color: #ffffff; /* White for credits/stats */
+  color: #ffffff;
 }
 
-/* --- HUD Styles (BottomHud for Space Flight) --- */
 .bottom-bar {
-  /* This is the original BottomHud container */
-  position: absolute; /* Position relative to overlay */
-  bottom: 10px; /* Align with overlay padding */
+  position: absolute;
+  bottom: 10px;
   left: 10px;
   right: 10px;
-  border: 2px solid #ffff00; /* Yellow border */
+  border: 2px solid #ffff00;
   background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: space-between;
   padding: 5px;
-  min-height: 80px; /* Adjust as needed */
-  z-index: 10; /* Ensure below fixed toolbar if somehow visible */
+  min-height: 80px;
+  z-index: 10;
 }
 
 .hud-left,
@@ -124,13 +116,13 @@ canvas {
   display: flex;
   flex-direction: column;
   width: 30%;
-  border: 1px solid #00ff00; /* Green border */
+  border: 1px solid #00ff00;
   padding: 3px;
   font-size: 0.8em;
 }
 .hud-center {
   width: 35%;
-  border: 1px solid #ffff00; /* Yellow border */
+  border: 1px solid #ffff00;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -186,41 +178,38 @@ canvas {
   bottom: 0;
   background-color: #00ff00;
 }
-/* Style for centered indicator markers within HUD bars */
 .hud-bar-marker {
   position: absolute;
-  top: -1px; /* Align with border */
-  bottom: -1px; /* Align with border */
-  width: 3px; /* Width of the marker */
-  background-color: #ffff00; /* Yellow marker */
-  transform: translateX(-50%); /* Center the marker */
+  top: -1px;
+  bottom: -1px;
+  width: 3px;
+  background-color: #ffff00;
+  transform: translateX(-50%);
 }
 .hud-bar-marker.red {
-  background-color: #ff0000; /* Red marker if needed */
+  background-color: #ff0000;
 }
 .hud-bar-fill.red {
   background-color: #ff0000;
 }
-/* Styles for the direction indicator circle */
 .direction-indicator-container {
   border: 1px solid #ffff00;
   border-radius: 50%;
-  width: 18px; /* Slightly larger to contain dot */
+  width: 18px;
   height: 18px;
   display: inline-block;
   margin-left: 10px;
-  position: relative; /* For positioning the dot */
-  vertical-align: middle; /* Align with the 1 2 3 boxes */
+  position: relative;
+  vertical-align: middle;
 }
 
 .direction-indicator-dot {
   width: 4px;
   height: 4px;
-  background-color: #00ff00; /* Green dot */
+  background-color: #00ff00;
   border-radius: 50%;
   position: absolute;
-  /* Position will be set by inline style based on angle */
-  transform: translate(-50%, -50%); /* Center the dot on its coordinate */
+  transform: translate(-50%, -50%);
 }
 
 .hud-value {
@@ -243,20 +232,17 @@ canvas {
   width: 5%;
   background-color: #ff0000;
 }
-/* --- End HUD Styles --- */
 
-/* Style for the new loader screen */
 #loader-screen {
-  /* Uses center-text positioning */
-  color: #00ff00; /* Green like other messages */
-  font-size: 1.5em; /* Match other center text */
+  color: #00ff00;
+  font-size: 1.5em;
   pointer-events: auto;
 }
 
 #loader-continue-text {
-  margin-top: 20px; /* Space between loading and continue text */
-  font-size: 0.8em; /* Smaller prompt */
-  color: #ffff00; /* Yellow prompt */
+  margin-top: 20px;
+  font-size: 0.8em;
+  color: #ffff00;
 }
 
 @keyframes blink-animation {
@@ -269,39 +255,30 @@ canvas {
   display: none;
 }
 
-/* --- Screen Content Wrappers --- */
-/* This selector targets direct children of overlay that act as screen wrappers */
 .overlay
   > div:not(.top-bar):not(.bottom-bar):not(.bottom-toolbar):not(
     .top-left-coords
   ):not(.center-text) {
-  flex-grow: 1; /* Allow screen content to grow */
-  /* THIS MARGIN CREATES SPACE FOR THE FIXED TOOLBAR */
+  flex-grow: 1;
   margin-bottom: var(--bottom-offset);
-  position: relative; /* Establish positioning context for children */
-  overflow: hidden; /* Hide overflow within screen areas */
-  pointer-events: auto; /* Enable interaction with screen content */
-  display: flex; /* Use flex for internal layout */
+  position: relative;
+  overflow: hidden;
+  pointer-events: auto;
+  display: flex;
   flex-direction: column;
-  box-sizing: border-box; /* Include padding/border in element's total width/height */
+  box-sizing: border-box;
 }
 
-/* Override margin for screens that should fill the whole space (no toolbar visible) */
 .overlay > #loader-screen,
-.overlay > #credits-text, /* If credits uses center-text */
-.overlay > #title-screen-container, /* Example if title had a container */
-.overlay > #space-flight-ui-container, /* Space flight uses BottomHud, not toolbar */
-.overlay > #undocking-screen-container, /* Example if undocking had one */
+.overlay > #credits-text,
+.overlay > #title-screen-container,
+.overlay > #space-flight-ui-container,
+.overlay > #undocking-screen-container,
 .overlay > #target-prices-screen {
-  margin-bottom: 0; /* No offset needed, they fill the overlay */
+  margin-bottom: 0;
 }
-
-/* --- Specific Screen Container Styles --- */
-/* Ensure these fill their parent WRAPPER div which has the margin */
 
 .screen-content-area {
-  /* This class is likely redundant if the selector above works */
-  /* Removed absolute positioning & sizing properties */
   width: 100%;
   height: 100%;
   display: flex;
@@ -309,7 +286,6 @@ canvas {
   box-sizing: border-box;
 }
 
-/* Commander Stats Styling */
 #stats-screen {
   color: #cc66ff;
   background-color: #000000;
@@ -339,19 +315,17 @@ canvas {
   color: #ffff00;
 }
 
-/* Optional: Style the scrollbar for a more retro look (Webkit browsers) */
 #stats-screen::-webkit-scrollbar {
   width: 8px;
 }
 #stats-screen::-webkit-scrollbar-track {
-  background: #222; /* Dark track */
+  background: #222;
 }
 #stats-screen::-webkit-scrollbar-thumb {
-  background: #cc66ff; /* Magenta thumb */
-  border: 1px solid #ffff00; /* Yellow border */
+  background: #cc66ff;
+  border: 1px solid #ffff00;
 }
 
-/* --- Planet Info Screen Styles --- */
 .planet-info-container {
   border: 2px solid #00ffff;
   background-color: rgba(0, 0, 50, 0.8);
@@ -367,52 +341,49 @@ canvas {
 .planet-info-title {
   text-align: center;
   margin-bottom: 20px;
-  color: #00ffff; /* Cyan title */
+  color: #00ffff;
   border-bottom: 1px solid #00ffff;
   padding-bottom: 10px;
 }
 .planet-info-grid {
   display: grid;
-  grid-template-columns: 150px auto; /* Label column and Value column */
-  gap: 5px 15px; /* Row gap and Column gap */
+  grid-template-columns: 150px auto;
+  gap: 5px 15px;
   margin-bottom: 20px;
 }
 .planet-info-label {
-  color: #ffffff; /* White label */
+  color: #ffffff;
   text-align: right;
 }
 .planet-info-value {
-  color: #00ffff; /* Cyan value */
+  color: #00ffff;
 }
 .planet-info-description {
   margin-top: 15px;
-  color: #00ffff; /* Cyan description */
+  color: #00ffff;
   font-style: italic;
   border-top: 1px dashed #00aaaa;
   padding-top: 15px;
-  flex-grow: 1; /* Allow description to take up space */
-  overflow-y: auto; /* Scroll if description is long */
+  flex-grow: 1;
+  overflow-y: auto;
 }
 .planet-info-prompt {
-  margin-top: 15px; /* Space above prompt */
-  color: #ffff00; /* Yellow */
+  margin-top: 15px;
+  color: #ffff00;
   font-size: 0.9em;
   text-align: center;
 }
 
-/* Market Screens (Buy/Sell/Target Prices) reuse styles from buy_cargo/Market.css */
-/* Ensure the container fills the wrapper */
 .market-container {
   padding: 15px;
-  color: #ffff00; /* Yellow text */
+  color: #ffff00;
   display: flex;
   flex-direction: column;
   font-size: 1.1em;
   box-sizing: border-box;
-  height: 100%; /* Fill the wrapper */
+  height: 100%;
 }
 
-/* Short Range Chart Container */
 .short-range-chart-container {
   border: 2px solid #ffff00;
   background-color: rgba(0, 0, 0, 0.8);
@@ -425,21 +396,20 @@ canvas {
   box-sizing: border-box;
 }
 
-/* Pirate radar styles (part of BottomHud) */
 .pirate-radar-line {
   position: absolute;
   width: 0;
-  height: 16px; /* Increased height of the vertical line */
+  height: 16px;
   border-left-width: 2px;
-  transform: translateX(-1px); /* Center the line */
-  z-index: 5; /* Ensure lines appear above other elements */
+  transform: translateX(-1px);
+  z-index: 5;
 }
 .pirate-radar-serif {
   position: absolute;
-  width: 10px; /* Wider horizontal serif for better visibility */
+  width: 10px;
   height: 0;
-  border-top: 2px solid #00ff00; /* Green serifs */
-  left: -5px; /* Center the serif on the vertical line */
+  border-top: 2px solid #00ff00;
+  left: -5px;
 }
 .top-serif {
   top: 0;
@@ -447,4 +417,3 @@ canvas {
 .bottom-serif {
   bottom: 0;
 }
-/* End pirate radar styles */
