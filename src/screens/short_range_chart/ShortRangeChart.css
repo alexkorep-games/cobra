@@ -1,5 +1,3 @@
-/* --- Short Range Chart Styles --- */
-
 /* Keyframes needed for selection animation */
 @keyframes blink-animation {
   50% {
@@ -46,10 +44,18 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  border: 1px dashed rgba(0, 255, 0, 0.5);
   border-radius: 50%;
   box-sizing: border-box;
   pointer-events: none;
+}
+
+.chart-range-circle.max-jump-range {
+  border: 1px dashed rgba(0, 255, 0, 0.5); /* Keep dashed green for max */
+}
+
+.chart-range-circle.current-fuel-range {
+  border: 1px solid rgba(255, 255, 255, 0.8); /* Solid white for current fuel */
+  /* Or cyan: border: 1px solid rgba(0, 255, 255, 0.7); */
 }
 
 .chart-crosshair {
@@ -86,7 +92,6 @@
 /* Its top-left corner is positioned via inline style (left, top) */
 .planet-marker {
   position: absolute;
-  cursor: pointer;
   pointer-events: auto; /* Allow clicks on markers */
   width: 16px; /* Adjust size as needed - make it large enough for easy clicking */
   height: 16px;
@@ -150,8 +155,10 @@
 
 /* --- Styling based on state --- */
 
+/* Reachable: Within max range AND enough fuel */
 .planet-marker.in-range .planet-dot {
   background-color: #00ff00; /* Green dot for reachable */
+  border-color: #ffffff;
 }
 .planet-marker.in-range {
   cursor: pointer;
@@ -160,6 +167,19 @@
   color: #00ff00; /* Green label */
 }
 
+/* Out of Fuel: Within max range BUT not enough fuel */
+.planet-marker.out-fuel {
+  cursor: not-allowed;
+}
+.planet-marker.out-fuel .planet-dot {
+  background-color: #ffff00; /* Yellow dot for out of fuel */
+  border-color: #ffffaa;
+}
+.planet-marker.out-fuel .planet-label {
+  color: #ffffaa; /* Lighter yellow label */
+}
+
+/* Out of Range: Beyond max ship range */
 .planet-marker.out-range {
   cursor: not-allowed;
 }
@@ -199,7 +219,6 @@
 
 /* --- Bottom Info Bar --- */
 .chart-info-bar {
-  /* ... (no changes needed here) ... */
   display: flex;
   justify-content: space-between;
   color: #ffff00; /* Yellow info text */

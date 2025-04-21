@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Coordinates, calculateDistance } from "@/classes/PlanetInfo";
 import { usePlanetInfos } from "../../hooks/usePlanetInfos";
+import { usePlayerState } from "../../hooks/usePlayerState"; // *** Import player state hook ***
 import { JUMP_RANGE } from "@/constants";
 import "./ShortRangeChart.css"; // Import your CSS file
 import { useShortRangeChartLogic } from "./useShortRangeChartLogic"; // *** Import the logic hook ***
@@ -15,6 +16,7 @@ const ShortRangeChartScreen: React.FC = () => {
     setSelectedPlanetName,
     getCurrentPlanet,
   } = usePlanetInfos();
+  const { fuel } = usePlayerState(); // *** Get current fuel level ***
   useShortRangeChartLogic();
 
   const chartAreaRef = useRef<HTMLDivElement>(null);
@@ -48,9 +50,12 @@ const ShortRangeChartScreen: React.FC = () => {
     chartDrawableHeight
   );
 
-  const targetCircleDiameter = minChartDrawableDimension;
+  const maxJumpRangeCircleDiameter = minChartDrawableDimension;
   const effectiveScale =
-    JUMP_RANGE > 0 ? targetCircleDiameter / (JUMP_RANGE * 2) : 1;
+    JUMP_RANGE > 0 ? maxJumpRangeCircleDiameter / (JUMP_RANGE * 2) : 1;
+
+  // Calculate the diameter for the *current fuel* range circle
+  const currentFuelRangeCircleDiameter = Math.max(0, fuel * effectiveScale * 2);
 
   const getChartPositionPx = (
     planetCoords: Coordinates
@@ -71,7 +76,7 @@ const ShortRangeChartScreen: React.FC = () => {
     const dy = planetCoords.y - currentPlanet.coordinates.y;
 
     const pixelOffsetX = dx * effectiveScale;
-    const pixelOffsetY = -dy * effectiveScale;
+    const pixelOffsetY = -dy * effectiveScale; // Invert Y for screen coords
 
     const finalPosX = chartCenterX + pixelOffsetX;
     const finalPosY = chartCenterY + pixelOffsetY;
@@ -114,13 +119,24 @@ const ShortRangeChartScreen: React.FC = () => {
             currentPlanet &&
             effectiveScale > 0 && (
               <>
-                {/* Jump Range Circle */}
+                {/* Max Jump Range Circle (Dashed Green) */}
                 <div
-                  className="chart-range-circle"
+                  className="chart-range-circle max-jump-range"
                   style={{
-                    width: `${targetCircleDiameter}px`,
-                    height: `${targetCircleDiameter}px`,
+                    width: `${maxJumpRangeCircleDiameter}px`,
+                    height: `${maxJumpRangeCircleDiameter}px`,
                   }}
+                  title={`Max Ship Range: ${JUMP_RANGE.toFixed(1)} LY`}
+                ></div>
+
+                {/* *** Current Fuel Range Circle (Solid White) *** */}
+                <div
+                  className="chart-range-circle current-fuel-range"
+                  style={{
+                    width: `${currentFuelRangeCircleDiameter}px`,
+                    height: `${currentFuelRangeCircleDiameter}px`,
+                  }}
+                  title={`Current Fuel Range: ${fuel.toFixed(1)} LY`}
                 ></div>
 
                 {/* Current Location Crosshair (centered) */}
@@ -143,61 +159,81 @@ const ShortRangeChartScreen: React.FC = () => {
                     position: "absolute",
                     left: "50%",
                     top: "50%",
-                    // No transform needed here, label itself is positioned absolutely below
                     cursor: "pointer", // Make it look clickable
                   }}
                   title={`Current Location: ${currentPlanet.name} (Click to view info)`} // Add tooltip
                 >
                   <span className="planet-label">{currentPlanet.name}</span>
+                  {/* Centered dot representing the current location */}
                   <div
                     className="planet-dot"
                     style={{
                       position: "absolute",
-                      left: "0px", // Position relative to the centered parent div
-                      top: "0px", // Position relative to the centered parent div
+                      left: "0px", // Relative to parent div center
+                      top: "0px", // Relative to parent div center
                       transform: "translate(-50%, -50%)", // Center the dot itself
-                      backgroundColor: "#00ff00", // Make it green like reachable ones maybe?
+                      backgroundColor: "#00ff00", // Green like reachable planets
                     }}
                   ></div>
                 </div>
 
                 {/* Other Planet Markers */}
                 {allDisplayPlanets.map(({ planet, distance }) => {
-                  const isInRange = distance <= JUMP_RANGE;
+                  // A planet is reachable if it's within the ship's max range AND current fuel
+                  const isInRange = distance <= JUMP_RANGE && distance <= fuel;
+                  const isOutOfFuel = distance <= JUMP_RANGE && distance > fuel;
                   const isSelected = planet.name === selectedPlanetName;
                   const posPx = getChartPositionPx(planet.coordinates);
 
                   if (!posPx) return null;
 
+                  // Determine CSS class based on reachability
+                  let rangeClass = "out-range"; // Default: completely out of range
+                  if (isOutOfFuel) {
+                    rangeClass = "out-fuel"; // Within ship range, but not enough fuel
+                  } else if (isInRange) {
+                    rangeClass = "in-range"; // Reachable
+                  }
+
+                  // Determine cursor style
+                  const cursorStyle = isInRange ? "pointer" : "not-allowed";
+
+                  // Determine title text
+                  let titleText = `${planet.name} (${distance.toFixed(1)} LY)`;
+                  if (!isInRange && !isOutOfFuel) {
+                    titleText += ` (Out of Range)`;
+                  } else if (isOutOfFuel) {
+                    titleText += ` (Insufficient Fuel)`;
+                  }
+
                   return (
                     <div
                       key={planet.name}
-                      className={`planet-marker ${
-                        isInRange ? "in-range" : "out-range"
-                      } ${isSelected ? "selected" : ""}`}
+                      className={`planet-marker ${rangeClass} ${
+                        isSelected ? "selected" : ""
+                      }`}
                       style={{
                         position: "absolute",
                         left: `${posPx.left}px`,
                         top: `${posPx.top}px`,
+                        cursor: cursorStyle,
                       }}
                       onClick={() => {
                         if (isInRange) {
                           console.log(`Clicked planet: ${planet.name}`);
                           setSelectedPlanetName(planet.name);
-                          // *** OPTIONAL: Navigate directly on click for *other* planets too? Or require Enter? ***
-                          // setGameState('planet_info'); // Uncomment if you want direct navigation for all clicks
                         } else {
                           console.log(
-                            `${planet.name} is out of range. Distance:`,
-                            distance.toFixed(2)
+                            `${
+                              planet.name
+                            } is unreachable. Distance: ${distance.toFixed(
+                              1
+                            )} LY, Fuel: ${fuel.toFixed(1)} LY`
                           );
+                          // Optionally provide feedback why it's unreachable
                         }
                       }}
-                      title={`${planet.name}${
-                        !isInRange
-                          ? ` (Out of range: ${distance.toFixed(1)} LY)`
-                          : ` (${distance.toFixed(1)} LY)`
-                      }`}
+                      title={titleText}
                     >
                       <div className="planet-dot"></div>
                       <span className="planet-label">{planet.name}</span>
@@ -227,7 +263,8 @@ const ShortRangeChartScreen: React.FC = () => {
         <div className="chart-info-bar">
           <span>Current System: {currentPlanet?.name ?? "N/A"}</span>
           <span>Target: {selectedPlanetName ?? "NONE"}</span>
-          <span>Fuel: {JUMP_RANGE.toFixed(1)} LY</span>
+          {/* Show current fuel level */}
+          <span>Fuel: {fuel.toFixed(1)} LY</span>
         </div>
       </div>
     </>
