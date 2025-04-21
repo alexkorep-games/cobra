@@ -4,7 +4,7 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: var(--bottom-toolbar-height, 45px); /* Use variable or default */
+  height: var(--bottom-toolbar-height, 55px); /* Use variable */
   background-color: rgba(0, 0, 0, 0.85);
   border-top: 2px solid #ff00ff; /* Magenta border for flight controls */
   display: flex;
@@ -18,23 +18,32 @@
 }
 
 /* Reuse button styles from BottomToolbar.css if desired, or define specific ones */
+/* Apply the general .toolbar-button class styles from BottomToolbar.css */
 .space-flight-toolbar .toolbar-button {
   font-family: inherit;
   font-size: 10px;
   color: #ff00ff; /* Magenta text */
   background-color: transparent;
   border: 1px solid #ff00ff; /* Magenta border */
-  padding: 5px 10px;
+  padding: 8px 12px; /* Use same increased padding */
   cursor: pointer;
   transition: background-color 0.2s, color 0.2s;
   text-transform: uppercase;
-  min-width: 90px; /* Slightly wider buttons? */
+  min-width: 95px; /* Slightly wider buttons */
   text-align: center;
   flex-shrink: 0;
+  /* Ensure touch interaction doesn't select text */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .space-flight-toolbar .toolbar-button:hover {
   background-color: rgba(255, 0, 255, 0.2); /* Magenta glow on hover */
+}
+
+/* Active state for touch feedback */
+.space-flight-toolbar .toolbar-button:active {
+  background-color: rgba(255, 0, 255, 0.4);
 }
 
 /* Keep disabled style consistent */
@@ -50,5 +59,8 @@
 .space-flight-toolbar .toolbar-button:disabled:hover {
   background-color: transparent;
 }
+.space-flight-toolbar .toolbar-button.disabled:active,
+.space-flight-toolbar .toolbar-button:disabled:active {
+  background-color: transparent; /* Prevent active effect */
+}
 
-/* No 'active' state needed for these buttons as they trigger actions/transitions */

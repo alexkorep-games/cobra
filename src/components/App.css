@@ -1,6 +1,6 @@
 /* src/components/App.css */
 :root {
-  --bottom-toolbar-height: 45px;
+  --bottom-toolbar-height: 55px; /* Slightly increased for touch */
   --bottom-toolbar-margin: 10px;
   --bottom-offset: calc(
     var(--bottom-toolbar-height) + var(--bottom-toolbar-margin)
@@ -15,14 +15,20 @@ body {
   font-family: "Press Start 2P", cursive;
   font-size: 10px;
   line-height: 1.6;
+  /* Prevent text selection and default touch actions like pinch-zoom/scroll */
   user-select: none;
-  touch-action: manipulation;
+  -webkit-user-select: none; /* Safari */
+  -webkit-touch-callout: none; /* Disable callouts on iOS */
+  /* touch-action: manipulation; Allows scrolling/zooming but favors panning */
+  touch-action: none; /* Disables ALL default touch actions (scrolling, zooming) - suitable for full-screen game canvas */
 }
 
 #container {
   position: relative;
   width: 100vw;
   height: 100vh;
+  /* Ensure the container also prevents default actions if body doesn't catch all */
+  touch-action: none;
 }
 
 canvas {
@@ -35,6 +41,43 @@ canvas {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   z-index: 0;
+  /* Apply touch-action directly to canvas as well */
+  touch-action: none;
+}
+
+/* --- Rest of App.css remains the same --- */
+
+/* ... (all other styles from your original App.css) ... */
+
+/* --- Content Area Management --- */
+/* Selects direct div children of .overlay intended as main content areas */
+/* Excludes specific bars, toolbars, and floating elements */
+.overlay > div:not(.top-bar):not(.bottom-bar):not(.bottom-toolbar):not(
+    .space-flight-toolbar /* Exclude new toolbar */
+  ):not(.top-left-coords):not(.center-text) {
+  flex-grow: 1; /* Allow content to fill space */
+  margin-bottom: var(
+    --bottom-offset
+  ); /* Add space ABOVE the potential bottom toolbar */
+  position: relative; /* Needed for potential internal absolute positioning */
+  overflow: hidden; /* Prevent content overflow */
+  pointer-events: auto; /* Allow interaction with content */
+  display: flex; /* Use flex for internal layout */
+  flex-direction: column;
+  box-sizing: border-box;
+  /* border: 1px dotted lime; */ /* Debugging */
+}
+
+/* --- Special cases where margin-bottom should be 0 --- */
+/* Screens that should fill the entire area without margin (often full-screen overlays) */
+.overlay > #loader-screen,
+.overlay > #credits-text,
+.overlay > #title-screen-container, /* Assuming title uses this ID */
+.overlay > #space-flight-ui-container, /* Assuming flight UI uses this ID */
+.overlay > #undocking-screen-container, /* Assuming undocking uses this ID */
+.overlay > #hyperspace-jump-container /* Assuming hyperspace uses this ID */ {
+  margin-bottom: 0; /* Remove bottom margin for these */
+  /* border: 1px dotted red; */ /* Debugging */
 }
 
 .overlay {
