@@ -3,7 +3,7 @@ import React from "react"; // Removed useEffect
 import "../App.css"; // Assuming App.css contains the HUD styles
 // Removed RadarPosition import, types come from hook
 import * as Constants from "../../constants"; // Import constants for laser heat
-import { useHudState } from "@/features/common/useHudState"; // Import the hook
+import { useHudState } from "@/hooks/useHudState"; // Import the hook
 
 // Remove BottomHudProps interface
 
@@ -16,7 +16,7 @@ const BottomHud: React.FC = () => {
     altitude = 0,
     stationDirection = null,
     laserHeat = 0,
-    radarPosition = [], // Renamed from radarPositions in hook for consistency here
+    radarPositions = [], // Use the array name from the hook
   } = useHudState();
 
   // Calculate marker positions (0% to 100%) based on -1 to 1 range
@@ -140,10 +140,10 @@ const BottomHud: React.FC = () => {
           {/* Add horizontal center line */}
           <div className="radar-center-line"></div>
           {/* Radar positions in center scanner */}
-          {/* Add a check for radarPosition length before mapping */}
-          {radarPosition &&
-            radarPosition.length > 0 &&
-            radarPosition.map((position, index) => {
+          {/* Add a check for radarPositions length before mapping */}
+          {radarPositions &&
+            radarPositions.length > 0 &&
+            radarPositions.map((position, index) => {
               const { x, y, z } = position;
 
               // Calculate position within the scanner (adjust scaling/offset as needed)

@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { GameAssets } from "@/types";
 import * as Constants from "@/constants";
-import { useGameState } from "@/features/common/useGameState";
+import { useGameState } from "@/hooks/useGameState";
 import { useInput } from "@/hooks/useInput";
 
 interface TitleVisualState {

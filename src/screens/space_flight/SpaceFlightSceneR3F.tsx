@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState, useCallback } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { useGameState } from "@/features/common/useGameState";
-import { useHudState } from "@/features/common/useHudState";
+import { useGameState } from "@/hooks/useGameState";
+import { useHudState } from "@/hooks/useHudState";
 import { RadarPosition,  } from "@/types";
 import * as Constants from "@/constants";
 import { useInput } from "@/hooks/useInput";
@@ -10,7 +10,7 @@ import PlanetComponent from "@/components/r3f/PlanetComponent";
 import SpaceStationComponent from "@/components/r3f/SpaceStationComponent";
 import PiratesComponent from "@/components/r3f/PiratesComponent";
 import { useAssets } from "@/hooks/useAssets";
-import { usePlanetInfos } from "../common/usePlanetInfos";
+import { usePlanetInfos } from "../../hooks/usePlanetInfos";
 import LaserBeam from "@/components/r3f/LaserBeam";
 
 const SpaceFlightSceneR3F: React.FC = () => {

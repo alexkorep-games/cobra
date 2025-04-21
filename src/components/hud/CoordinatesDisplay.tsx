@@ -1,5 +1,5 @@
 import React from 'react';
-import { useHudState } from '@/features/common/useHudState'; // Import the hook
+import { useHudState } from '@/hooks/useHudState'; // Import the hook
 
 const CoordinatesDisplay: React.FC = () => {
   // Get coordinates from the hook

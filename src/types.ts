@@ -1,3 +1,4 @@
+/* src/types.ts */
 import * as THREE from "three";
 
 // Define possible game states as a string union type
@@ -9,7 +10,10 @@ export type GameState =
   | "undocking"
   | "space_flight"
   | "short_range_chart"
-  | "planet_info";
+  | "planet_info"
+  | "buy_cargo"
+  | "sell_cargo"
+  | "target_planet_prices";
 
 // Interface describing the structure of loaded game assets (configuration)
 // Remains largely the same

@@ -113,9 +113,6 @@ export function useInputSetup(): void {
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (key === " " || key.startsWith("arrow")) {
-        event.preventDefault();
-      }
       setKeysPressed((prevKeys) => {
         if (prevKeys.has(key)) {
           return prevKeys; // Key already pressed, do nothing extra
@@ -157,7 +154,6 @@ export function useInputSetup(): void {
 
   const handleTouchStart = useCallback(
     (event: TouchEvent) => {
-      event.preventDefault();
       setIsTouched((prev) => {
         if (!prev) {
           triggerInputActivity((c) => c + 1); // Increment trigger
@@ -170,7 +166,6 @@ export function useInputSetup(): void {
 
   const handleTouchEnd = useCallback(
     (event: TouchEvent) => {
-      event.preventDefault();
       setIsTouched(false);
     },
     [setIsTouched]
@@ -181,8 +176,8 @@ export function useInputSetup(): void {
     window.addEventListener("keyup", handleKeyUp);
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mouseup", handleMouseUp);
-    window.addEventListener("touchstart", handleTouchStart, { passive: false });
-    window.addEventListener("touchend", handleTouchEnd, { passive: false });
+    window.addEventListener("touchstart", handleTouchStart, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd, { passive: true });
 
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
