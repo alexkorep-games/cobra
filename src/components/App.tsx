@@ -23,8 +23,8 @@ import PlanetInfoScreen from "@/screens/planet_info/PlanetInfoScreen";
 import UndockingScreen from "@/screens/undocking/UndockingScreen";
 import BuyCargoScreen from "@/screens/buy_cargo/BuyCargoScreen";
 import SellCargoScreen from "@/screens/sell_cargo/SellCargoScreen";
+import TargetPlanetPricesScreen from "@/screens/target_planet_prices/TargetPlanetPricesScreen"; // <-- Import new screen
 import BottomToolbar from "@/components/hud/BottomToolbar"; // *** IMPORT THE NEW TOOLBAR ***
-import { GameState } from "@/types"; // *** IMPORT GameState TYPE ***
 
 // Import R3F Scene Content Components
 import UndockingSquares from "@/components/r3f/UndockingSquares";
@@ -104,6 +104,8 @@ const App: React.FC = () => {
           return <BuyCargoScreen />; // Will render content, toolbar rendered below
         case "sell_cargo":
           return <SellCargoScreen />; // Will render content, toolbar rendered below
+        case "target_planet_prices": // <-- Add case for new screen
+          return <TargetPlanetPricesScreen />;
         default:
           return (
             <div className="center-text">Unknown Game State: {gameState}</div>
@@ -138,6 +140,7 @@ const App: React.FC = () => {
       case "loading":
       case "short_range_chart":
       case "planet_info":
+      case "target_planet_prices":
         return null;
       default:
         return null;

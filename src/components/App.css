@@ -291,8 +291,8 @@ canvas {
 .overlay > #credits-text, /* If credits uses center-text */
 .overlay > #title-screen-container, /* Example if title had a container */
 .overlay > #space-flight-ui-container, /* Space flight uses BottomHud, not toolbar */
-.overlay > #undocking-screen-container {
-  /* Example if undocking had one */
+.overlay > #undocking-screen-container, /* Example if undocking had one */
+.overlay > #target-prices-screen {
   margin-bottom: 0; /* No offset needed, they fill the overlay */
 }
 
@@ -315,7 +315,7 @@ canvas {
   background-color: #000000;
   border: 2px solid #cc66ff;
   padding: 20px;
-  padding-bottom: var(--bottom-offset);
+  /* padding-bottom: var(--bottom-offset); */ /* Handled by wrapper */
   font-size: 1.2em;
   box-sizing: border-box;
   height: 100%;
@@ -358,7 +358,6 @@ canvas {
   border: 2px solid #00ffff;
   background-color: rgba(0, 0, 50, 0.8);
   padding: 20px;
-  padding-bottom: var(--bottom-offset);
   color: #ffffff;
   font-size: 1.2em;
   line-height: 1.8;
@@ -403,7 +402,7 @@ canvas {
   text-align: center;
 }
 
-/* Market Screens (Buy/Sell) reuse styles from buy_cargo/Market.css */
+/* Market Screens (Buy/Sell/Target Prices) reuse styles from buy_cargo/Market.css */
 /* Ensure the container fills the wrapper */
 .market-container {
   padding: 15px;
@@ -420,7 +419,6 @@ canvas {
   border: 2px solid #ffff00;
   background-color: rgba(0, 0, 0, 0.8);
   padding: 15px;
-  padding-bottom: var(--bottom-offset);
   color: #00ff00;
   display: flex;
   flex-direction: column;

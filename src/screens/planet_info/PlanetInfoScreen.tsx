@@ -8,7 +8,7 @@ import "../../components/hud/BottomToolbar.css"; // Reuse button styles
 
 const PlanetInfoScreen: React.FC = () => {
   // Call the hook to get the jump handler function
-  const { handleJumpAction } = usePlanetInfoLogic();
+  const { handleJumpAction, handleShowPricesAction } = usePlanetInfoLogic(); // <-- Add handleShowPricesAction
 
   // Get planet data from the shared state hook
   const { getCurrentPlanet, getSelectedPlanet } = usePlanetInfos();
@@ -128,8 +128,19 @@ const PlanetInfoScreen: React.FC = () => {
             gap: "20px",
           }}
         >
+          {/* Prices Button */}
           <button
-            className={`toolbar-button ${!canJump ? "disabled" : ""}`} // Use toolbar style, maybe add 'disabled' style
+            className={`toolbar-button`} // Always enabled
+            onClick={handleShowPricesAction}
+            style={{ minWidth: "100px" }} // Adjust width
+            title={`View market prices at ${selectedPlanet.name}`}
+          >
+            PRICES
+          </button>
+
+          {/* Jump Button */}
+          <button
+            className={`toolbar-button ${!canJump ? "disabled" : ""}`}
             onClick={handleJumpAction}
             disabled={!canJump}
             style={{ minWidth: "100px" }} // Adjust width
@@ -137,7 +148,9 @@ const PlanetInfoScreen: React.FC = () => {
               !canJump
                 ? distance > JUMP_RANGE
                   ? "Target out of range"
-                  : "Insufficient fuel"
+                  : fuel < distance
+                  ? "Insufficient fuel"
+                  : "Cannot jump to current location" // Added condition for same planet
                 : `Jump to ${selectedPlanet.name}`
             }
           >
@@ -147,7 +160,7 @@ const PlanetInfoScreen: React.FC = () => {
 
         {/* Updated Prompt */}
         <div className="planet-info-prompt">
-          Press ESC or N to return to chart
+          Press P for Prices, J to Jump, ESC or N to return to chart
         </div>
       </div>
     </>

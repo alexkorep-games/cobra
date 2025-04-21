@@ -32,6 +32,12 @@ export function usePlanetInfoLogic() {
       return;
     }
 
+    // Prevent jumping to the current planet
+    if (targetPlanet.name === originPlanet.name) {
+      console.warn("Jump failed: Cannot jump to the current location.");
+      return;
+    }
+
     const distance = calculateDistance(
       originPlanet.coordinates,
       targetPlanet.coordinates
@@ -92,6 +98,26 @@ export function usePlanetInfoLogic() {
     setSelectedPlanetName, // Add setSelectedPlanetName if used in future logic here
   ]);
 
+  // --- Function to Handle Showing Prices ---
+  const handleShowPricesAction = useCallback(() => {
+    if (isProcessingInput.current) return;
+
+    const targetPlanet = getSelectedPlanet();
+    if (!targetPlanet) {
+      console.warn("Show Prices failed: Target planet data missing.");
+      return;
+    }
+
+    isProcessingInput.current = true;
+    console.log(`Showing prices for ${targetPlanet.name}...`);
+    setGameState("target_planet_prices"); // Navigate to the new price screen
+
+    // Reset processing flag
+    setTimeout(() => {
+      isProcessingInput.current = false;
+    }, 100);
+  }, [getSelectedPlanet, setGameState]);
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (gameState === "planet_info" && !isProcessingInput.current) {
@@ -107,7 +133,11 @@ export function usePlanetInfoLogic() {
             handleJumpAction(); // Call the jump handler
             processed = true;
             break;
-          case "Escape":
+          case "p": // Prices key
+            handleShowPricesAction(); // Call the show prices handler
+            processed = true;
+            break;
+          case "escape":
           case "n": // Allow 'n' to close the info too
             setGameState("short_range_chart"); // Go back to chart
             processed = true;
@@ -123,7 +153,7 @@ export function usePlanetInfoLogic() {
         }
       }
     },
-    [gameState, setGameState, handleJumpAction] // Add handleJumpAction dependency
+    [gameState, setGameState, handleJumpAction, handleShowPricesAction] // Add handlers dependency
   ); // Add dependencies
 
   useEffect(() => {
@@ -162,5 +192,5 @@ export function usePlanetInfoLogic() {
   }, [gameState, handleKeyDown, selectedPlanetName, setGameState]);
 
   // Hook doesn't need to return anything for the component if it reads from usePlanetInfos
-  return { handleJumpAction };
+  return { handleJumpAction, handleShowPricesAction };
 }
