@@ -39,6 +39,17 @@ export function useTargetPlanetPricesLogic() {
     }
   }, [gameState, selectedPlanet]); // Re-run if game state or selected planet changes
 
+  // --- Action to go back to the planet info screen ---
+  const handleReturnToInfo = useCallback(() => {
+    if (isProcessingInput.current) return;
+    isProcessingInput.current = true;
+    setGameState("planet_info");
+    // Reset processing flag
+    setTimeout(() => {
+      isProcessingInput.current = false;
+    }, 100);
+  }, [setGameState]);
+
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {
       if (gameState !== "target_planet_prices" || isProcessingInput.current)
@@ -51,20 +62,12 @@ export function useTargetPlanetPricesLogic() {
         case "escape":
         case "n": // Like chart exit
         case "i": // Like info exit (since we came from Info)
-          // Navigate back to the planet info screen
-          setGameState("planet_info");
+          handleReturnToInfo(); // Use the shared handler
           processed = true;
           break;
       }
-
-      if (processed) {
-        isProcessingInput.current = true;
-        setTimeout(() => {
-          isProcessingInput.current = false;
-        }, 50); // Short debounce
-      }
     },
-    [gameState, setGameState]
+    [gameState, handleReturnToInfo] // Depend on the handler
   );
 
   // Setup keyboard listener
@@ -80,5 +83,6 @@ export function useTargetPlanetPricesLogic() {
   return {
     targetMarket,
     planetName: selectedPlanetNameForPrices ?? "Unknown", // Provide the name to the component
+    handleReturnToInfo,
   };
 }

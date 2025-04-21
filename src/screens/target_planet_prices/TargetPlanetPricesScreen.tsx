@@ -4,9 +4,11 @@ import { useTargetPlanetPricesLogic } from "./useTargetPlanetPricesLogic";
 import { getCommodityUnit } from "@/classes/Market";
 import "../../components/App.css"; // Common styles
 import "../buy_cargo/Market.css"; // Reuse market table styles
+import "../../components/hud/BottomToolbar.css";
 
 const TargetPlanetPricesScreen: React.FC = () => {
-  const { targetMarket, planetName } = useTargetPlanetPricesLogic();
+  const { targetMarket, planetName, handleReturnToInfo } =
+    useTargetPlanetPricesLogic();
 
   if (!targetMarket) {
     return (
@@ -20,7 +22,7 @@ const TargetPlanetPricesScreen: React.FC = () => {
         </div>
         <div className="market-loading">Loading market data...</div>
         <div className="market-footer" style={{ justifyContent: "center" }}>
-          Press ESC, N, or I to return to Planet Info
+          Press ESC, N, I or click Return
         </div>
       </div>
     );
@@ -95,9 +97,26 @@ const TargetPlanetPricesScreen: React.FC = () => {
       </div>
       <div
         className="market-footer"
-        style={{ justifyContent: "center", borderTopColor: "#00ffff" }}
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          borderTopColor: "#00ffff",
+        }}
       >
-        Press ESC, N, or I to return to Planet Info
+        <button
+          className="toolbar-button"
+          onClick={handleReturnToInfo}
+          style={{ minWidth: "100px" }}
+          title="Return to Planet Information screen"
+        >
+          RETURN
+        </button>
+        <span
+          style={{ marginLeft: "20px", color: "#ffff00", fontSize: "0.9em" }}
+        >
+          (ESC, N, I)
+        </span>
       </div>
     </div>
   );
