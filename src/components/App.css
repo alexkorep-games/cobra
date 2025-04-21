@@ -315,10 +315,8 @@ canvas {
   background-color: #000000;
   border: 2px solid #cc66ff;
   padding: 20px;
-  /* padding-bottom: var(--bottom-offset); */ /* Handled by wrapper */
   font-size: 1.2em;
   box-sizing: border-box;
-  height: 100%;
   overflow-y: auto;
 }
 #stats-screen h2 {
